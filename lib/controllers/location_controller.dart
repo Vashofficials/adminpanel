@@ -8,11 +8,16 @@ import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import 'dart:js_util' as js_util;
 import '../models/location_model.dart';
+import '../widgets/custom_center_dialog.dart';
+import '../models/service_provider_location.dart';
 
 class LocationController extends GetxController {
   final ApiService _apiService = ApiService();
   
   var isLoading = false.obs;
+  var isEditing = false.obs;
+  String? _editingLocationId; // The database ID (primary key)
+  String? _editingAreaId;
   var locationList = <LocationModel>[].obs;
   var filteredLocationList = <LocationModel>[].obs;
 
@@ -58,6 +63,34 @@ class LocationController extends GetxController {
     locationList.value = await _apiService.getLocations();
     filteredLocationList.value = locationList;
     isLoading(false);
+  }
+// 1. Separate List just for the dropdown
+  var providerLocationList = <ServiceProviderLocation>[].obs;
+  var isProviderMapLoading = false.obs;
+
+  // 2. Separate Fetch Method
+Future<void> fetchServiceProviderMap(String serviceProviderId) async {
+    if (serviceProviderId.isEmpty) return;
+
+    isProviderMapLoading(true);
+    providerLocationList.clear(); // Clear old data first
+
+    try {
+      // API Service now handles the List/Map parsing logic
+      var data = await _apiService.getServiceProviderLocationMap(serviceProviderId);
+      
+      providerLocationList.value = data;
+      
+      if (data.isNotEmpty) {
+        print("✅ Fetched ${data.length} mapped locations. First area: ${data.first.areaName}");
+      } else {
+        print("ℹ️ No mapped locations found for Provider ID: $serviceProviderId");
+      }
+    } catch (e) {
+      print("❌ Error fetching provider map: $e");
+    } finally {
+      isProviderMapLoading(false);
+    }
   }
 
   // Filter locations based on search text
@@ -234,54 +267,143 @@ class LocationController extends GetxController {
     Clipboard.setData(ClipboardData(text: payload));
   }
 
+void prepareEdit(LocationModel loc) {
+    // A. Populate Text Fields
+    areaNameCtrl.text = loc.areaName;
+    cityCtrl.text = loc.city ?? "";
+    stateCtrl.text = loc.state ?? "";
+    pinCodeCtrl.text = loc.postCode ?? "";
+
+    // B. Set Edit Flags
+    isEditing.value = true;
+    _editingLocationId = loc.id;
+    _editingAreaId = loc.areaId;
+
+    // C. Draw Polygon on Map (Parse WKT)
+    clearPolygon();
+    if (loc.geoBoundary != null && loc.geoBoundary!.isNotEmpty) {
+      final points = _parseWKT(loc.geoBoundary!);
+      for (var p in points) {
+        addPolygonPoint(p);
+      }
+      
+      // Move camera to the first point of the polygon
+      if (points.isNotEmpty && _mapController != null) {
+        _mapController!.animateCamera(CameraUpdate.newLatLngZoom(points.first, 14));
+      }
+    }
+    
+    // Scroll to top (optional, depending on your UI structure)
+    // scrollController.animateTo(...) 
+  }
+
+  void cancelEdit() {
+    isEditing.value = false;
+    _editingLocationId = null;
+    _editingAreaId = null;
+    _clearForm();
+  }
+
+  // --------------------------------------------------------
+  // 2. HELPER: Parse WKT (String -> List<LatLng>)
+  // Input: "POLYGON((80.9 26.8, 81.0 26.9, ...))"
+  // --------------------------------------------------------
+  List<LatLng> _parseWKT(String wkt) {
+    try {
+      // Remove "POLYGON((" and "))"
+      final content = wkt.replaceAll("POLYGON((", "").replaceAll("))", "");
+      final pairs = content.split(",");
+      
+      List<LatLng> points = [];
+      for (var pair in pairs) {
+        final coords = pair.trim().split(" ");
+        if (coords.length >= 2) {
+          // WKT is usually "LONGITUDE LATITUDE"
+          final double lng = double.parse(coords[0]);
+          final double lat = double.parse(coords[1]);
+          points.add(LatLng(lat, lng));
+        }
+      }
+      // Remove the last point if it duplicates the first (closed loop)
+      if (points.length > 1 && points.first == points.last) {
+        points.removeLast();
+      }
+      return points;
+    } catch (e) {
+      print("⚠️ Error parsing WKT: $e");
+      return [];
+    }
+  }
+
+  // --------------------------------------------------------
+  // 3. UPDATED SUBMIT (Handles Add AND Update)
+  // --------------------------------------------------------
   Future<void> submitLocation() async {
     if (!formKey.currentState!.validate()) return;
 
     if (polygonPoints.length < 3) {
-      Get.snackbar(
-        "Error",
-        "Please draw a valid area on the map (at least 3 points)",
-        backgroundColor: Colors.redAccent,
-        colorText: Colors.white,
-      );
+      CustomCenterDialog.show(
+          Get.context!,
+          title: "Incomplete Area",
+          message: "Please draw a valid area on the map (at least 3 points).",
+          type: DialogType.info, 
+        );
       return;
     }
 
     isLoading(true);
-
-    // Convert to WKT format for API
     String wktPolygon = _convertToWKT(polygonPoints);
 
-    final newLoc = LocationModel(
-      areaId: const Uuid().v4(),
-      areaName: areaNameCtrl.text,
-      city: cityCtrl.text,
-      state: stateCtrl.text,
-      postCode: pinCodeCtrl.text,
-      geoBoundary: wktPolygon,
-    );
+    bool success;
 
-    bool success = await _apiService.addLocation(newLoc);
-
-    if (success) {
-      Get.snackbar(
-        "Success",
-        "Location Added Successfully",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-      fetchLocations();
-      _clearForm();
+    if (isEditing.value) {
+      // --- UPDATE LOGIC ---
+      final updatePayload = {
+        "locationId": _editingLocationId,
+        "areaId": _editingAreaId,
+        "areaName": areaNameCtrl.text,
+        "geoPolygonType": "POLYGON",
+        "geoBoundary": wktPolygon,
+        "city": cityCtrl.text,
+        "state": stateCtrl.text,
+        "postCode": pinCodeCtrl.text
+      };
+      success = await _apiService.updateLocation(updatePayload);
     } else {
-      Get.snackbar(
-        "Error",
-        "Failed to add location",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      // --- ADD LOGIC (Existing) ---
+      final newLoc = LocationModel(
+        areaId: const Uuid().v4(),
+        areaName: areaNameCtrl.text,
+        city: cityCtrl.text,
+        state: stateCtrl.text,
+        postCode: pinCodeCtrl.text,
+        geoBoundary: wktPolygon,
       );
+      success = await _apiService.addLocation(newLoc);
     }
 
     isLoading(false);
+
+    if (success) {
+   CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: isEditing.value ? "Location Updated Successfully" : "Location Added Successfully",
+          type: DialogType.success,
+        );
+      fetchLocations();
+      
+      if(isEditing.value) cancelEdit(); // Exit edit mode
+      else _clearForm();
+      
+    } else {
+      CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Operation failed. Please try again.",
+          type: DialogType.error,
+        );
+    }
   }
 
   void _clearForm() {
@@ -290,5 +412,52 @@ class LocationController extends GetxController {
     stateCtrl.clear();
     pinCodeCtrl.clear();
     clearPolygon();
+  }
+  Future<void> deleteLocation(String locationId) async {
+    // 1. Show Confirmation Dialog
+    if (Get.context != null) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Delete Location",
+        message: "Are you sure you want to delete this location? This action cannot be undone.",
+        type: DialogType.info, // Or warning/error style if you have one
+        onConfirm: () async {
+          // Close the confirmation dialog
+          
+          _performDelete(locationId);
+        },
+      );
+    }
+  }
+
+  Future<void> _performDelete(String locationId) async {
+    isLoading(true);
+    
+    // NOTE: Passing 'false' for isActive as this is a delete action
+    // (Adjust this if your API logic requires 'true' to confirm deletion)
+    bool success = await _apiService.deleteLocation(locationId, true);
+
+    isLoading(false);
+
+    if (success) {
+      if (Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: "Location deleted successfully",
+          type: DialogType.success,
+        );
+      }
+      fetchLocations(); // Refresh list
+    } else {
+      if (Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to delete location",
+          type: DialogType.error,
+        );
+      }
+    }
   }
 }

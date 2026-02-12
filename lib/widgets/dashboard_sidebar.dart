@@ -417,6 +417,14 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   isActive: _isActive('provider/holidays'), // Adjust route string if needed (e.g. 'provider/holidays')
   onTap: () => widget.onNav?.call('provider/holidays'),
 ),
+NavTile(
+  icon: Icons.settings_suggest_outlined, // Or Icons.storage_rounded
+  label: 'Master Setup',
+  collapsed: collapsed,
+  isChild: true, // Set to false if you want it to be a main category
+  isActive: _isActive('master/setup'),
+  onTap: () => widget.onNav?.call('master/setup'),
+),
                     ],
                   ),
                 ),

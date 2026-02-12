@@ -66,6 +66,7 @@ class ServiceModel {
   final String? description;
   final int duration;
   final String? imgLink;
+  final bool isActive; // 🟢 Added Field
 
   ServiceModel({
     required this.id,
@@ -74,6 +75,7 @@ class ServiceModel {
     this.description,
     required this.duration,
     this.imgLink,
+    this.isActive = true, // Default to true
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -84,6 +86,7 @@ class ServiceModel {
       description: json['description'],
       duration: int.tryParse(json['duration'].toString()) ?? 0,
       imgLink: json['imgLink'],
+      isActive: json['isActive'] ?? true, // 🟢 Map from JSON
     );
   }
 }

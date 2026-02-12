@@ -9,9 +9,9 @@ import '../repositories/booking_repository.dart';
 
 class OfflinePaymentScreen extends StatefulWidget {
   // Navigation Callback
-  final Function(String, String)? onViewDetails;
+final Function(BookingModel) onViewDetails; // Changed from Function(String)
 
-  const OfflinePaymentScreen({super.key, this.onViewDetails});
+  const OfflinePaymentScreen({super.key, required this.onViewDetails});
 
   @override
   State<OfflinePaymentScreen> createState() => _OfflinePaymentScreenState();
@@ -524,8 +524,7 @@ DataCell(
                                                     if (widget.onViewDetails !=
                                                         null) {
                                                       widget.onViewDetails!(
-                                                          data.id,
-                                                          data.status);
+                                                          data);
                                                     }
                                                   },
                                                 )),

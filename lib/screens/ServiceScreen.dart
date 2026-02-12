@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; 
 import '../services/api_service.dart';
 import '../models/data_models.dart';
+import '../widgets/custom_center_dialog.dart';
 
 class ServiceScreen extends StatefulWidget {
   final VoidCallback? onAddService;
@@ -115,6 +116,77 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
       print("Error loading category services: $e");
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _toggleStatus(ServiceModel service) async {
+    setState(() => _isLoading = true);
+    
+    // Calculate the NEW status (flip the current one)
+    bool targetStatus = !service.isActive;
+
+    bool success = await _api.deleteService(service.id, isActive: targetStatus);
+
+    if (success) {
+      await _loadAllData(); // Reload to see changes
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Service ${targetStatus ? 'Activated' : 'Deactivated'} successfully"),
+            backgroundColor: targetStatus ? Colors.green : Colors.grey,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update status")));
+      }
+    }
+  }
+
+  // --- Delete Logic (Explicitly Deactivates) ---
+void _confirmDelete(ServiceModel service) {
+    CustomCenterDialog.show(
+      context,
+      title: "Delete Service",
+      message: "Are you sure you want to remove '${service.name}'?",
+      type: DialogType.warning,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: () async {
+        // ❌ REMOVED: Navigator.pop(context); (Caused the white screen/double pop)
+        
+        // 1. Show Loading
+        setState(() => _isLoading = true);
+
+        // 2. Call API (Explicitly Deactivate)
+        bool success = await _api.deleteService(service.id, isActive: false);
+
+        // 3. Handle Result
+        if (success) {
+          await _loadAllData(); // Refresh list
+          if (mounted) {
+             CustomCenterDialog.show(
+               context, 
+               title: "Success", 
+               message: "Service deleted successfully.", 
+               type: DialogType.success
+             );
+          }
+        } else {
+          setState(() => _isLoading = false);
+          if (mounted) {
+            CustomCenterDialog.show(
+              context, 
+              title: "Error", 
+              message: "Failed to delete service.", 
+              type: DialogType.error
+            );
+          }
+        }
+      },
+    );
   }
 
   @override
@@ -346,8 +418,12 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
                                     DataCell(Text("₹ ${svc.price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))),
                                     
                                     // STATUS
-                                    DataCell(Switch(value: true, activeColor: _primaryOrange, onChanged: (val) {})),
-                                    
+DataCell(Switch(
+                                    value: svc.isActive, 
+                                    activeColor: _primaryOrange, 
+                                    // Calls toggle to flip the status
+                                    onChanged: (val) => _toggleStatus(svc),
+                                  )),                                    
                                     // ACTION
                                     DataCell(
                                       Container(
@@ -367,11 +443,9 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
                                             ),
                                             Container(width: 1, height: 20, color: Colors.grey[300]), 
                                             IconButton(
-                                              icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18), 
-                                              onPressed: () {},
-                                              constraints: const BoxConstraints(),
-                                              padding: const EdgeInsets.all(8),
-                                            ),
+                                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18), 
+                                          onPressed: () => _confirmDelete(svc),
+                                        ),
                                           ],
                                         ),
                                       ),

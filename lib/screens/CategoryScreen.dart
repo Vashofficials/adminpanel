@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
 import '../models/data_models.dart';
 import 'dart:ui'; // Required for PathMetric
+import '../widgets/custom_center_dialog.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -52,14 +53,39 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   // --- Form Logic ---
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null) {
-      setState(() {
-        _selectedImageBytes = result.files.first.bytes;
-        _selectedImageName = result.files.first.name;
-      });
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['png'], // ✅ only PNG
+    withData: true, // need bytes
+  );
+
+  if (result != null && result.files.isNotEmpty) {
+    final file = result.files.first;
+
+    // Check size (< 1 MB)
+    if (file.size > 1024 * 1024) {
+      CustomCenterDialog.show(
+  context,
+  title: "File Size Error",
+  message: "File size should be under 1 MB",
+  type: DialogType.error,
+);
+      return;
     }
+
+    setState(() {
+      _selectedImageBytes = file.bytes;
+      _selectedImageName = file.name;
+    });
+
+   CustomCenterDialog.show(
+  context,
+  title: "Success",
+  message: "${file.name} selected successfully",
+  type: DialogType.success,
+);
   }
+}
 
   void _resetForm() {
     setState(() {
@@ -70,17 +96,53 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   Future<void> _submitCategory() async {
-    if (_nameCtrl.text.isEmpty) return;
-
-    setState(() => _isUploading = true);
-    await _api.addCategory(_nameCtrl.text, _selectedImageBytes, _selectedImageName);
-
-    if (mounted) {
-      setState(() => _isUploading = false);
-      _resetForm();
-      _loadCategories();
-    }
+  if (_nameCtrl.text.isEmpty) {
+     CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Category name cannot be empty",
+  type: DialogType.required,
+);
+    return;
   }
+
+  if (_selectedImageBytes == null) {
+     CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Please select an image",
+  type: DialogType.required,
+);
+    return;
+  }
+
+  setState(() => _isUploading = true);
+
+  bool success = await _api.addCategory(_nameCtrl.text, _selectedImageBytes, _selectedImageName);
+
+  if (!mounted) return;
+  setState(() => _isUploading = false);
+
+  if (success) {
+    CustomCenterDialog.show(
+  context,
+  title: "Success",
+  message: "Category added successfully",
+  type: DialogType.success,
+);
+    
+    _resetForm();
+    _loadCategories();
+  } else {
+    CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "Failed to update category. Please try again.",
+  type: DialogType.error,
+);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +273,211 @@ class _CategoryScreenState extends State<CategoryScreen> {
       ],
     );
   }
+void _handleDelete(String categoryId, bool currentStatus) {
+    // 1. Show Confirmation using CustomCenterDialog
+    CustomCenterDialog.show(
+      context,
+      title: "Delete Category",
+      message: "Are you sure you want to delete this category?",
+      type: DialogType.warning, // Orange warning for destructive actions
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: () async {
+        // 2. Call API (Runs after user clicks Delete)
+        bool success = await _api.deleteCategory(categoryId, currentStatus);
 
+        if (!mounted) return;
+
+        // 3. Handle Result
+        if (success) {
+          CustomCenterDialog.show(
+            context,
+            title: "Success",
+            message: "Category deleted successfully",
+            type: DialogType.success,
+          );
+          _loadCategories(); // Refresh the list
+        } else {
+          CustomCenterDialog.show(
+            context,
+            title: "Error",
+            message: "Failed to delete category",
+            type: DialogType.error,
+          );
+        }
+      },
+    );
+  }
+  Future<void> _showUpdateCategoryDialog(CategoryModel category) async {
+    final nameController = TextEditingController(text: category.name);
+    Uint8List? newImageBytes;
+    String? newImageName;
+    bool isUpdating = false;
+
+    // We use a StatefulBuilder to update the Dialog's internal state (loading/image preview)
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            
+            // Helper to pick image inside dialog
+            Future<void> pickUpdateImage() async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['png'],
+                withData: true,
+              );
+
+              if (result != null && result.files.isNotEmpty) {
+                if (result.files.first.size > 1024 * 1024) {
+                   // Show error (reuse your custom dialog logic or simple snackbar for simplicity inside dialog)
+                   return; 
+                }
+                setDialogState(() {
+                  newImageBytes = result.files.first.bytes;
+                  newImageName = result.files.first.name;
+                });
+              }
+            }
+
+            // Helper to submit update
+            Future<void> submitUpdate() async {
+              if (newImageBytes == null) {
+                // Assuming file is mandatory per Swagger screenshot
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a new image file")));
+                 return;
+              }
+              
+              setDialogState(() => isUpdating = true);
+
+              bool success = await _api.updateCategory(
+                category.id, 
+                nameController.text, 
+                newImageBytes!, 
+                newImageName!
+              );
+
+              setDialogState(() => isUpdating = false);
+
+              if (success) {
+                Navigator.pop(ctx); // Close Dialog
+                _loadCategories(); // Refresh Parent List
+                CustomCenterDialog.show(
+                  this.context, // Use parent context
+                  title: "Success",
+                  message: "Category updated successfully",
+                  type: DialogType.success,
+                );
+              } else {
+                 Navigator.pop(ctx);
+                 CustomCenterDialog.show(
+                  this.context,
+                  title: "Error",
+                  message: "Update failed",
+                  type: DialogType.error,
+                );
+              }
+            }
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: Colors.white,
+              child: Container(
+                width: 400, // Fixed width for center popup feel
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(Icons.edit, color: _primaryOrange),
+                        const SizedBox(width: 10),
+                        const Text("Update Category", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const Divider(height: 30),
+
+                    // Name Field
+                    const Text("Category Name", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Image Picker
+                    const Text("Update Icon (Required)", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: pickUpdateImage,
+                      child: Container(
+                        height: 80,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF9F5),
+                          border: Border.all(color: _primaryOrange.withOpacity(0.3)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (newImageBytes != null)
+                              Image.memory(newImageBytes!, width: 40, height: 40)
+                            else 
+                              const Icon(Icons.cloud_upload_outlined, color: Colors.orange),
+                            const SizedBox(height: 4),
+                            Text(
+                              newImageName ?? "Click to change image",
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 30),
+
+                    // Actions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: isUpdating ? null : submitUpdate,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryOrange,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: isUpdating 
+                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                             : const Text("Update", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
   Widget _buildImageUploadArea() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,7 +488,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
             children: [
               TextSpan(text: "* ", style: TextStyle(color: Colors.red)),
-              TextSpan(text: "(SVG format only)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              TextSpan(text: "(PNG format only)", style: TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
         ),
@@ -354,11 +620,21 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   )
                                 ),
                                 DataCell(Row(
-                                  children: [
-                                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () {}),
-                                    IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () {}),
-                                  ],
-                                )),
+  children: [
+   IconButton(
+      icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+      onPressed: () {
+        // Trigger the new dialog here
+        _showUpdateCategoryDialog(cat); 
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+      // 👇 UPDATED ONPRESSED:
+      onPressed: () => _handleDelete(cat.id, cat.isActive), 
+    ),
+  ],
+)),
                               ],
                             );
                           }),

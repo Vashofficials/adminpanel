@@ -44,6 +44,8 @@ import 'provider_onboarding_request_screen.dart';
 import '../models/customer_models.dart';
 import 'buffer_config_screen.dart';
 import 'holiday_management_screen.dart'; // <--- IMPORT THE NEW SCREEN
+import 'MasterSetupScreen.dart'; // <--- IMPORT THE NEW SCREEN
+import '../models/booking_models.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -56,28 +58,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _collapsed = false;
   String _currentRoute = 'dashboard';
   Customer? _selectedCustomer; // <--- ADD THIS VARIABLE
-  Map<String, String>? _selectedBooking; 
+ // Map<String, String>? _selectedBooking; 
+  BookingModel? _selectedBooking;
+
 dynamic _selectedOnboardingRequest;
-  void _viewBookingDetails(String id, String status) {
+
+// Add this method to _DashboardScreenState
+  void _viewBookingDetails(BookingModel booking) {
     setState(() {
-      _selectedBooking = {'id': id, 'status': status};
+      _selectedBooking = booking; // Save the full booking object
     });
   }
 
-  void _closeBookingDetails() {
-    setState(() {
-      _selectedBooking = null;
-    });
-  }
+void _closeBookingDetails() {
+  setState(() {
+    _selectedBooking = null;
+  });
+}
 
-  Widget _getBody() {
-    if (_selectedBooking != null) {
-      return BookingDetailsScreen(
-        bookingId: _selectedBooking!['id']!,
-        bookingStatus: _selectedBooking!['status']!,
-        onBack: _closeBookingDetails,
-      );
-    }
+ Widget _getBody() {
+  // If a booking is selected, show the Details Screen
+  if (_selectedBooking != null) {
+    return BookingDetailsScreen(
+      booking: _selectedBooking!, // <--- Passing full BookingModel object
+      onBack: _closeBookingDetails,
+    );
+  }
 
     switch (_currentRoute) {
       case 'dashboard':
@@ -85,23 +91,20 @@ dynamic _selectedOnboardingRequest;
       
       case 'booking/ongoing':
         return OngoingBookingScreen(
-          onViewDetails: (id) => _viewBookingDetails(id, 'Accepted'),
-        );
+onViewDetails: (booking) => _viewBookingDetails(booking),        );  
+        
 
       case 'booking/canceled':
         return CanceledBookingScreen(
-          onViewDetails: (id) => _viewBookingDetails(id, 'Canceled'),
-        );  
+onViewDetails: (booking) => _viewBookingDetails(booking),        );  
 
       case 'booking/completed':
         return CompletedBookingScreen(
-          onViewDetails: (id) => _viewBookingDetails(id, 'Completed'),
-        );
+onViewDetails: (booking) => _viewBookingDetails(booking),        );
 
       case 'booking/offline':
         return OfflinePaymentScreen(
-          onViewDetails: (id, status) => _viewBookingDetails(id, 'Completed'),
-        );
+         onViewDetails: (booking) => _viewBookingDetails(booking),        );
         
       case 'booking/customized':
         return const CustomizedBookingScreen();
@@ -163,6 +166,9 @@ onEditCustomer: (customer) {
           customer: _selectedCustomer!, // Pass the stored customer here
           onBack: () => setState(() => _currentRoute = 'customer/list'),
           onEdit: () => setState(() => _currentRoute = 'customer/update'),
+          onViewBooking: (booking) {
+             _viewBookingDetails(booking); // This triggers the Dashboard to show BookingDetailsScreen
+          },
         );
 
       case 'customer/update':
@@ -263,30 +269,48 @@ onEditCustomer: (customer) {
         return const BufferConfigScreen();
 
       // --- PROVIDERS ---
-      case 'provider/list':  
-        return ProviderListScreen();
-      case 'provider/add':  
-        return AddProviderScreen(
-          //data: _selectedOnboardingRequest, 
-          onBack: () {
-             setState(() {
-               _currentRoute = 'provider/onboarding'; 
-               _selectedOnboardingRequest = null; 
-             });
-          },
-        );
+      case 'provider/list': 
+    return ProviderListScreen(
+      // This creates the link! When 'onNav' is called inside ProviderListScreen,
+      // it runs this code to update the Dashboard's route.
+      onNav: (route) {
+        setState(() {
+          _currentRoute = route;
+        });
+      },
+    );
 
-      case 'provider/onboarding':  
-        return ProviderOnboardingRequestScreen(
-          onViewRequest: (requestData) {
-            setState(() {
-              _selectedOnboardingRequest = requestData; 
-              _currentRoute = 'provider/add'; 
-            });
-          },
-        );
-      case 'provider/holidays': // Matches the route used in the NavTile
-        return HolidayManagementScreen();
+  // --- ADD PROVIDER ---
+  case 'provider/add': 
+    return AddProviderScreen(
+      onBack: () {
+        setState(() {
+          // deciding where 'Back' takes you (List or Onboarding)
+          _currentRoute = 'provider/list'; 
+        });
+      },
+    );
+
+  // --- ONBOARDING REQUESTS ---
+  case 'provider/onboarding': 
+    return ProviderOnboardingRequestScreen(
+      onViewRequest: (requestData) {
+        setState(() {
+          // If you have logic to pass data, do it here
+          _selectedOnboardingRequest = requestData; 
+          _currentRoute = 'provider/add'; 
+        });
+      },
+    );
+
+  // --- HOLIDAYS ---
+  case 'provider/holidays':
+    return HolidayManagementScreen();
+  case 'master/setup':
+    return const MasterSetupScreen();
+
+    
+  
 
       default:
         return const DashboardHome();
@@ -323,7 +347,7 @@ onEditCustomer: (customer) {
               children: [
                 DashboardTopBar(
                   onMenuTap: () => setState(() => _collapsed = !_collapsed),
-                  onLogout: () => _handleNavigation('auth/login'),
+                 // onLogout: () => _handleNavigation('auth/login'),
                 ),
                 Expanded(
                   child: Padding(
@@ -366,7 +390,7 @@ class DashboardHome extends StatelessWidget {
                   child: const PanelCard.gradient(
                     title: 'Total Revenue', 
                     // Updated to INR
-                    value: '\u20B924,50,000',
+                    value: '0',
                     gradient: [Color(0xFF2563EB), Color(0xFF4F46E5)],
                     icon: Icons.currency_rupee, // Changed Icon
                   ),
@@ -375,7 +399,7 @@ class DashboardHome extends StatelessWidget {
                   width: width,
                   child: const PanelCard.gradient(
                     title: 'Total Bookings', 
-                    value: '1,245',
+                    value: '0',
                     gradient: [Color(0xFF10B981), Color(0xFF059669)],
                     icon: Icons.calendar_today,
                   ),
@@ -384,7 +408,7 @@ class DashboardHome extends StatelessWidget {
                   width: width,
                   child: const PanelCard.gradient(
                     title: 'Active Services', 
-                    value: '85',
+                    value: '0',
                     gradient: [Color(0xFFF59E0B), Color(0xFFD97706)],
                     icon: Icons.cleaning_services,
                   ),
@@ -393,7 +417,7 @@ class DashboardHome extends StatelessWidget {
                   width: width,
                   child: const PanelCard.solid(
                     title: 'Customers (Lko)', 
-                    value: '3,402',
+                    value: '0',
                     color: Color(0xFF1E3A8A),
                     icon: Icons.people,
                   ),
@@ -537,7 +561,9 @@ class EarningChart extends StatelessWidget {
 class RecentList extends StatelessWidget {
   final String title;
   const RecentList({super.key, required this.title});
+  static const List<Map<String, dynamic>> _providers = [];
 
+  /*
   // Mock Data for Lucknow Providers
   static const List<Map<String, dynamic>> _providers = [
     {
@@ -571,7 +597,7 @@ class RecentList extends StatelessWidget {
       "earnings": "21,000"
     },
   ];
-
+ */
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -588,7 +614,23 @@ class RecentList extends StatelessWidget {
           Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.separated(
+            // UPDATED: Handle empty state
+            child: _providers.isEmpty 
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text(
+                        "No Data Available",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.separated(
               itemCount: _providers.length,
               separatorBuilder: (c, i) => const Divider(height: 24),
               itemBuilder: (c, i) {

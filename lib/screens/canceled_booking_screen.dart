@@ -8,7 +8,7 @@ import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 
 class CanceledBookingScreen extends StatefulWidget {
-  final Function(String) onViewDetails;
+final Function(BookingModel) onViewDetails; // Changed from Function(String)
 
   const CanceledBookingScreen({super.key, required this.onViewDetails});
 
@@ -475,7 +475,7 @@ DataCell(
                                                           .visibility_outlined,
                                                       onTap: () => widget
                                                           .onViewDetails(
-                                                              data.id),
+                                                              data),
                                                     ),
                                                   ],
                                                 )),

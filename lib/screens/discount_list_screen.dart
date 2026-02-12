@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+// Import your service, model, and custom dialog here
+import '../services/api_service.dart'; 
+import '../models/discount_model.dart';
+import '../widgets/custom_center_dialog.dart'; 
 
 class DiscountListScreen extends StatefulWidget {
   final VoidCallback? onEditDiscount;
@@ -9,30 +13,131 @@ class DiscountListScreen extends StatefulWidget {
 }
 
 class _DiscountListScreenState extends State<DiscountListScreen> {
-  // State for the active tab
+  final ApiService _apiService = ApiService(); 
+  
   String _selectedTab = 'All';
+  bool _isLoading = true;
+  List<DiscountModel> _discountList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDiscounts();
+  }
+
+  Future<void> _fetchDiscounts() async {
+    setState(() => _isLoading = true);
+    final list = await _apiService.getAllDiscounts();
+    if (mounted) {
+      setState(() {
+        _discountList = list;
+        _isLoading = false;
+      });
+    }
+  }
+
+  // --- DELETE ACTION ---
+void _handleDelete(String id) {
+    CustomCenterDialog.show(
+      context,
+      title: "Deactivate Discount", // Changed title to reflect action
+      message: "Are you sure you want to deactivate this discount?",
+      type: DialogType.info,
+      onConfirm: () async {
+
+        // Call API (assuming deleteServiceDiscount handles the soft delete on server)
+        bool success = await _apiService.deleteServiceDiscount(id, true);
+
+        if (success) {
+          setState(() {
+            // --- UPDATED LOGIC: FIND AND UPDATE INSTEAD OF REMOVE ---
+            final index = _discountList.indexWhere((item) => item.id == id);
+            if (index != -1) {
+              final oldItem = _discountList[index];
+              // Create a new instance with isActive = false
+              _discountList[index] = DiscountModel(
+                id: oldItem.id,
+                serviceId: oldItem.serviceId,
+                serviceName: oldItem.serviceName,
+                discountPercentage: oldItem.discountPercentage,
+                startDate: oldItem.startDate,
+                endDate: oldItem.endDate,
+                isActive: false, // <--- Mark as inactive
+              );
+            }
+          });
+
+          if (mounted) {
+            CustomCenterDialog.show(
+              context,
+              title: "Success",
+              message: "Discount deactivated successfully",
+              type: DialogType.success,
+            );
+          }
+        } else {
+          // ... error handling
+        }
+      },
+    );
+  }
+  Future<void> _toggleStatus(String id, bool newValue) async {
+    // 1. Optimistic Update: Update UI immediately for better UX
+    setState(() {
+      final index = _discountList.indexWhere((item) => item.id == id);
+      if (index != -1) {
+        final oldItem = _discountList[index];
+        _discountList[index] = DiscountModel(
+          id: oldItem.id,
+          serviceId: oldItem.serviceId,
+          serviceName: oldItem.serviceName,
+          discountPercentage: oldItem.discountPercentage,
+          startDate: oldItem.startDate,
+          endDate: oldItem.endDate,
+          isActive: newValue, // Update UI with new state
+        );
+      }
+    });
+
+    // 2. Call API
+    // Logic based on your request: 
+    // To make Active (newValue = true) -> Pass 'false' to delete API.
+    // To make Inactive (newValue = false) -> Pass 'true' to delete API.
+    bool apiParam = !newValue; 
+    
+    bool success = await _apiService.deleteServiceDiscount(id, apiParam);
+
+    // 3. Revert if API fails
+    if (!success) {
+      // Re-fetch data to sync with server state
+      _fetchDiscounts(); 
+      if (mounted) {
+        CustomCenterDialog.show(
+          context,
+          title: "Error",
+          message: "Failed to update status",
+          type: DialogType.error,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC), // Light grey background
+      backgroundColor: const Color(0xFFF8F9FC),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 1. Screen Title ---
             const Text(
               'Discounts',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-              ),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),
             const SizedBox(height: 24),
 
-            // --- 2. Main List Card ---
+            // --- Main List Card ---
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -47,13 +152,12 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
               ),
               child: Column(
                 children: [
-                  // --- Header: Tabs & Total Count ---
+                  // --- Header ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Tabs
                         Row(
                           children: [
                             _buildTab('All'),
@@ -63,11 +167,10 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                             _buildTab('Category Wise'),
                           ],
                         ),
-                        // Count
                         Row(
-                          children: const [
-                            Text('Total Discount: ', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                            Text('3', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          children: [
+                            const Text('Total Discount: ', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                            Text('${_discountList.length}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           ],
                         ),
                       ],
@@ -75,12 +178,11 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                   ),
                   Divider(height: 1, color: Colors.grey.shade200),
 
-                  // --- Search & Action Bar ---
+                  // --- Search Bar ---
                   Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Row(
                       children: [
-                        // Search Field
                         Expanded(
                           child: Container(
                             height: 45,
@@ -96,7 +198,7 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                                 const Expanded(
                                   child: TextField(
                                     decoration: InputDecoration(
-                                      hintText: 'Search here',
+                                      hintText: 'Search by Service Name',
                                       border: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
@@ -109,22 +211,18 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        
-                        // Search Button
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: _fetchDiscounts,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFEB5725),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20), // Matches height approx
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                             elevation: 0,
                           ),
                           child: const Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                         ),
-                        
-                        const Spacer(), // Pushes Download button to the right
-                        
-                        // Download Dropdown Button
+                        const Spacer(),
+                        // Download button (visual only)
                         OutlinedButton.icon(
                           onPressed: () {},
                           icon: const Icon(Icons.download, size: 16, color: Colors.black87),
@@ -153,8 +251,9 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                     child: Row(
                       children: [
                         _buildHeaderCell('SL', flex: 1),
-                        _buildHeaderCell('TITLE', flex: 4),
-                        _buildHeaderCell('DISCOUNT TYPE', flex: 3),
+                        _buildHeaderCell('SERVICE NAME', flex: 4),
+                        _buildHeaderCell('DISCOUNT %', flex: 2),
+                        _buildHeaderCell('VALID UNTIL', flex: 2),
                         _buildHeaderCell('STATUS', flex: 2),
                         _buildHeaderCell('ACTION', flex: 2, alignRight: true),
                       ],
@@ -162,58 +261,67 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                   ),
                   const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-                  // --- Table Rows (Hardcoded Data from Image) ---
-                  _buildRow(
-                    sl: '1',
-                    title: 'FLAT 10% OFF ON CAR SHIFTING',
-                    type: 'Category',
-                    isActive: true,
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                  _buildRow(
-                    sl: '2',
-                    title: '15% OFF ON HOUSE SHIFTING',
-                    type: 'Service',
-                    isActive: true,
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                  _buildRow(
-                    sl: '3',
-                    title: '10% OFF ON AC REPAIRING',
-                    type: 'Mixed',
-                    isActive: true,
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-                  // --- Pagination ---
-                  Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Showing 1 to 3 of 3 results', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                        Row(
-                          children: [
-                            _buildPaginationBtn(Icons.chevron_left),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 32,
-                              height: 32,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEB5725).withOpacity(0.1),
-                                border: Border.all(color: const Color(0xFFEB5725)),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text('1', style: TextStyle(color: Color(0xFFEB5725), fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildPaginationBtn(Icons.chevron_right),
-                          ],
-                        ),
-                      ],
+                  // --- Dynamic List ---
+                  if (_isLoading)
+                    const Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: Color(0xFFEB5725)))
+                  else if (_discountList.isEmpty)
+                    const Padding(padding: EdgeInsets.all(40), child: Text("No discounts found."))
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _discountList.length,
+                      separatorBuilder: (ctx, i) => const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                      itemBuilder: (ctx, index) {
+                        final item = _discountList[index];
+                        // Simple date substring to remove time
+                        String validUntil = item.endDate.length > 10 
+                            ? item.endDate.substring(0, 10) 
+                            : item.endDate;
+                        
+                        return _buildRow(
+                          sl: '${index + 1}',
+                          title: item.serviceName,
+                          discount: '${item.discountPercentage}%',
+                          date: validUntil,
+                          isActive: item.isActive,
+                          onDelete: () => _handleDelete(item.id),
+                          onStatusChanged: (val) => _toggleStatus(item.id, val),
+                        );
+                      },
                     ),
-                  )
+
+                  // --- Footer ---
+                  if (!_isLoading && _discountList.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Showing 1 to ${_discountList.length} of ${_discountList.length} results', 
+                              style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                          Row(
+                            children: [
+                              _buildPaginationBtn(Icons.chevron_left),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 32,
+                                height: 32,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEB5725).withOpacity(0.1),
+                                  border: Border.all(color: const Color(0xFFEB5725)),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text('1', style: TextStyle(color: Color(0xFFEB5725), fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildPaginationBtn(Icons.chevron_right),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )
                 ],
               ),
             ),
@@ -223,7 +331,8 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
     );
   }
 
-  // --- Helper Widget: Tab ---
+  // --- Helper Widgets ---
+
   Widget _buildTab(String title) {
     bool isActive = _selectedTab == title;
     return InkWell(
@@ -247,7 +356,6 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
     );
   }
 
-  // --- Helper Widget: Table Header Cell ---
   Widget _buildHeaderCell(String text, {int flex = 1, bool alignRight = false}) {
     return Expanded(
       flex: flex,
@@ -264,12 +372,14 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
     );
   }
 
-  // --- Helper Widget: Table Row ---
   Widget _buildRow({
     required String sl,
     required String title,
-    required String type,
+    required String discount,
+    required String date,
     required bool isActive,
+    required VoidCallback onDelete,
+    required Function(bool) onStatusChanged, // <--- 1. Add Parameter
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -277,7 +387,8 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
         children: [
           Expanded(flex: 1, child: Text(sl, style: const TextStyle(fontSize: 13, color: Colors.black87))),
           Expanded(flex: 4, child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.black87))),
-          Expanded(flex: 3, child: Text(type, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+          Expanded(flex: 2, child: Text(discount, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+          Expanded(flex: 2, child: Text(date, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
           Expanded(
             flex: 2,
             child: Align(
@@ -291,7 +402,7 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
                   activeTrackColor: const Color(0xFFEB5725),
                   inactiveThumbColor: Colors.white,
                   inactiveTrackColor: Colors.grey.shade300,
-                  onChanged: (v) {},
+                  onChanged: onStatusChanged,
                 ),
               ),
             ),
@@ -301,11 +412,15 @@ class _DiscountListScreenState extends State<DiscountListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-InkWell(
+                InkWell(
                   onTap: widget.onEditDiscount, 
                   child: _buildActionIcon(Icons.edit_outlined, const Color(0xFFEB5725)),
-                ),                const SizedBox(width: 8),
-                _buildActionIcon(Icons.delete_outline, const Color(0xFFEF4444)), // Red color for delete
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: onDelete,
+                  child: _buildActionIcon(Icons.delete_outline, const Color(0xFFEF4444)),
+                ),
               ],
             ),
           ),
@@ -314,7 +429,6 @@ InkWell(
     );
   }
 
-  // --- Helper Widget: Action Icons ---
   Widget _buildActionIcon(IconData icon, Color color) {
     return Container(
       width: 32,
@@ -327,7 +441,6 @@ InkWell(
     );
   }
 
-  // --- Helper Widget: Pagination Button ---
   Widget _buildPaginationBtn(IconData icon) {
     return Container(
       width: 32,

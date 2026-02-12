@@ -8,6 +8,7 @@ class LocationManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ScrollController scrollController = ScrollController(); // 1. ADD THIS
     const Color primaryOrange = Color(0xFFF97316);
     const Color bgGrey = Color(0xFFF3F4F6);
     const Color textGrey = Color(0xFF4B5563);
@@ -15,6 +16,7 @@ class LocationManagementScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
+        controller: scrollController, // 2. ASSIGN IT HERE
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,107 +217,167 @@ class LocationManagementScreen extends StatelessWidget {
                   ),
 
                   // RIGHT: FORM (35% width)
+   // RIGHT: FORM (35% width)
+Expanded(
+  flex: 4,
+  child: Container(
+    // remove padding from here if you want the scrollbar at the edge, 
+    // but keeping it here is fine for this layout.
+    padding: const EdgeInsets.all(24), 
+    color: Colors.white,
+    child: Form(
+      key: controller.formKey,
+      // 1. WRAP COLUMN IN SINGLECHILDSCROLLVIEW
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Obx(() => Text(
+                  controller.isEditing.value ? "Edit Location" : "Define New Location",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                )),
+            const SizedBox(height: 8),
+            const Text(
+              "Use the map tools to draw a service area, then fill in the details below.",
+              style: TextStyle(color: textGrey, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            _buildLabel("AREA NAME"),
+            _buildStyledField(controller.areaNameCtrl, "e.g. Gomti Nagar Ext."),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("CITY"),
+                      _buildStyledField(controller.cityCtrl, "Lucknow"),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLabel("STATE"),
+                      _buildStyledField(controller.stateCtrl, "Uttar Pradesh"),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildLabel("POST CODE"),
+            _buildStyledField(controller.pinCodeCtrl, "226010"),
+            const SizedBox(height: 16),
+            // Info Box
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
-                    flex: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      color: Colors.white,
-                      child: Form(
-                        key: controller.formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Text(
+                      "Ensure the polygon aligns with actual delivery capabilities.",
+                      style: TextStyle(color: Colors.blue.shade900, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 2. CRITICAL: REPLACE Spacer() WITH FIXED SPACE
+            // const Spacer(), // <--- OLD CAUSE OF CRASH
+            const SizedBox(height: 24), 
+
+            // Actions
+            Obx(() => Column(
+                  children: [
+                    // 1. Cancel Banner (Only visible when editing)
+                    if (controller.isEditing.value)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Define New Location",
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            const Text(
-                              "Use the map tools to draw a service area, then fill in the details below.",
-                              style: TextStyle(color: textGrey, fontSize: 13),
-                            ),
-                            const SizedBox(height: 24),
-                            _buildLabel("AREA NAME"),
-                            _buildStyledField(controller.areaNameCtrl, "e.g. Gomti Nagar Ext."),
-                            const SizedBox(height: 16),
                             Row(
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildLabel("CITY"),
-                                      _buildStyledField(controller.cityCtrl, "Lucknow"),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildLabel("STATE"),
-                                      _buildStyledField(controller.stateCtrl, "Uttar Pradesh"),
-                                    ],
-                                  ),
+                                const Icon(Icons.edit, size: 16, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Editing Mode",
+                                  style: TextStyle(
+                                      color: Colors.blue.shade900,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                            _buildLabel("POST CODE"),
-                            _buildStyledField(controller.pinCodeCtrl, "226010"),
-                            const SizedBox(height: 16),
-                            // Info Box
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(8),
+                            InkWell(
+                              onTap: controller.cancelEdit,
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12),
                               ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.info, color: Colors.blue.shade700, size: 20),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      "Ensure the polygon aligns with actual delivery capabilities.",
-                                      style: TextStyle(color: Colors.blue.shade900, fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            // Actions
-                            SizedBox(
-                              width: double.infinity,
-                              height: 45,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.save),
-                                label: const Text("Save Location"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryOrange,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                onPressed: controller.submitLocation,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 45,
-                              child: OutlinedButton(
-                                onPressed: controller.clearPolygon,
-                                style: OutlinedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: const Text("Clear Map", style: TextStyle(color: Colors.black87)),
-                              ),
-                            ),
+                            )
                           ],
                         ),
                       ),
+
+                    // 2. Main Action Button (Dynamic)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        icon: Icon(controller.isEditing.value ? Icons.update : Icons.save),
+                        label: Text(controller.isEditing.value ? "Update Location" : "Save Location"),
+                        style: ElevatedButton.styleFrom(
+                          // Change color: Orange for Add, Blue for Update
+                          backgroundColor: controller.isEditing.value
+                              ? Colors.blue
+                              : const Color(0xFFF97316),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: controller.isLoading.value ? null : controller.submitLocation,
+                      ),
                     ),
-                  ),
+                  ],
+                )),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: OutlinedButton(
+                onPressed: controller.clearPolygon,
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text("Clear Map", style: TextStyle(color: Colors.black87)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+),
                 ],
               ),
             ),
@@ -403,11 +465,28 @@ class LocationManagementScreen extends StatelessWidget {
                       DataCell(Row(
                         children: [
                           IconButton(
-                              icon: const Icon(Icons.edit, size: 18, color: Colors.orange),
-                              onPressed: () {}),
+      icon: const Icon(Icons.edit, size: 18, color: Colors.orange),
+      onPressed: () {
+        // 1. Populate form and map
+        controller.prepareEdit(loc);
+        
+        // 2. Scroll to top so user sees the form
+        scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      },
+    ),
                           IconButton(
-                              icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                              onPressed: () {}),
+      icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+      onPressed: () {
+        // Ensure ID is not null before calling
+        if (loc.id != null) {
+          controller.deleteLocation(loc.id!);
+        }
+      },
+    ),
                         ],
                       )),
                     ]);

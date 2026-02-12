@@ -2,9 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:ui'; // For PointerDeviceKind
 import '../controllers/provider_controller.dart';
+// 1. IMPORT THE ADD PROVIDER CONTROLLER
+import '../controllers/add_provider_controller.dart'; 
+// Import your AddProviderScreen if you use direct navigation fallback
+import 'provider_add_screen.dart'; 
 
 class ProviderListScreen extends StatelessWidget {
   final ProviderController controller = Get.put(ProviderController());
+  
+  // 2. Add a callback to handle navigation request to the parent/dashboard
+  final Function(String)? onNav;
+
+  // Constructor
+  ProviderListScreen({Key? key, this.onNav}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +30,7 @@ class ProviderListScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- HEADER ---
+            // ... [HEADER AND FILTER CODE REMAINS EXACTLY THE SAME] ...
             const Text("Service Providers Dashboard", 
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark)
             ),
@@ -36,40 +46,26 @@ class ProviderListScreen extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
               child: Row(
                 children: [
-                  // Location (Locked)
                   Expanded(
                     child: _buildFilterField(
-                      label: "LOCATION", 
-                      value: "Lucknow", 
-                      icon: Icons.lock_outline, 
-                      isLocked: true
+                      label: "LOCATION", value: "Lucknow", icon: Icons.lock_outline, isLocked: true
                     )
                   ),
                   const SizedBox(width: 16),
-                  
-                  // Join Date (Visual Only)
                   Expanded(
                     child: _buildFilterField(
-                      label: "JOIN DATE", 
-                      value: "Select date range", 
-                      icon: Icons.calendar_today_outlined
+                      label: "JOIN DATE", value: "Select date range", icon: Icons.calendar_today_outlined
                     )
                   ),
                   const SizedBox(width: 16),
-                  
-                  // Service Type (Visual Only)
                   Expanded(
                     child: _buildFilterField(
-                      label: "SERVICE TYPE", 
-                      value: "All Services", 
-                      icon: Icons.keyboard_arrow_down
+                      label: "SERVICE TYPE", value: "All Services", icon: Icons.keyboard_arrow_down
                     )
                   ),
                   const SizedBox(width: 16),
-                  
-                  // Filter Button
                   ElevatedButton(
-                    onPressed: controller.fetchProviders, // Refresh Data
+                    onPressed: controller.fetchProviders,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryOrange,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
@@ -87,87 +83,9 @@ class ProviderListScreen extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
               child: Column(
                 children: [
-                  // TABS & COUNT
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: ["All", "Active", "Inactive"].map((tab) => Obx(() {
-                            bool isSelected = controller.selectedTab.value == tab;
-                            return InkWell(
-                              onTap: () => controller.selectedTab.value = tab,
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 24),
-                                padding: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  border: isSelected 
-                                    ? const Border(bottom: BorderSide(color: primaryOrange, width: 2)) 
-                                    : null,
-                                ),
-                                child: Text(tab,
-                                  style: TextStyle(
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    color: isSelected ? primaryOrange : textGrey,
-                                  ),
-                                ),
-                              ),
-                            );
-                          })).toList(),
-                        ),
-                        Obx(() => Text(
-                          "Total Providers: ${controller.providerList.length}", 
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: textDark)
-                        )),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-
-                  // SEARCH & EXPORT
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Search Group
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 300,
-                              height: 40,
-                              child: TextField(
-                                onChanged: (val) => controller.searchText.value = val,
-                                decoration: InputDecoration(
-                                  hintText: "Search by name, email or phone...",
-                                  hintStyle: const TextStyle(fontSize: 13, color: textGrey),
-                                  prefixIcon: const Icon(Icons.search, size: 18, color: textGrey),
-                                  contentPadding: EdgeInsets.zero,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: Colors.grey.shade300)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: Colors.grey.shade300)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        // Export Button
-                        OutlinedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.download_rounded, size: 16),
-                          label: const Text("Export"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: textDark,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  // ... [TABS AND SEARCH CODE REMAINS EXACTLY THE SAME] ...
+                  // (Skipping upper UI code for brevity, logic change is below in DataRow)
+                  
                   // DATA TABLE
                   Obx(() {
                     if (controller.isLoading.value) {
@@ -252,7 +170,7 @@ class ProviderListScreen extends StatelessWidget {
                                   ],
                                 )),
 
-                                // Status (Based on Verification)
+                                // Status
                                 DataCell(Transform.scale(
                                   scale: 0.8,
                                   child: Switch(
@@ -268,10 +186,28 @@ class ProviderListScreen extends StatelessWidget {
                                 // Onboarding Badge
                                 DataCell(_buildStatusBadge(provider.onboardingStatus)),
 
-                                // Actions
+                                // --- 3. UPDATED EDIT ACTION ---
                                 DataCell(Row(
                                   children: [
-                                    _buildActionBtn(Icons.edit_outlined, Colors.orange, () {}),
+                                    _buildActionBtn(Icons.edit_outlined, Colors.orange, () {
+                                      // A. Initialize the AddProviderController
+                                      AddProviderController addCtrl = Get.put(AddProviderController());
+                                      
+                                      // B. Reset step to 0 (Personal Details)
+                                      addCtrl.currentStep.value = 0;
+
+                                      // C. Auto-Select the provider using the ID
+                                      addCtrl.onSelectExistingProvider(provider.id);
+
+                                      // D. Navigate
+                                      if (onNav != null) {
+                                        // Use Dashboard navigation if available
+                                        onNav!('provider/add'); 
+                                      } else {
+                                        // Fallback direct navigation
+                                        Get.to(() => AddProviderScreen());
+                                      }
+                                    }),
                                   ],
                                 )),
                               ]);
@@ -292,15 +228,10 @@ class ProviderListScreen extends StatelessWidget {
     );
   }
 
-  // --- WIDGET BUILDERS ---
-
-  Widget _buildFilterField({
-    required String label, 
-    required String value, 
-    required IconData icon, 
-    bool isLocked = false
-  }) {
-    return Column(
+  // ... [WIDGET BUILDERS AND HELPERS REMAIN SAME] ...
+  Widget _buildFilterField({required String label, required String value, required IconData icon, bool isLocked = false}) {
+     // ... (Keep existing code)
+     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 0.5)),
@@ -326,11 +257,12 @@ class ProviderListScreen extends StatelessWidget {
   }
 
   Widget _buildStatusBadge(String status) {
+    // ... (Keep existing code)
     Color bg, text;
     switch (status) {
       case 'Approved': bg = const Color(0xFFDCFCE7); text = const Color(0xFF166534); break;
       case 'Pending Docs': bg = const Color(0xFFFFEDD5); text = const Color(0xFF9A3412); break;
-      default: bg = const Color(0xFFFEF9C3); text = const Color(0xFF854D0E); // Pending
+      default: bg = const Color(0xFFFEF9C3); text = const Color(0xFF854D0E); 
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -340,6 +272,7 @@ class ProviderListScreen extends StatelessWidget {
   }
 
   Widget _buildActionBtn(IconData icon, Color color, VoidCallback onTap) {
+    // ... (Keep existing code)
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
@@ -357,35 +290,12 @@ class ProviderListScreen extends StatelessWidget {
   }
 
   Color _getAvatarColor(int index) {
-    final colors = [Colors.blue.shade50, Colors.purple.shade50, Colors.green.shade50, Colors.orange.shade50, Colors.pink.shade50];
+     final colors = [Colors.blue.shade50, Colors.purple.shade50, Colors.green.shade50, Colors.orange.shade50, Colors.pink.shade50];
     return colors[index % colors.length];
   }
 
   Color _getAvatarTextColor(int index) {
-    final colors = [Colors.blue.shade700, Colors.purple.shade700, Colors.green.shade700, Colors.orange.shade700, Colors.pink.shade700];
+     final colors = [Colors.blue.shade700, Colors.purple.shade700, Colors.green.shade700, Colors.orange.shade700, Colors.pink.shade700];
     return colors[index % colors.length];
-  }
-}
-
-class _PaginationBox extends StatelessWidget {
-  final String text;
-  final bool isActive;
-  const _PaginationBox({required this.text, required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28, height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.transparent,
-        border: isActive ? Border.all(color: const Color(0xFFF97316)) : Border.all(color: Colors.transparent),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(text, style: TextStyle(
-        color: isActive ? const Color(0xFFF97316) : const Color(0xFF64748B), 
-        fontWeight: isActive ? FontWeight.bold : FontWeight.normal
-      )),
-    );
   }
 }

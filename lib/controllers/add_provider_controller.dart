@@ -13,7 +13,9 @@ import 'document_controller.dart';
 import 'banking_controller.dart'; // Import the new controller
 import 'package:http_parser/http_parser.dart'; // For MediaType
 import 'package:mime/mime.dart'; // To lookup mime type
-
+import '../widgets/custom_center_dialog.dart';
+import '../models/service_provider_service.dart';
+import '../models/service_provider_location.dart';
 
 class AddProviderController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -23,6 +25,11 @@ class AddProviderController extends GetxController {
   late final LocationController locationController; // NEW: Injected
   late final DocumentController documentController; // NEW
   late final BankingController bankingController; // NEW
+  // true if bank details already exist
+final RxBool isBankDetailsAvailable = false.obs;
+var mappedServicesList = <ServiceProviderService>[].obs;
+  var isServicesLoading = false.obs;
+
 
   // --- CALLBACKS ---
   Function? onProviderAdded; 
@@ -75,6 +82,8 @@ class AddProviderController extends GetxController {
   // --- STEP 5: DOCUMENTS ---
   var selectedDocType = "".obs; 
   Rx<PlatformFile?> idProofFile = Rx<PlatformFile?>(null);
+  Rx<PlatformFile?> profileImageFile = Rx<PlatformFile?>(null);
+  var profileImageUrl = RxnString(); // To store URL if editing an existing provider
 
   @override
   void onInit() {
@@ -163,7 +172,7 @@ if (Get.isRegistered<DocumentController>()) {
   Get.snackbar(
     title,
     message,
-    snackPosition: SnackPosition.BOTTOM,
+    snackPosition: SnackPosition.TOP,
     backgroundColor: isError ? Colors.red : Colors.green,
     colorText: Colors.white,
     margin: const EdgeInsets.all(12),
@@ -175,8 +184,12 @@ if (Get.isRegistered<DocumentController>()) {
   // --- IMMEDIATE ONBOARDING LOGIC ---
   Future<void> quickOnboardProvider(String mobileNumber) async {
     if (mobileNumber.length != 10) {
-      Get.snackbar("Error", "Please enter a valid 10-digit mobile number");
-      return;
+CustomCenterDialog.show(
+  Get.context!,
+  title: "Error",
+  message: "Please enter a valid 10-digit mobile number",
+  type: DialogType.error,
+);      return;
     }
 
     try {
@@ -205,12 +218,12 @@ if (Get.isRegistered<DocumentController>()) {
           mobileCtrl.text = mobileNumber;
         }
         
-        Get.snackbar(
-          "Success", 
-          "Provider onboarded! Please complete details.", 
-          backgroundColor: Colors.green, 
-          colorText: Colors.white
-        );
+        CustomCenterDialog.show(
+  Get.context!,
+  title: "Success",
+  message: "Provider onboarded! Please complete details.",
+  type: DialogType.success,
+);
 
       } else {
         throw Exception("API returned null ID");
@@ -258,7 +271,25 @@ if (Get.isRegistered<DocumentController>()) {
   }
 
   // --- SELECTION LOGIC ---
-  void onSelectExistingProvider(String? spId) {
+// Inside AddProviderController
+// Call this method when a provider is selected (inside onSelectExistingProvider)
+  Future<void> fetchMappedServices(String spId) async {
+    isServicesLoading.value = true;
+    mappedServicesList.clear(); // Clear previous data
+    try {
+      final services = await _apiService.getServiceProviderServiceMap(spId);
+      mappedServicesList.value = services;
+      print("✅ Fetched ${services.length} mapped services.");
+    } catch (e) {
+      print("❌ Error fetching mapped services: $e");
+    } finally {
+      isServicesLoading.value = false;
+    }
+  }
+
+// Inside AddProviderController
+
+  void onSelectExistingProvider(String? spId) async { 
     print("🔻 Dropdown Selected Raw Value: $spId");
     selectedProviderId.value = spId;
     
@@ -270,12 +301,11 @@ if (Get.isRegistered<DocumentController>()) {
       
       if (provider != null) {
         currentSpId = provider.id;
-        
-        // --- UPDATE: Mark Step 0 as completed since we loaded an existing user ---
         isPersonalDetailsCompleted.value = true; 
+        profileImageFile.value = null;
+        //profileImageUrl.value = provider.profilePic;
         
-        print("✅ currentSpId successfully set to: $currentSpId");
-
+        // --- 1. Fill Personal & Address Data ---
         mobileCtrl.text = provider.mobileNo; 
         firstNameCtrl.text = provider.firstName ?? "";
         middleNameCtrl.text = provider.middleName ?? "";
@@ -289,13 +319,75 @@ if (Get.isRegistered<DocumentController>()) {
         stateCtrl.text = provider.state ?? "";
         pincodeCtrl.text = provider.zipCode ?? "";
 
-        documentController.fetchUploadedDocuments(currentSpId!);
+        // --- 2. 🟢 FETCH & SET LOCATION MAP DIRECTLY ---
+        try {
+           // A. Fetch the map from API
+           await locationController.fetchServiceProviderMap(currentSpId!);
+
+           // B. Check if data exists
+           if (locationController.providerLocationList.isNotEmpty) {
+             var mappedLoc = locationController.providerLocationList.first;
+
+             // 🟢 DIRECT ASSIGNMENT
+             // We use the data directly from the mapping API.
+             // We do NOT check the master list.
+             selectedLocation.value = LocationModel(
+               areaId: mappedLoc.areaId,
+               areaName: mappedLoc.areaName, // Uses "location" string from API
+               // These will be null as this specific API doesn't return them
+               city: null, 
+               state: null,
+               postCode: null
+             );
+             
+             print("📍 Location Map Set: ${mappedLoc.areaName}");
+           } else {
+             selectedLocation.value = null; 
+           }
+        } catch (e) {
+           print("⚠️ Error syncing location map: $e");
+        }
+
+        // --- 3. SAFE DOCUMENT FETCH ---
+        try {
+           await documentController.fetchUploadedDocuments(currentSpId!);
+        } catch (e) {
+           // Ignore 404s
+        }
+
+        // --- 4. SAFE BANKING FETCH ---
+        try {
+          await bankingController.fetchProviderBankDetails(currentSpId!);
+          fillBankDetailsIfAvailable();
+        } catch (e) {
+           // Ignore 404s, log others
+        }
+
       } else {
-        print("❌ CRITICAL ERROR: ID $spId was selected but not found in the provider list! The list might be stale.");
+        print("❌ Error: Provider ID not found in list.");
       }
+      await fetchMappedServices(currentSpId!);
     }
   }
+  void clearBankingForms() {
+    print("🧹 Clearing Banking Forms...");
 
+    // 1. Clear Text Controllers (Removes the ghost text)
+    selectedBankId.value = null;
+    accHolderCtrl.clear();
+    accNumberCtrl.clear();
+    ifscCtrl.clear();
+    upiCtrl.clear();
+    panNumberCtrl.clear();
+    
+    // 2. Reset Files & Toggles
+    isPanAvailable.value = true;
+    passbookFile.value = null;
+    panCardFile.value = null;
+
+    // 3. Force UI to switch from "Card View" to "Form View"
+    bankingController.providerBankDetails.value = null;
+  }
   // --- NAVIGATION & LOGIC ---
   Future<void> nextStep() async {
     print("👉 Attempting Next Step. CurrentSpId: $currentSpId | Step: ${currentStep.value}");
@@ -303,8 +395,12 @@ if (Get.isRegistered<DocumentController>()) {
     if (isLoading.value) return;
     
     if (currentSpId == null) {
-      Get.snackbar("Error", "Please select a provider or onboard a new number first.");
-      return;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Info",
+  message: "Please select a provider or onboard a new number first.",
+  type: DialogType.info,
+);      return;
     }
     
     bool success = false;
@@ -325,12 +421,13 @@ if (Get.isRegistered<DocumentController>()) {
       }
 
       if (success) {
-        if (currentStep.value < 4) {
-          currentStep.value++;
-        } else {
-          await _finishOnboardingProcess();
-        }
-      }
+  if (currentStep.value < 5) {
+    currentStep.value++; // ✅ Move to next tab
+  } else {
+    await _finishOnboardingProcess(); // ✅ Only after documents
+  }
+}
+
     } catch (e) {
       String userMessage = "Something went wrong";
       
@@ -387,13 +484,11 @@ if (Get.isRegistered<DocumentController>()) {
     mobileCtrl.clear(); emailCtrl.clear(); aadharCtrl.clear();
     careOfCtrl.clear(); localityCtrl.clear(); landmarkCtrl.clear();
     cityCtrl.clear(); districtCtrl.clear(); stateCtrl.clear(); pincodeCtrl.clear();
+    clearBankingForms();
     
-    // Reset Financials
-    accHolderCtrl.clear(); accNumberCtrl.clear(); ifscCtrl.clear(); upiCtrl.clear();
-    panNumberCtrl.clear();
-    selectedBankId.value = null; // Reset Bank ID
-    passbookFile.value = null;
-    panCardFile.value = null;
+   profileImageFile.value = null; // Clear local pick
+    profileImageUrl.value = null;  // Clear network url
+
     
     selectedGender.value = "";
     selectedServicesMap.clear();
@@ -416,12 +511,91 @@ if (Get.isRegistered<DocumentController>()) {
   }
 
   // --- SERVICE TOGGLE ---
-  void toggleService(String catId, String serviceId) {
-    if (!selectedServicesMap.containsKey(catId)) selectedServicesMap[catId] = <String>{};
-    final set = selectedServicesMap[catId]!;
-    if (set.contains(serviceId)) set.remove(serviceId);
-    else set.add(serviceId);
-    selectedServicesMap.refresh();
+ // REPLACES your old local toggleService
+  Future<void> toggleService(String categoryId, String serviceId, String serviceName) async {
+    if (currentSpId == null) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "No Provider Selected",
+        type: DialogType.error,
+      );
+      return;
+    }
+
+    // 1. SEARCH: Check if this service is already in our mapped list
+    // We match by Name because the mapping API returns names, not the original serviceId
+    final index = mappedServicesList.indexWhere((s) => s.service == serviceName);
+
+    if (index != -1) {
+      // ---------------------------------------------------------
+      // SCENARIO A: SERVICE IS ALREADY MAPPED (Toggle Active/Inactive)
+      // ---------------------------------------------------------
+      final item = mappedServicesList[index];
+      
+      // Logic:
+      // If currently Active (true) -> We want to DEACTIVATE. API expects 'true' to delete.
+      // If currently Inactive (false) -> We want to ACTIVATE. API expects 'false' to restore.
+      bool apiParam = item.isActive; 
+
+      // 1. Optimistic Update: Update UI immediately
+      item.isActive = !item.isActive; 
+      mappedServicesList.refresh(); 
+
+      try {
+        // 2. Call API
+        bool success = await _apiService.deleteProviderServiceMap(
+          item.mappingId!, 
+          currentSpId!, 
+          apiParam 
+        );
+
+        // 3. Revert on Failure
+        if (!success) {
+          item.isActive = !item.isActive; // Flip back
+          mappedServicesList.refresh();
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Error",
+            message: "Failed to update status",
+            type: DialogType.error,
+          );
+        }
+      } catch (e) {
+        item.isActive = !item.isActive;
+        mappedServicesList.refresh();
+        print("Toggle Error: $e");
+      }
+
+    } else {
+      // ---------------------------------------------------------
+      // SCENARIO B: SERVICE IS NEW (Map It)
+      // ---------------------------------------------------------
+      
+      // Call Map API
+      bool success = await _apiService.mapProviderService(currentSpId!, categoryId, serviceId);
+      
+      if (success) {
+        // Refresh the list to pull the new mapping ID and data
+        await fetchMappedServices(currentSpId!);
+        
+        // Optional: Show success message
+        // --- UPDATED: Show Custom Dialog for Success ---
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: "$serviceName added successfully",
+          type: DialogType.success,
+        );
+      } else {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to map service",
+          type: DialogType.error,
+        );
+      }
+    }
   }
   bool isServiceSelected(String catId, String serviceId) => selectedServicesMap[catId]?.contains(serviceId) ?? false;
 
@@ -455,12 +629,21 @@ Future<void> pickFile(String type) async {
   Future<bool> _handlePersonalDetails() async {
     // 1. Validation
     if (currentSpId == null) {
-      Get.snackbar("Error", "No Service Provider Selected");
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "No Service Provider Selected",
+  type: DialogType.error,
+);
       return false;
     }
     if (firstNameCtrl.text.isEmpty || lastNameCtrl.text.isEmpty) {
-      Get.snackbar("Required", "First Name and Last Name are mandatory");
-      return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "First Name and Last Name are mandatory",
+  type: DialogType.required,
+);      return false;
     }
 
     // 2. Prepare Payload
@@ -492,29 +675,104 @@ Future<void> pickFile(String type) async {
 
     return success;
   }
+
+  Future<void> pickProfileImage() async {
+    if (currentSpId == null) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "Please select or onboard a provider first.",
+        type: DialogType.error,
+      );
+      return;
+    }
+
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true, // Important for Web
+      );
+
+      if (result != null) {
+        profileImageFile.value = result.files.first;
+        // Auto-upload immediately upon selection
+        await _uploadProfileImage();
+      }
+    } catch (e) {
+      print("Error picking profile image: $e");
+    }
+  }
+
+  // 2. Upload Logic
+  Future<void> _uploadProfileImage() async {
+    if (profileImageFile.value == null || currentSpId == null) return;
+
+    isLoading.value = true;
+    try {
+      // Convert PlatformFile to Dio MultipartFile
+      final multipartFile = await getMultipart(profileImageFile.value!);
+
+      bool success = await _apiService.uploadProviderProfilePic(
+        currentSpId!, 
+        multipartFile
+      );
+
+      if (success) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: "Profile picture updated successfully!",
+          type: DialogType.success,
+        );
+        // Optional: Refresh provider list to get the new URL if your API returns it
+        await providerListController.fetchProviders();
+      } else {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to upload profile picture.",
+          type: DialogType.error,
+        );
+      }
+    } catch (e) {
+      print("Upload Error: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
   
 Future<bool> _handleAddress() async {
   // 1. Validation: Prevent null errors
   if (currentSpId == null) {
-    Get.snackbar("Error", "No Service Provider Selected");
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "No Service Provider Selected",
+  type: DialogType.error,
+);    return false;
   }
 
   // 2. CRITICAL VALIDATION FIX:
   // The API previously failed because addressLine1 was empty. 
   // We MUST check careOfCtrl here.
   if (careOfCtrl.text.trim().isEmpty) {
-    safeSnackbar(
-      "Required", 
-      "House No / Building Name is required", 
-    );
+    CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "House No / Building Name is required",
+  type: DialogType.required,
+); 
     return false;
   }
 
   // 3. Validation: Other key fields
   if (cityCtrl.text.isEmpty || stateCtrl.text.isEmpty || pincodeCtrl.text.isEmpty) {
-    safeSnackbar("Required", "City, State, and Pincode are required");
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "City, State, and Pincode are required fields",
+  type: DialogType.required,
+);     return false;
   }
 
   // 4. Prepare Payload
@@ -538,13 +796,19 @@ Future<bool> _handleAddress() async {
     // Refresh the list immediately so the UI reflects the new address
     await providerListController.fetchProviders(); 
     
-    safeSnackbar("Success", "Address saved successfully!", isError: false);
-  } else {
+CustomCenterDialog.show(
+  Get.context!,
+  title: "Success",
+  message: "Address saved successfully!",
+  type: DialogType.success,
+);  } else {
     // If it failed, check the debug console for the specific error
-    safeSnackbar(
-      "Error", 
-      "Failed to save address. Check console for details.",
-    );
+    CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "Failed to save address.",
+  type: DialogType.error,
+);
   }
 
   return success;
@@ -559,8 +823,15 @@ Future<bool> _handleAddress() async {
         tasks.add(_apiService.mapProviderService(currentSpId!, catId, srvId));
       }
     });
-    if (!anySelected) throw Exception("Please select at least one service");
-    await Future.wait(tasks);
+if (!anySelected) {
+  CustomCenterDialog.show(
+    Get.context!, 
+    title: "Selection Required",
+    message: "Please select at least one service",
+    type: DialogType.required, // Uses your orange warning style
+  );
+  return  false;
+  }    await Future.wait(tasks);
     return true;
   }
 Future<dio.MultipartFile> getMultipart(PlatformFile file) async {
@@ -583,35 +854,71 @@ Future<dio.MultipartFile> getMultipart(PlatformFile file) async {
     );
   }
 }
+void fillBankDetailsIfAvailable() {
+  final data = bankingController.providerBankDetails.value;
+  if (data == null) return;
+
+  if (data.bankId != null) {
+    selectedBankId.value = data.bankId;
+  }
+
+  accHolderCtrl.text = data.accountHolderName;
+  accNumberCtrl.text = data.accountNo;
+  ifscCtrl.text = data.ifscCode;
+  upiCtrl.text = data.upiId ?? '';
+  isPanAvailable.value = data.isPanAvailable;
+  panNumberCtrl.text = data.panNo ?? '';
+}
+
+
   // --- UPDATED: Handle Financials (Step 4) ---
-// --- UPDATED: HANDLE FINANCIALS (WEB SAFE) ---
 Future<bool> _handleFinancials() async {
+  // 🟢 1. CHECK: If details are already loaded/saved, skip upload logic.
+  if (bankingController.providerBankDetails.value != null) {
+    print("✅ Bank details already verified. Proceeding to next step.");
+    return true; 
+  }
+
+  // --- EXISTING UPLOAD LOGIC STARTS HERE ---
+
+  // 2. Validation
   if (selectedBankId.value == null) {
-    safeSnackbar("Error", "Please select a Bank", isError: true);
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "Please select a Bank",
+  type: DialogType.required,
+);     return false;
   }
 
   if (passbookFile.value == null) {
-    safeSnackbar("Error", "Passbook image required", isError: true);
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "Passbook image required",
+  type: DialogType.required,
+);     return false;
   }
 
   if (isPanAvailable.value && panCardFile.value == null) {
-    safeSnackbar("Error", "PAN card image required", isError: true);
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Selection Required",
+  message: "PAN card image required",
+  type: DialogType.required,
+);     return false;
   }
 
   try {
-    // Prepare FormData for Dio
-   final formData = dio.FormData.fromMap({
-  "passBookFile": await getMultipart(passbookFile.value!),
-  if (panCardFile.value != null)
-    "panCardFile": await getMultipart(panCardFile.value!),
-});
+    isLoading.value = true; // Show loader while uploading
 
+    final formData = dio.FormData.fromMap({
+      "passBookFile": await getMultipart(passbookFile.value!),
+      if (panCardFile.value != null)
+        "panCardFile": await getMultipart(panCardFile.value!),
+    });
 
-    // Call API with formData
-    return await _apiService.addBankDetails(
+    final success = await _apiService.addBankDetails(
       spId: currentSpId!,
       bankId: selectedBankId.value!,
       accountHolderName: accHolderCtrl.text.trim(),
@@ -622,24 +929,40 @@ Future<bool> _handleFinancials() async {
       panNo: panNumberCtrl.text.trim(),
       formData: formData,
     );
+
+    if (success) {
+      // 🟢 Refresh banking details so the UI switches to "Read Only" mode
+      await bankingController.fetchProviderBankDetails(currentSpId!);
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Success",
+  message: "Bank details saved successfully!",
+  type: DialogType.success,
+);    }
+
+    return success;
   } catch (e) {
-    debugPrint("❌ Error adding financial details: $e");
-    safeSnackbar(
-      "Error",
-      "Failed to save bank details",
-      isError: true,
-    );
-    return false;
+    print("❌ Error adding financial details: $e");
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "Failed to save bank details",
+  type: DialogType.error,
+);    return false;
+  } finally {
+    isLoading.value = false;
   }
 }
-
-
 
 // --- NEW: Handle Mapping Logic (Step 2) ---
   Future<bool> _handleLocationMapping() async {
     if (selectedLocation.value == null) {
-      safeSnackbar("Error", "Please select a location area from the dropdown.");
-      return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Info",
+  message: "Please select a location area from the dropdown.",
+  type: DialogType.info,
+);      return false;
     }
 
     final loc = selectedLocation.value!;
@@ -655,20 +978,137 @@ Future<bool> _handleFinancials() async {
 
     return await _apiService.mapProviderLocation(payload);
   }
+  
+// --- 1. ADD NEW MAPPING (Called from Dropdown) ---
+// --- 1. ADD NEW MAPPING (Called from Dropdown) ---
+  // Updated to accept an optional argument to fix the error
+  Future<void> addLocationFromDropdown([LocationModel? loc]) async {
+    
+    // 1. If a location is passed directly, set it as the selected one
+    if (loc != null) {
+      selectedLocation.value = loc;
+    }
 
+    // 2. Validation
+    if (currentSpId == null) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "No Provider Selected",
+        type: DialogType.error,
+      );
+      return;
+    }
+
+    if (selectedLocation.value == null) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Info",
+        message: "Please select a location area from the dropdown.",
+        type: DialogType.info,
+      );
+      return;
+    }
+
+    final locationToAdd = selectedLocation.value!;
+
+    // 3. Construct Payload
+    final payload = {
+      "serviceProviderId": currentSpId,
+      "locationId": locationToAdd.id,    // Database ID
+      "areaId": locationToAdd.areaId     // Logical Area ID
+    };
+
+    print("📍 Sending Map Payload: $payload");
+
+    // 4. Call API
+    bool success = await _apiService.mapProviderLocation(payload);
+
+    // 5. Handle Result
+    if (success) {
+      // Refresh the list to show the new item
+      await locationController.fetchServiceProviderMap(currentSpId!);
+      
+      // Clear the selection
+      selectedLocation.value = null; 
+      
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Success",
+        message: "${locationToAdd.areaName} added successfully",
+        type: DialogType.success,
+      );
+    } else {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "Failed to map location",
+        type: DialogType.error,
+      );
+    }
+  }
+
+  // --- 2. TOGGLE STATUS (Called from List Icon) ---
+  Future<void> toggleLocationStatus(ServiceProviderLocation item) async {
+    if (currentSpId == null) return;
+
+    // Logic: 
+    // If currently Active (true) -> We want to DEACTIVATE. API expects 'true' (confirm delete).
+    // If currently Inactive (false) -> We want to ACTIVATE. API expects 'false' (undo delete).
+    bool apiParam = item.isActive; 
+
+    // 1. Optimistic Update (Update UI immediately)
+    item.isActive = !item.isActive; 
+    locationController.providerLocationList.refresh(); 
+
+    try {
+      // 2. Call Delete/Toggle API
+      bool success = await _apiService.deleteProviderLocationMap(
+        item.mappingId!, // Requires the mapping ID, not location ID
+        currentSpId!,
+        apiParam
+      );
+
+      // 3. Revert on Failure
+      if (!success) {
+        item.isActive = !item.isActive;
+        locationController.providerLocationList.refresh();
+        
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to update status",
+          type: DialogType.error,
+        );
+      }
+    } catch (e) {
+      // Revert on Exception
+      item.isActive = !item.isActive;
+      locationController.providerLocationList.refresh();
+      print("Location Toggle Error: $e");
+    }
+  }
 Future<bool> _handleDocuments() async {
   // 1. Ensure Service Provider ID exists
   if (currentSpId == null) {
-    safeSnackbar("Error", "Service Provider not selected.", isError: true);
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "No Service Provider Selected",
+  type: DialogType.error,
+);    return false;
   }
 
   final docCtrl = documentController;
 
   // 2. Ensure document types are loaded
   if (docCtrl.docTypes.isEmpty) {
-    safeSnackbar("Error", "No document types available.", isError: true);
-    return false;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Info",
+  message: "No document types available.",
+  type: DialogType.info,
+);    return false;
   }
 
   // 3. Validate required documents
@@ -678,21 +1118,23 @@ Future<bool> _handleDocuments() async {
   }).toList();
 
   if (missingDocs.isNotEmpty) {
-    safeSnackbar(
-      "Error",
-      "Please upload all required documents before continuing.",
-      isError: true,
-    );
+    CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Error",
+  message: "Please upload all required documents before continuing.",
+  type: DialogType.error,
+);
     return false;
   }
 
   // 4. Ensure no uploads are still in progress
   if (docCtrl.uploadingDocIds.isNotEmpty) {
-    safeSnackbar(
-      "Please wait",
-      "Documents are still uploading.",
-      isError: true,
-    );
+    CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Please wait",
+  message: "Documents are still uploading.",
+  type: DialogType.info,
+);
     return false;
   }
 
@@ -700,8 +1142,12 @@ Future<bool> _handleDocuments() async {
   await docCtrl.fetchUploadedDocuments(currentSpId!);
 
   // 6. Final confirmation
-  safeSnackbar("Success", "All documents verified successfully!");
-  return true;
+CustomCenterDialog.show(
+  Get.context!, // Use Get.context!
+  title: "Success",
+  message: "All documents verified successfully!",
+  type: DialogType.success,
+);  return true;
 }
 
 }

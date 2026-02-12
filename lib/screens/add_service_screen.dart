@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import '../services/api_service.dart';
 import '../models/data_models.dart';
 import 'dart:ui'; // Required for Dashed Painter
+import '../widgets/custom_center_dialog.dart';
 
 class AddServiceScreen extends StatefulWidget {
   // Optional callbacks if you want to handle navigation manually from the parent
@@ -72,50 +73,106 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null) {
-      setState(() {
-        _imgBytes = result.files.first.bytes;
-        _imgName = result.files.first.name;
-      });
-    }
-  }
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['png', 'jpg', 'jpeg'],
+    withData: true, // Ensure bytes are loaded
+  );
 
-  Future<void> _submit() async {
-    if (_nameCtrl.text.isEmpty || _selectedMainCatId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all required fields")));
+  if (result != null) {
+    Uint8List? bytes = result.files.first.bytes;
+    String name = result.files.first.name;
+    int sizeInBytes = result.files.first.size;
+
+    // 1. Check size limit (2MB)
+    if (sizeInBytes > 1 * 1024 * 1024) {
+      CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "File size should be under 1 MB",
+  type: DialogType.error,
+);
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    // 2. Optional: Extra extension check (already filtered above)
+    final ext = name.split('.').last.toLowerCase();
+    if (!['png', 'jpg', 'jpeg'].contains(ext)) {
+      CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "Only PNG and JPG files are allowed",
+  type: DialogType.error,
+);
+      return;
+    }
 
-    bool success = await _api.addService({
+    setState(() {
+      _imgBytes = bytes;
+      _imgName = name;
+    });
+  }
+}
+
+
+  Future<void> _submit() async {
+  if (_nameCtrl.text.isEmpty || _selectedMainCatId == null) {
+      CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Please fill all required fields",
+  type: DialogType.required,
+);
+    return;
+  }
+
+  if (_imgBytes == null) {
+    CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Please select an image",
+  type: DialogType.required,
+);
+    return;
+  }
+
+  setState(() => _isSubmitting = true);
+
+  bool success = await _api.addService(
+    {
       "categoryId": _selectedMainCatId,
       "serviceCategoryId": _selectedSvcCatId,
       "name": _nameCtrl.text,
       "description": _descCtrl.text,
       "price": double.tryParse(_priceCtrl.text) ?? 0,
       "duration": int.tryParse(_durCtrl.text) ?? 0,
-    }, _imgBytes, _imgName);
+    },
+    _imgBytes,
+    _imgName,
+  );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      
-      if (success) {
-        // If a custom onSave callback is provided (e.g. by dashboard), use it
-        if (widget.onSave != null) {
-          widget.onSave!(true);
-        } else {
-          // Otherwise default to pop (if pushed via Navigator)
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context, true);
-          }
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to add service")));
-      }
-    }
+  setState(() => _isSubmitting = false);
+
+  if (success) {
+    CustomCenterDialog.show(
+  context,
+  title: "Success",
+  message: "Service added successfully",
+  type: DialogType.success,
+);
+    // Optionally reset form or pop
+    if (widget.onSave != null) widget.onSave!(true);
+    else if (Navigator.canPop(context)) Navigator.pop(context, true);
+  } else {
+    CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "Failed to add service. Please try again.",
+  type: DialogType.error,
+);
   }
+}
+
 
   void _handleCancel() {
     if (widget.onCancel != null) {
@@ -341,7 +398,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 const SizedBox(height: 15),
                 Text(_imgName ?? "Add image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500)),
                 const SizedBox(height: 5),
-                const Text("Image format - png, jpg, jpeg, gif\nImage Size - Maximum size 2MB", 
+                const Text("Image format - png, jpg, jpeg, gif\nImage Size - Maximum size 1 MB", 
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 11)),
               ],
             ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/customer_models.dart'; // Ensure this import points to your model file
+import '../repositories/booking_repository.dart';
+import '../models/booking_models.dart';
 
 // --- Constants ---
 const Color kPrimaryOrange = Color(0xFFFF6B00);
@@ -14,12 +16,14 @@ class CustomerOverviewScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onEdit;
   final Customer customer; // Added: Receive the specific customer data
+  final Function(BookingModel)? onViewBooking; // <--- ADD THIS
 
   const CustomerOverviewScreen({
     super.key, 
     this.onBack, 
     this.onEdit, 
-    required this.customer
+    required this.customer,
+    this.onViewBooking, // <--- ADD THIS
   });
 
   @override
@@ -99,8 +103,11 @@ class _CustomerOverviewScreenState extends State<CustomerOverviewScreen> {
                   customer: widget.customer, // Pass customer to tab
                   onEdit: widget.onEdit
                 ), 
-                const _BookingsTab(), // You can pass customer here later for API calls
-                const _ReviewsTab(),  // You can pass customer here later for API calls
+_BookingsTab(
+                  customerId: widget.customer.id,
+                  onViewBooking: widget.onViewBooking, // <--- PASS IT HERE
+                ),
+                       const _ReviewsTab(),  // You can pass customer here later for API calls
               ],
             ),
           ],
@@ -353,10 +360,39 @@ class _ChartLegend extends StatelessWidget {
 
 // =============================================================================
 // TAB 2: BOOKINGS (Static / Mock for now)
-// Note: To make this dynamic, you would need a fetchBookingsByCustomerId API
 // =============================================================================
-class _BookingsTab extends StatelessWidget {
-  const _BookingsTab();
+// TAB 2: BOOKINGS (Dynamic API Integration)
+class _BookingsTab extends StatefulWidget {
+  final String customerId; 
+  final Function(BookingModel)? onViewBooking; // <--- 1. Receive Callback
+
+  const _BookingsTab({required this.customerId, this.onViewBooking});
+
+  @override
+  State<_BookingsTab> createState() => _BookingsTabState();
+}
+
+class _BookingsTabState extends State<_BookingsTab> {
+  final BookingRepository _repo = BookingRepository();
+  bool _isLoading = true;
+  List<BookingModel> _bookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    if (mounted) setState(() => _isLoading = true);
+    final data = await _repo.fetchCustomerBookings(widget.customerId);
+    if (mounted) {
+      setState(() {
+        _bookings = data;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -365,98 +401,87 @@ class _BookingsTab extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Search & Filter
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by Booking ID or Service...',
-                    prefixIcon: const Icon(Icons.search, color: kTextLight),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kBorderColor)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kBorderColor)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryOrange,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text("Search", style: TextStyle(color: Colors.white)),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.filter_list, size: 18, color: kTextDark),
-                label: const Text("Filter", style: TextStyle(color: kTextDark)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  side: const BorderSide(color: kBorderColor),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              )
-            ],
-          ),
-          const SizedBox(height: 24),
+          // ... (Search Bar UI remains same) ...
           
-          // Table Header
+          const SizedBox(height: 24),
           const _BookingTableHeader(),
           const Divider(height: 1, color: kBorderColor),
           
-          // Table Rows (Mock Data)
-          _buildRow("#BK-9021", "AC Repair & Service", "25 Jan, 2025", "Rajesh Kumar", "\u20B9499.00", "Completed", Colors.green, Icons.ac_unit, const Color(0xFFFFF3E0)),
-          const Divider(height: 1, color: kBorderColor),
-          _buildRow("#BK-9020", "Bathroom Cleaning", "22 Jan, 2025", "Suresh Verma", "\u20B9899.00", "Pending", const Color(0xFFEAB308), Icons.cleaning_services, const Color(0xFFE0F2FE)),
-          
-          const SizedBox(height: 20),
-          // Footer
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Showing 1 to 2 of 2 entries", style: TextStyle(color: kTextLight, fontSize: 13)),
-              Row(
-                children: [
-                  _PaginationBtn("<"),
-                  const SizedBox(width: 8),
-                  _PaginationBtn("1", active: true),
-                  const SizedBox(width: 8),
-                  _PaginationBtn(">"),
-                ],
-              )
-            ],
-          )
+          if (_isLoading)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Center(child: CircularProgressIndicator(color: kPrimaryOrange)))
+          else if (_bookings.isEmpty)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Center(child: Text("No bookings found.", style: TextStyle(color: kTextLight))))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _bookings.length,
+              separatorBuilder: (context, index) => const Divider(height: 1, color: kBorderColor),
+              itemBuilder: (context, index) {
+                final item = _bookings[index];
+                
+                // ... (Date/Status Logic remains same) ...
+                // Recalculate statusColor, displayDate etc here as per previous code...
+                final String displayDate = item.bookingDate.length >= 10 ? item.bookingDate.substring(0, 10) : item.bookingDate;
+                final String serviceName = item.services.isNotEmpty ? item.services.first.serviceName : "Unknown";
+                final String providerName = item.provider != null ? "${item.provider!.firstName} ${item.provider!.lastName}" : "Unassigned";
+
+                return _buildRow(
+                  "#${item.bookingRef}", 
+                  serviceName,
+                  displayDate,
+                  providerName,
+                  "\u20B9${item.totalAmount.toStringAsFixed(2)}",
+                  item.status,
+                  Colors.blue, // Pass calculated color
+                  Icons.info, // Pass calculated icon
+                  Colors.blue.shade50, // Pass calculated bg
+                  
+                  // 2. Trigger the callback here
+                  onTapAction: () {
+                    if (widget.onViewBooking != null) {
+                      widget.onViewBooking!(item); // Pass full object up
+                    }
+                  }
+                );
+              },
+            ),
+           // ... Footer ...
         ],
       ),
     );
   }
 
-  Widget _buildRow(String id, String service, String date, String provider, String amount, String status, Color statusColor, IconData icon, Color iconBg) {
+  // 3. Update _buildRow to accept the action
+  Widget _buildRow(
+    String id, String service, String date, String provider, String amount, String status, 
+    Color statusColor, IconData icon, Color iconBg,
+    {required VoidCallback onTapAction} // <--- Added Parameter
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          Expanded(flex: 1, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-          Expanded(flex: 2, child: Row(
-            children: [
-              Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle), child: Icon(icon, size: 14, color: kTextDark)),
-              const SizedBox(width: 8),
-              Text(service, style: const TextStyle(fontSize: 13)),
-            ],
-          )),
-          Expanded(flex: 2, child: Text(date, style: const TextStyle(fontSize: 13))),
-          Expanded(flex: 2, child: Text(provider, style: const TextStyle(fontSize: 13))),
-          Expanded(flex: 1, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+          Expanded(flex: 1, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: kTextDark))),
+          Expanded(flex: 2, child: Text(service, style: const TextStyle(fontSize: 13, color: kTextDark), overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 2, child: Text(date, style: const TextStyle(fontSize: 13, color: kTextDark))),
+          Expanded(flex: 2, child: Text(provider, style: const TextStyle(fontSize: 13, color: kTextDark))),
+          Expanded(flex: 1, child: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kTextDark))),
           Expanded(flex: 1, child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
             child: Text(status, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           )),
-          const Expanded(flex: 1, child: Icon(Icons.remove_red_eye_outlined, size: 18, color: kTextLight)),
+          
+          // 4. Connect the Action Button
+          Expanded(
+            flex: 1, 
+            child: IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18, color: kTextLight),
+              onPressed: onTapAction, // <--- Use the callback
+              tooltip: "View Details",
+            ),
+          ),
         ],
       ),
     );

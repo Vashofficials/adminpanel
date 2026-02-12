@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
 import '../models/data_models.dart';
 import 'dart:ui'; // Required for PathMetric
+import '../widgets/custom_center_dialog.dart';
 
 class ServiceCategoryScreen extends StatefulWidget {
   const ServiceCategoryScreen({super.key});
@@ -70,14 +71,37 @@ Future<void> _loadData() async {
   }
   // --- Form Logic ---
   Future<void> _pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null) {
-      setState(() {
-        _selectedImageBytes = result.files.first.bytes;
-        _selectedImageName = result.files.first.name;
-      });
+  FilePickerResult? result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['png'], // ✅ PNG only
+    withData: true,
+  );
+
+  if (result != null && result.files.isNotEmpty) {
+    final file = result.files.first;
+
+    // Optional: size limit (< 1MB)
+    if (file.size > 1024 * 1024) {
+      CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "File size should be under 1 MB",
+  type: DialogType.error,
+);
+      return;
     }
+
+    setState(() {
+      _selectedImageBytes = file.bytes;
+      _selectedImageName = file.name;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("${file.name} selected successfully")),
+    );
   }
+}
+
 
   void _resetForm() {
     setState(() {
@@ -89,24 +113,67 @@ Future<void> _loadData() async {
   }
 
   Future<void> _submitServiceCategory() async {
-    if (_selectedParentId == null || _nameCtrl.text.isEmpty) return;
-
-    setState(() => _isUploading = true);
-    
-    // Using the exact method from your ApiService
-    await _api.addServiceCategory(
-      _selectedParentId!, 
-      _nameCtrl.text, 
-      _selectedImageBytes, 
-      _selectedImageName
-    );
-
-    if (mounted) {
-      setState(() => _isUploading = false);
-      _resetForm();
-      _loadData(); // Refresh list
-    }
+  if (_selectedParentId == null) {
+    CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Please select a parent category",
+  type: DialogType.required,
+);
+    return;
   }
+
+  if (_nameCtrl.text.isEmpty) {
+    CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Service category name cannot be empty",
+  type: DialogType.required,
+);
+    return;
+  }
+
+  if (_selectedImageBytes == null) {
+    CustomCenterDialog.show(
+  context,
+  title: "Selection Required",
+  message: "Please select an image",
+  type: DialogType.required,
+);
+    return;
+  }
+
+  setState(() => _isUploading = true);
+
+  bool success = await _api.addServiceCategory(
+    _selectedParentId!,
+    _nameCtrl.text,
+    _selectedImageBytes,
+    _selectedImageName
+  );
+
+  if (!mounted) return;
+  setState(() => _isUploading = false);
+
+  if (success) {
+    CustomCenterDialog.show(
+  context,
+  title: "Success",
+  message: "Service category added successfully",
+  type: DialogType.success,
+);
+    _resetForm();
+    _loadData();
+  } else {
+    CustomCenterDialog.show(
+  context,
+  title: "Error",
+  message: "Failed to add service category. Please try again.",
+  type: DialogType.error,
+);
+  }
+}
+
   
   // Helper to resolve parent name from ID
   String _getParentName(String categoryId) {
@@ -237,6 +304,239 @@ Future<void> _loadData() async {
       ),
     );
   }
+void _handleDelete(String serviceCategoryId, bool currentStatus) {
+    // 1. Show Confirmation using CustomCenterDialog
+    CustomCenterDialog.show(
+      context,
+      title: "Delete Service Category",
+      message: "Are you sure you want to delete this service category?",
+      type: DialogType.warning, // Orange warning icon for delete actions
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: () async {
+        // 2. Call API (This runs after the dialog closes)
+        bool success = await _api.deleteServiceCategory(serviceCategoryId, currentStatus);
+
+        if (!mounted) return;
+
+        // 3. Handle Result
+        if (success) {
+          CustomCenterDialog.show(
+            context,
+            title: "Success",
+            message: "Service category deleted successfully",
+            type: DialogType.success,
+          );
+          _loadData(); // Refresh the list
+        } else {
+          CustomCenterDialog.show(
+            context,
+            title: "Error",
+            message: "Failed to delete item",
+            type: DialogType.error,
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _showUpdateServiceCategoryDialog(ServiceCategoryModel serviceItem) async {
+    // Initialize controllers with existing data
+    final nameController = TextEditingController(text: serviceItem.name);
+    String? selectedParentId = serviceItem.categoryId; // Pre-select current parent
+    
+    // New Image state
+    Uint8List? newImageBytes;
+    String? newImageName;
+    bool isUpdating = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        // StatefulBuilder allows us to update the UI inside the Dialog
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            
+            // Helper: Pick Image
+            Future<void> pickUpdateImage() async {
+              FilePickerResult? result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: ['png'],
+                withData: true,
+              );
+
+              if (result != null && result.files.isNotEmpty) {
+                if (result.files.first.size > 1024 * 1024) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("File too large")));
+                   return; 
+                }
+                setDialogState(() {
+                  newImageBytes = result.files.first.bytes;
+                  newImageName = result.files.first.name;
+                });
+              }
+            }
+
+            // Helper: Submit
+            Future<void> submitUpdate() async {
+              if (selectedParentId == null) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Parent Category is required")));
+                 return;
+              }
+              // Based on swagger, file is required (*)
+              if (newImageBytes == null) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a new image")));
+                 return;
+              }
+              
+              setDialogState(() => isUpdating = true);
+
+              bool success = await _api.updateServiceCategory(
+                serviceItem.id, 
+                selectedParentId!,
+                nameController.text, 
+                newImageBytes!, 
+                newImageName!
+              );
+
+              setDialogState(() => isUpdating = false);
+
+              if (success) {
+                Navigator.pop(ctx); // Close Dialog
+                _loadData(); // Refresh Parent List
+                CustomCenterDialog.show(
+                  this.context,
+                  title: "Success",
+                  message: "Service Category updated successfully",
+                  type: DialogType.success,
+                );
+              } else {
+                 Navigator.pop(ctx);
+                 CustomCenterDialog.show(
+                  this.context,
+                  title: "Error",
+                  message: "Update failed",
+                  type: DialogType.error,
+                );
+              }
+            }
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: Colors.white,
+              child: Container(
+                width: 450, // Slightly wider for dropdown
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(Icons.edit, color: _primaryOrange),
+                        const SizedBox(width: 10),
+                        const Text("Update Service Category", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const Divider(height: 30),
+
+                    // 1. Parent Category Dropdown
+                    const Text("Parent Category", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _parentCategories.any((p) => p.id == selectedParentId) ? selectedParentId : null,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      items: _parentCategories.map((cat) {
+                        return DropdownMenuItem(value: cat.id, child: Text(cat.name));
+                      }).toList(),
+                      onChanged: (val) => setDialogState(() => selectedParentId = val),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 2. Name Field
+                    const Text("Service Name", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 3. Image Picker
+                    const Text("Update Icon (Required)", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: pickUpdateImage,
+                      child: Container(
+                        height: 80,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF9F5),
+                          border: Border.all(color: _primaryOrange.withOpacity(0.3)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (newImageBytes != null)
+                              Image.memory(newImageBytes!, width: 40, height: 40)
+                            else 
+                              const Icon(Icons.cloud_upload_outlined, color: Colors.orange),
+                            const SizedBox(height: 4),
+                            Text(
+                              newImageName ?? "Click to change image",
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 30),
+
+                    // Actions
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: isUpdating ? null : submitUpdate,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryOrange,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: isUpdating 
+                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                             : const Text("Update", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildDropdown() {
     return Column(
@@ -310,7 +610,7 @@ Future<void> _loadData() async {
             style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
             children: [
               TextSpan(text: "* ", style: TextStyle(color: Colors.red)),
-              TextSpan(text: "(SVG format only)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              TextSpan(text: "(PNG format only)", style: TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
         ),
@@ -430,12 +730,23 @@ Future<void> _loadData() async {
                                     onChanged: (val) {}
                                   )
                                 ),
-                                DataCell(Row(
-                                  children: [
-                                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () {}),
-                                    IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () {}),
-                                  ],
-                                )),
+                               // Inside rows: List<DataRow>.generate...
+DataCell(Row(
+  children: [
+    IconButton(
+      icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+      onPressed: () {
+        // Trigger the new dialog
+        _showUpdateServiceCategoryDialog(item);
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+      // 👇 UPDATED LINE
+      onPressed: () => _handleDelete(item.id, true), 
+    ),
+  ],
+)),
                               ],
                             );
                           }),

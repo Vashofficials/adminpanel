@@ -7,8 +7,7 @@ import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 
 class OngoingBookingScreen extends StatefulWidget {
-  final Function(String) onViewDetails;
-  
+final Function(BookingModel) onViewDetails; // Changed from Function(String)  
   const OngoingBookingScreen({super.key, required this.onViewDetails});
 
   @override
@@ -476,7 +475,7 @@ DataCell(
                                               _ActionButton(
                                                 icon: Icons.visibility_outlined,
                                                 onTap: () => widget
-                                                    .onViewDetails(data.id),
+                                                    .onViewDetails(data),
                                               ),
                                             ],
                                           )),

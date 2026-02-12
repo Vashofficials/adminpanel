@@ -8,7 +8,8 @@ import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 
 class CompletedBookingScreen extends StatefulWidget {
-  final Function(String) onViewDetails;
+  //final Function(String) onViewDetails;
+  final Function(BookingModel) onViewDetails; // Changed from Function(String)
   
   const CompletedBookingScreen({super.key, required this.onViewDetails});
 
@@ -337,7 +338,7 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                                           DataCell(_StatusBadge(status: data.paymentStatus)),
                                           DataCell(_ActionButton(
                                             icon: Icons.visibility_outlined, 
-                                            onTap: () => widget.onViewDetails(data.id),
+                                            onTap: () => widget.onViewDetails(data),
                                           )),
                                         ],
                                       );

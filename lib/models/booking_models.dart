@@ -9,15 +9,29 @@ class BookingResponse {
     required this.totalElements,
   });
 
+  // --- 1. EXISTING: Handles Admin Paginated Response ---
+  // Structure: { "result": { "content": [...], "totalPages": 1 } }
   factory BookingResponse.fromJson(Map<String, dynamic> json) {
     final result = json['result'] ?? {};
-    final contentList = result['content'] as List? ?? [];
+    // Check if 'content' exists (Pagination style)
+    final contentList = (result['content'] as List?) ?? [];
 
     return BookingResponse(
       content: contentList.map((e) => BookingModel.fromJson(e)).toList(),
       totalPages: result['totalPages'] ?? 0,
       totalElements: result['totalElements'] ?? 0,
     );
+  }
+
+  // --- 2. NEW: Handles Customer List Response ---
+  // Structure: { "result": [...] } (Direct List)
+  static List<BookingModel> parseCustomerList(Map<String, dynamic> json) {
+    final result = json['result'];
+    
+    if (result is List) {
+      return result.map((e) => BookingModel.fromJson(e)).toList();
+    }
+    return [];
   }
 }
 
@@ -32,7 +46,6 @@ class BookingModel {
   final String paymentMode;
   final int bookingPin;
   
-  // Added extra fields from your JSON that might be useful
   final String rescheduleReason;
   final String cancelReason;
   final String cancelledBy;
@@ -73,7 +86,6 @@ class BookingModel {
       paymentMode: json['paymentMode']?.toString() ?? 'N/A',
       bookingPin: (json['bookingPin'] as num?)?.toInt() ?? 0,
       
-      // Parsing new helpful fields
       rescheduleReason: json['rescheduleReason']?.toString() ?? '',
       cancelReason: json['cancelReason']?.toString() ?? '',
       cancelledBy: json['cancelledBy']?.toString() ?? '',
@@ -114,7 +126,7 @@ class BookingModel {
   }
 }
 
-// --- Sub-Models ---
+// --- Sub-Models (No Changes Needed) ---
 
 class CustomerDetails {
   final String firstName;
@@ -167,10 +179,8 @@ class CustomerAddress {
     );
   }
 
-  // Helper to get a single string for UI
   String get fullFormattedAddress {
     List<String> parts = [addressLine1, addressLine2, city, state, postCode];
-    // Remove empty strings and join with comma
     return parts.where((p) => p.isNotEmpty).join(', ');
   }
 }

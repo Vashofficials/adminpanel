@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../services/api_service.dart';
 import '../models/document_type_model.dart';
+import '../widgets/custom_center_dialog.dart';
 
 class DocumentController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -38,10 +39,21 @@ class DocumentController extends GetxController {
   // ----------------------------
   Future<void> fetchDocumentTypes() async {
     try {
-      // Don't set global loading here to avoid blocking UI, 
-      // just fetch in background if not critical
+      // NOTE: Ensure your ApiService returns List<DocumentTypeModel>
+      // If your Service returns the wrapper object (DocumentTypeResponse), 
+      // change this line to: (await _apiService.getDocumentTypes()).result;
       final types = await _apiService.getDocumentTypes();
+      
       if (types.isNotEmpty) {
+        // --- NEW UPDATE: Sort by Creation Time (Newest First) ---
+        types.sort((a, b) {
+          if (a.creationTime.isEmpty) return 1;
+          if (b.creationTime.isEmpty) return -1;
+          // Parse ISO8601 string to compare
+          return DateTime.parse(b.creationTime).compareTo(DateTime.parse(a.creationTime));
+        });
+        // --------------------------------------------------------
+
         docTypes.value = types;
       }
     } catch (e) {
@@ -50,7 +62,7 @@ class DocumentController extends GetxController {
   }
 
   // ----------------------------
-  // FIX: Fetch already uploaded docs
+  // Fetch already uploaded docs
   // ----------------------------
   Future<void> fetchUploadedDocuments(String spId) async {
     try {
@@ -79,7 +91,6 @@ class DocumentController extends GetxController {
 
         if (matchedType == null) {
           debugPrint("⚠️ No matching local docType found for API type: $docTypeName");
-          // Check if your API naming matches your DB naming exactly (ignoring case)
           continue;
         }
 
@@ -97,9 +108,6 @@ class DocumentController extends GetxController {
     }
   }
 
-  // ----------------------------
-  // Pick & upload document
-  // ----------------------------
   // ----------------------------
   // Pick & upload document
   // ----------------------------
@@ -143,22 +151,36 @@ class DocumentController extends GetxController {
       uploadingDocIds.refresh(); 
 
       if (success) {
-        _safeSnack("Success", "Document uploaded successfully");
+        if(Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Success",
+            message: "Document uploaded successfully",
+            type: DialogType.success,
+          );
+        }
+        
         // Only fetch list on success to prevent "flashing" the page on error
         await fetchUploadedDocuments(spId); 
       } else {
         // 4. Handle logical failure (API returned false)
         failedDocIds.add(docTypeId);
-        failedDocIds.refresh(); // 🔥 Forces the Red Box to appear instantly
+        failedDocIds.refresh(); 
         
-        _safeSnack("Error", "Upload failed", error: true);
+        if(Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Error",
+            message: "Failed to upload. Please try again.",
+            type: DialogType.error,
+          );
+        }
       }
     } catch (e) {
-      // 5. Handle Exceptions (like the 404 you are seeing)
+      // 5. Handle Exceptions
       uploadingDocIds.remove(docTypeId);
       failedDocIds.add(docTypeId);
       
-      // 🔥 Forces the Red Box to appear instantly
       uploadingDocIds.refresh();
       failedDocIds.refresh(); 
 
@@ -168,10 +190,113 @@ class DocumentController extends GetxController {
       if (e.toString().contains("404")) {
         _safeSnack("API Error", "Server could not find this Provider (404).", error: true);
       } else {
-        _safeSnack("Error", "Something went wrong", error: true);
+        if(Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Error",
+            message: "Something went wrong.",
+            type: DialogType.error,
+          );
+        }
       }
     }
   }
+
+  Future<void> updateDocumentType(String id, String name) async {
+    isLoading(true);
+    bool success = await _apiService.updateDocumentType(id, name);
+    if (success) {
+      await fetchDocumentTypes(); // Refresh list (and re-sort)
+      if(Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: "Document type updated successfully",
+          type: DialogType.success,
+        );
+      }
+    } else {
+      if(Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to update document type",
+          type: DialogType.error,
+        );
+      }
+    }
+    isLoading(false);
+  }
+
+  Future<void> deleteDocumentType(String id, bool isActive) async {
+    isLoading(true);
+    bool success = await _apiService.deleteDocumentType(id, isActive);
+    if (success) {
+      await fetchDocumentTypes(); // Refresh list
+      if(Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Success",
+          message: "Document type deleted successfully",
+          type: DialogType.success,
+        );
+      }
+    } else {
+      if(Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to deleted document type",
+          type: DialogType.error,
+        );
+      }
+    }
+    isLoading(false);
+  }
+
+  Future<bool> addDocumentType(String name) async {
+    try {
+      isLoading.value = true;
+      final success = await _apiService.addDocumentType(name); 
+      
+      if (success) {
+        await fetchDocumentTypes(); // Refresh list (will sort new item to top)
+        if(Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Success",
+            message: "Document type added successfully",
+            type: DialogType.success,
+          );
+        }
+        return true;
+      } else {
+        if(Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Error",
+            message: "Failed to add document type",
+            type: DialogType.error,
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      debugPrint("❌ Add doc type error: $e");
+      if(Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Something went wrong",
+          type: DialogType.error,
+        );
+      }
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   // ----------------------------
   // UI helpers
   // ----------------------------
@@ -193,7 +318,7 @@ class DocumentController extends GetxController {
     Get.snackbar(
       title,
       message,
-      snackPosition: SnackPosition.BOTTOM,
+      snackPosition: SnackPosition.TOP,
       backgroundColor: error ? Colors.red : Colors.green,
       colorText: Colors.white,
       margin: const EdgeInsets.all(12),

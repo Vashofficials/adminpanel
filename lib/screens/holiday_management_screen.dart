@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../controllers/holiday_controller.dart';
+// Import the reusable searchable sheet
+import '../widgets/searchable_selection_sheet.dart'; 
 
 class HolidayManagementScreen extends StatelessWidget {
   HolidayManagementScreen({super.key});
@@ -54,8 +56,8 @@ class HolidayManagementScreen extends StatelessWidget {
             Text("Check availability buffers (T+3 days) and manage holiday schedules for service providers.", style: TextStyle(color: textGrey, fontSize: 14)),
             const SizedBox(height: 32),
 
-            // --- 1. SELECTION BAR ---
-            _buildSelectionBar(),
+            // --- 1. SELECTION BAR (Updated to use Searchable Sheet) ---
+            _buildSelectionBar(context),
             const SizedBox(height: 32),
 
             // --- 2. MAIN CONTENT ---
@@ -126,7 +128,8 @@ class HolidayManagementScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSelectionBar() {
+  // --- UPDATED SELECTION BAR ---
+  Widget _buildSelectionBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -144,42 +147,62 @@ class HolidayManagementScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Obx(() {
-                  final providers = controller.providerController.allProviders;
                   final isLoading = controller.providerController.isLoading.value;
-
                   if (isLoading) return const SizedBox(height: 48, child: Center(child: LinearProgressIndicator()));
 
-                  return Container(
-                    height: 50,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: bgLight,
-                      border: Border.all(color: borderGrey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: controller.selectedProviderId.value,
-                        hint: Text("Choose a service provider...", style: TextStyle(color: textGrey)),
-                        isExpanded: true,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        items: providers.map((p) {
-                          return DropdownMenuItem<String>(
-                            value: p.id.toString(),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 12, 
-                                  backgroundColor: primaryOrange.withOpacity(0.1),
-                                  child: Text(p.firstName?[0] ?? "U", style: TextStyle(fontSize: 10, color: primaryOrange)),
-                                ),
-                                const SizedBox(width: 10),
-                                Text("${p.fullName} (${p.mobileNo})", style: TextStyle(color: textDark)),
-                              ],
-                            ),
+                  // Find Selected Provider Object for Display Text
+                  final selectedId = controller.selectedProviderId.value;
+                  final selectedProvider = controller.providerController.allProviders.firstWhereOrNull((p) => p.id == selectedId);
+                  
+                  final displayText = selectedProvider != null 
+                      ? "${selectedProvider.firstName ?? ''} ${selectedProvider.lastName ?? ''} (${selectedProvider.mobileNo})"
+                      : "Choose a service provider...";
+
+                  // --- NEW: InkWell Trigger for Searchable Sheet ---
+                  return InkWell(
+                    onTap: () {
+                      SearchableSelectionSheet.show(
+                        context,
+                        title: "Select Service Provider",
+                        primaryColor: primaryOrange,
+                        items: controller.providerController.allProviders.map((p) {
+                          return SelectionItem(
+                            id: p.id,
+                            title: "${p.firstName ?? ''} ${p.lastName ?? ''}",
+                            subtitle: p.mobileNo,
+                            icon: Icons.person_outline,
                           );
                         }).toList(),
-                        onChanged: controller.onProviderChanged,
+                        onItemSelected: (id) {
+                          controller.onProviderChanged(id);
+                        },
+                      );
+                    },
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: bgLight,
+                        border: Border.all(color: borderGrey),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                           // Avatar for selected provider (Optional visual flair)
+                           if (selectedProvider != null) ...[
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: primaryOrange.withOpacity(0.1),
+                                child: Text(selectedProvider.firstName?[0] ?? "U", style: TextStyle(fontSize: 10, color: primaryOrange, fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 10),
+                           ],
+                           
+                           Expanded(
+                             child: Text(displayText, style: TextStyle(color: selectedId != null ? textDark : textGrey, fontSize: 14)),
+                           ),
+                           const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                        ],
                       ),
                     ),
                   );
@@ -188,7 +211,7 @@ class HolidayManagementScreen extends StatelessWidget {
               const SizedBox(width: 16),
               Obx(() => ElevatedButton.icon(
                 onPressed: controller.selectedProviderId.value == null ? null : () {
-                  // Add Holiday Action
+                  // Add Holiday Action Logic Here
                 },
                 icon: const Icon(Icons.add_circle_outline, size: 20),
                 label: const Text("Mark Holiday"),
@@ -297,7 +320,7 @@ class HolidayManagementScreen extends StatelessWidget {
               
               final dayNum = index - firstDayOffset + 1;
               
-              // --- MOCK STATUS LOGIC ---
+              // --- MOCK STATUS LOGIC (Replace with controller logic later) ---
               String status = "Available";
               if (dayNum == 4 || dayNum == 25) status = "Full Day Off";
               if (dayNum == 9) status = "Morning Off";
