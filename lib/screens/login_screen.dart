@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   // I changed default to true so users stay logged in by default unless they uncheck it
-  bool _rememberMe = true; 
+  bool _rememberMe = false; 
 
   // Colors
   final Color _primaryOrange = const Color(0xFFF97316); 
@@ -37,23 +37,26 @@ class _LoginScreenState extends State<LoginScreen> {
   // ---------------------------------------------------------
   // UPDATED LOGIN LOGIC
   // ---------------------------------------------------------
-  void _handleLogin() async {
+void _handleLogin() async {
     setState(() => _isLoading = true);
 
     bool success = await _authController.login(
-      _usernameController.text,
+      _usernameController.text.trim(), 
       _passwordController.text,
       context,
     );
 
     if (success) {
-      // <--- 2. SESSION LOCKER LOGIC STARTS HERE
-      // Only save session if "Remember Me" is checked (or remove the if check to always save)
+      final prefs = await SharedPreferences.getInstance();
+      
       if (_rememberMe) {
-        final prefs = await SharedPreferences.getInstance();
+        // Professional fixed: Save session for auto-login
         await prefs.setBool('isLoggedIn', true);
+      } else {
+        // If they didn't tick it, ensure no session is saved from previous attempts
+        await prefs.remove('isLoggedIn'); 
+        // Or await prefs.setBool('isLoggedIn', false);
       }
-      // <--- SESSION LOCKER LOGIC ENDS HERE
     }
 
     setState(() => _isLoading = false);
@@ -61,7 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(
+          builder: (_) => const PopScope(
+            canPop: false, // Block drag-to-close/back gestures on web
+            child: DashboardScreen(),
+          ),
+        ),
       );
     }
   }
@@ -194,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 8),
                           TextField(
                             controller: _usernameController,
+                            inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
                             decoration: _inputDecoration("Email", Icons.mail_outline),
                           ),
                           const SizedBox(height: 20),

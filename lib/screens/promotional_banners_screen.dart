@@ -1,577 +1,684 @@
-import 'dart:io'; 
-import 'dart:ui' as ui; 
-
-import 'package:file_picker/file_picker.dart'; 
-import 'package:flutter/foundation.dart'; 
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../models/data_models.dart';
+import '../widgets/custom_center_dialog.dart';
+import '../models/slider_banner_model.dart';
+import '../widgets/image_preview_dialog.dart';
 
-// 1. PARENT WIDGET
-class PromotionalBannersScreen extends StatelessWidget {
+class PromotionalBannersScreen extends StatefulWidget {
   final VoidCallback? onUpdateBanner;
   const PromotionalBannersScreen({super.key, this.onUpdateBanner});
 
   @override
+  State<PromotionalBannersScreen> createState() => _PromotionalBannersScreenState();
+}
+
+class _PromotionalBannersScreenState extends State<PromotionalBannersScreen> {
+  final ApiService _api = ApiService();
+  List<SliderBannerModel> _banners = [];
+  List<CategoryModel> _categories = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBanners();
+    _loadCategories();
+  }
+
+  Future<void> _fetchBanners() async {
+    setState(() => _isLoading = true);
+    final data = await _api.getAllSliderBanners();
+    setState(() {
+      _banners = data;
+      _isLoading = false;
+    });
+  }
+  Future<void> _loadCategories() async {
+    final cats = await _api.getCategories();
+    setState(() => _categories = cats);
+  }
+  
+  Future<void> _showUpdateDialog(BuildContext context, SliderBannerModel banner) async {
+  final descCtrl = TextEditingController(text: banner.description);
+
+  String? selectedCatId = banner.category.id;
+  String? selectedServiceCatId = banner.serviceCategory.id;
+
+  List<ServiceCategoryModel> localServiceCategories = [];
+
+  Uint8List? newImageBytes;
+  String? newImageName;
+
+  bool isUpdating = false;
+
+  // Load initial service categories
+  localServiceCategories = await _api.getServiceCategories(selectedCatId!);
+
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: 500,
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    /// HEADER
+                    Row(
+                      children: const [
+                        Icon(Icons.edit_note, color: Color(0xFFEB5725)),
+                        SizedBox(width: 8),
+                        Text(
+                          "Update Banner",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const Divider(height: 30),
+
+                    /// CATEGORY
+                    const Text("Category *", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+
+                    DropdownButtonFormField<String>(
+                      value: selectedCatId,
+                      items: _categories
+                          .map((c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text(c.name),
+                              ))
+                          .toList(),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onChanged: (val) async {
+                        if (val == null) return;
+
+                        setDialogState(() {
+                          selectedCatId = val;
+                          selectedServiceCatId = null;
+                          localServiceCategories = [];
+                        });
+
+                        final services = await _api.getServiceCategories(val);
+
+                        setDialogState(() {
+                          localServiceCategories = services;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// SERVICE CATEGORY
+                    const Text("Service Category *", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+
+                    DropdownButtonFormField<String>(
+                      value: selectedServiceCatId,
+                      items: localServiceCategories
+                          .map((sc) => DropdownMenuItem(
+                                value: sc.id,
+                                child: Text(sc.name),
+                              ))
+                          .toList(),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          selectedServiceCatId = val;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// DESCRIPTION
+                    const Text("Description *", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+
+                    TextField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// IMAGE PICKER
+                    const Text("Banner Image", style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+
+                    GestureDetector(
+                      onTap: () async {
+                        FilePickerResult? result = await FilePicker.platform.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+
+                        if (result == null) return;
+
+                        final file = result.files.first;
+
+                        /// Size check
+                        if (file.size > 1024 * 1024) {
+                          CustomCenterDialog.show(
+                            context,
+                            title: "File Too Large",
+                            message: "Please select an image under 1MB",
+                            type: DialogType.error,
+                          );
+                          return;
+                        }
+
+                        setDialogState(() {
+                          newImageBytes = file.bytes;
+                          newImageName = file.name;
+                        });
+                      },
+                      child: CustomPaint(
+                        painter: DashedRectPainter(color: Colors.grey),
+                        child: Container(
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF9F5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+
+                                /// IMAGE PREVIEW
+                                if (newImageBytes != null)
+                                  Image.memory(
+                                    newImageBytes!,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                  )
+                                else
+                                  Image.network(
+                                    banner.bannerUrl,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const Icon(Icons.image, size: 40, color: Colors.grey),
+                                  ),
+
+                                const SizedBox(height: 8),
+
+                                Text(
+                                  newImageName ?? "Click to change image",
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    /// ACTION BUTTONS
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text("Cancel"),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEB5725),
+                          ),
+                          onPressed: isUpdating
+                              ? null
+                              : () async {
+
+                                  /// Validation
+                                  if (selectedCatId == null ||
+                                      selectedServiceCatId == null ||
+                                      descCtrl.text.trim().isEmpty) {
+                                    CustomCenterDialog.show(
+                                      context,
+                                      title: "Required",
+                                      message: "Please fill all fields",
+                                      type: DialogType.required,
+                                    );
+                                    return;
+                                  }
+
+// Inside ElevatedButton onPressed:
+setDialogState(() => isUpdating = true);
+
+bool success = await _api.updateSliderBanner(
+  bannerId: banner.id,
+  categoryId: selectedCatId!,
+  serviceCategoryId: selectedServiceCatId!,
+  description: descCtrl.text.trim(),
+  bannerBytes: newImageBytes,
+  bannerName: newImageName,
+);
+
+setDialogState(() => isUpdating = false);
+                                  if (success) {
+                                    Navigator.pop(ctx);
+
+                                    CustomCenterDialog.show(
+                                      context,
+                                      title: "Success",
+                                      message: "Banner updated successfully",
+                                      type: DialogType.success,
+                                    );
+
+                                    _fetchBanners();
+                                  } else {
+                                    CustomCenterDialog.show(
+                                      context,
+                                      title: "Error",
+                                      message: "Failed to update banner",
+                                      type: DialogType.error,
+                                    );
+                                  }
+                                },
+                          child: isUpdating
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "Update",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+void _showStatusSnackbar(String message, bool isError) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.info_outline,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 12),
+          Text(message, style: const TextStyle(color: Colors.white)),
+        ],
+      ),
+      backgroundColor: isError ? Colors.redAccent : const Color(0xFF1E293B),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
+
+Future<void> _handleToggleBanner(String id, bool currentState) async {
+  _showStatusSnackbar("Updating banner status...", false);
+
+  // Send current state to flip it on the backend
+  bool success = await _api.deleteSliderBanner(bannerId: id, isActive: currentState);
+  
+  if (success) {
+    _showStatusSnackbar("Banner status updated successfully", false);
+    _fetchBanners(); // Refresh the list
+  } else {
+    _showStatusSnackbar("Failed to change banner status", true);
+  }
+}
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC), 
+      backgroundColor: const Color(0xFFF8F9FC),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Screen Header ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Promotional Banners',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.settings, color: Colors.grey),
-                ),
-              ],
-            ),
+            _buildHeader(),
             const SizedBox(height: 24),
-
-            // --- 1. Top Section ---
-            const BannerSetupCard(),
-
+            BannerSetupCard(onSuccess: _fetchBanners),
             const SizedBox(height: 24),
-
-            // --- 2. Bottom Section ---
-            // [FIX 1]: Pass the function down to the child widget here
             BannerListCard(
-              onEditClicked: onUpdateBanner, 
+              banners: _banners,
+              isLoading: _isLoading,
+              onRefresh: _fetchBanners,
+              onUpdate: (banner) => _showUpdateDialog(context, banner), // Updated this line
+              onToggle: _handleToggleBanner, // 👈 Pass the handler here
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text('Promotional Banners',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+        IconButton(onPressed: _fetchBanners, icon: const Icon(Icons.refresh, color: Colors.grey)),
+      ],
+    );
+  }
 }
 
-// =============================================================================
-// WIDGET 1: BANNER SETUP CARD (Unchanged)
-// =============================================================================
-
+// --- SETUP CARD WIDGET ---
 class BannerSetupCard extends StatefulWidget {
-  const BannerSetupCard({super.key});
+  final VoidCallback onSuccess;
+  const BannerSetupCard({super.key, required this.onSuccess});
 
   @override
   State<BannerSetupCard> createState() => _BannerSetupCardState();
 }
 
 class _BannerSetupCardState extends State<BannerSetupCard> {
+  final ApiService _api = ApiService();
+  final TextEditingController _descCtrl = TextEditingController();
+  
+  List<CategoryModel> _categories = [];
+  List<ServiceCategoryModel> _serviceCategories = []; // 👈 New list
+  
+  String? _selectedCatId;
+  String? _selectedServiceCatId; // 👈 New selection ID
   PlatformFile? _pickedFile;
+  bool _isSubmitting = false;
 
-  Future<void> _pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
 
-    if (result != null) {
-      setState(() {
-        _pickedFile = result.files.first;
-      });
+  Future<void> _loadCategories() async {
+    final cats = await _api.getCategories();
+    setState(() => _categories = cats);
+  }
+
+  // 👈 New method to fetch sub-categories
+  Future<void> _loadServiceCategories(String categoryId) async {
+    setState(() {
+      _selectedServiceCatId = null; // Reset sub-selection
+      _serviceCategories = [];
+    });
+    try {
+      final services = await _api.getServiceCategories(categoryId);
+      setState(() => _serviceCategories = services);
+    } catch (e) {
+      debugPrint("Error loading services: $e");
     }
   }
 
-  void _clearFile() {
-    setState(() {
-      _pickedFile = null;
-    });
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    if (result != null) {
+      final file = result.files.first;
+      double sizeInMb = file.size / (1024 * 1024);
+      if (sizeInMb > 1.0) {
+        CustomCenterDialog.show(context, title: "File Too Large", message: "Image must be under 1 MB.", type: DialogType.error);
+        return;
+      }
+      setState(() => _pickedFile = file);
+    }
   }
+
+  Future<void> _submit() async {
+if (_pickedFile == null || _selectedCatId == null || _selectedServiceCatId == null || _descCtrl.text.isEmpty) {
+        CustomCenterDialog.show(context, title: "Required", message: "Image, Category,Service Category,and Description are required", type: DialogType.required);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    bool success = await _api.addSliderBanner(
+      categoryId: _selectedCatId!,
+      serviceCategoryId: _selectedServiceCatId!, // 👈 Pass the selected ID
+      description: _descCtrl.text,
+      bannerBytes: _pickedFile!.bytes!,
+      bannerName: _pickedFile!.name,
+    );
+    setState(() => _isSubmitting = false);
+
+    if (success) {
+      CustomCenterDialog.show(context, title: "Success", message: "Banner added successfully!", type: DialogType.success);
+      _clearForm();
+      widget.onSuccess();
+    } else {
+      CustomCenterDialog.show(context, title: "Error", message: "Failed to upload banner", type: DialogType.error);
+    }
+  }
+
+  void _clearForm() {
+  setState(() {
+    _pickedFile = null;
+    _selectedCatId = null;
+    _selectedServiceCatId = null; // 👈 Clear sub-id
+    _serviceCategories = [];     // 👈 Clear sub-list
+    _descCtrl.clear();
+  });
+}
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Promotional Banner Setup',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
-          ),
-          const SizedBox(height: 24),
-          
-          LayoutBuilder(
-            builder: (context, constraints) {
-              bool isWide = constraints.maxWidth > 800;
-              return isWide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _buildLeftForm()),
-                        const SizedBox(width: 40),
-                        Expanded(child: _buildRightUpload()),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _buildLeftForm(),
-                        const SizedBox(height: 30),
-                        _buildRightUpload(),
-                      ],
-                    );
-            },
-          ),
-          
-          const SizedBox(height: 30),
-          
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton(
-                onPressed: _clearFile, 
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  side: BorderSide(color: Colors.grey.shade300),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-                child: const Text('Reset', style: TextStyle(color: Colors.grey)),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEB5725), 
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  elevation: 0,
-                ),
-                child: const Text('Submit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          )
+          const Text('Banner Setup', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          LayoutBuilder(builder: (context, constraints) {
+            bool isWide = constraints.maxWidth > 800;
+            return isWide 
+              ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: _buildForm()),
+                  const SizedBox(width: 40),
+                  Expanded(child: _buildUploadArea()),
+                ])
+              : Column(children: [_buildForm(), const SizedBox(height: 20), _buildUploadArea()]);
+          }),
+          const SizedBox(height: 20),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            OutlinedButton(onPressed: _clearForm, child: const Text("Reset")),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: _isSubmitting ? null : _submit,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEB5725)),
+              child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text("Submit", style: TextStyle(color: Colors.white)),
+            )
+          ])
         ],
       ),
     );
   }
 
-  Widget _buildLeftForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildLabel('Title', isRequired: true),
-        const SizedBox(height: 8),
-        TextField(
-          decoration: InputDecoration(
-            hintText: 'Enter banner title',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-            prefixIcon: const Icon(Icons.title, size: 20, color: Colors.grey),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          ),
-        ),
-        const SizedBox(height: 20),
+  Widget _buildForm() {
+  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    const Text("Select Category *", style: TextStyle(fontWeight: FontWeight.w500)),
+    const SizedBox(height: 8),
+    DropdownButtonFormField<String>(
+      value: _selectedCatId,
+      items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+      onChanged: (val) {
+        if (val != null) {
+          setState(() => _selectedCatId = val);
+          _loadServiceCategories(val); // 👈 Load the next dropdown
+        }
+      },
+      decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12)),
+    ),
+    
+    const SizedBox(height: 15),
 
-        _buildLabel('Select Category', isRequired: true),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              hint: const Text('Select Category', style: TextStyle(fontSize: 14, color: Colors.grey)),
-              items: const [
-                 DropdownMenuItem(value: 'cat1', child: Text('Cleaning')),
-                 DropdownMenuItem(value: 'cat2', child: Text('Repair')),
-              ],
-              onChanged: (val) {},
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    // 👈 NEW: Service Category Dropdown
+    const Text("Select Service Category *", style: TextStyle(fontWeight: FontWeight.w500)),
+    const SizedBox(height: 8),
+    DropdownButtonFormField<String>(
+      value: _selectedServiceCatId,
+      disabledHint: const Text("Select Category first"),
+      items: _serviceCategories.map((sc) => DropdownMenuItem(value: sc.id, child: Text(sc.name))).toList(),
+      onChanged: _selectedCatId == null ? null : (val) => setState(() => _selectedServiceCatId = val),
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        filled: _selectedCatId == null,
+        fillColor: _selectedCatId == null ? Colors.grey[100] : Colors.transparent,
+      ),
+    ),
 
-  Widget _buildRightUpload() {
-    return Column(
-      children: [
-        const Align(
-          alignment: Alignment.center,
-          child: Text('Upload cover image', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+    const SizedBox(height: 15),
+    const Text("Description *", style: TextStyle(fontWeight: FontWeight.w500)),
+    const SizedBox(height: 8),
+    TextField(
+      controller: _descCtrl, 
+      decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "Enter banner info", contentPadding: EdgeInsets.symmetric(horizontal: 12))
+    ),
+  ]);
+}
+  Widget _buildUploadArea() {
+    return GestureDetector(
+      onTap: _pickFile,
+      child: CustomPaint(
+        painter: DashedRectPainter(color: Colors.grey),
+        child: Container(
+          height: 150, width: double.infinity,
+          child: _pickedFile != null 
+            ? Image.memory(_pickedFile!.bytes!, fit: BoxFit.cover)
+            : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.cloud_upload), Text("Upload Banner (Max 1MB)")]),
         ),
-        const SizedBox(height: 12),
-        
-        GestureDetector(
-          onTap: _pickFile,
-          child: CustomPaint(
-            painter: DashedRectPainter(color: Colors.grey.shade400, strokeWidth: 1.5, gap: 5.0),
-            child: Container(
-              height: 180,
-              width: double.infinity,
-              alignment: Alignment.center,
-              child: _pickedFile != null
-                ? Stack(
-                    children: [
-                      SizedBox.expand(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: _getImageWidget(),
-                        ),
-                      ),
-                      Positioned(
-                        top: 8, 
-                        right: 8,
-                        child: InkWell(
-                          onTap: _clearFile,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: const Icon(Icons.delete, color: Colors.red, size: 20),
-                          ),
-                        ),
-                      )
-                    ],
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      const Text('Upload File', style: TextStyle(color: Color(0xFFEB5725), fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Text('Image format - png, jpg, jpeg, gif', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                      Text('Image Size - Maximum size 2MB', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                      Text('Image Ratio - 2:1', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                    ],
-                  ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _getImageWidget() {
-    if (kIsWeb) {
-      if (_pickedFile!.bytes != null) {
-        return Image.memory(_pickedFile!.bytes!, fit: BoxFit.cover);
-      }
-      return const Center(child: Text("Error loading web image"));
-    } else {
-      if (_pickedFile!.path != null) {
-        return Image.file(File(_pickedFile!.path!), fit: BoxFit.cover);
-      }
-      return const Center(child: Text("Error loading image path"));
-    }
-  }
-
-  Widget _buildLabel(String text, {bool isRequired = false}) {
-    return RichText(
-      text: TextSpan(
-        text: text,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-        children: [
-          if (isRequired)
-            const TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
-        ],
       ),
     );
   }
 }
 
-// =============================================================================
-// WIDGET 2: BANNER LIST CARD
-// =============================================================================
-
+// --- LIST CARD WIDGET ---
 class BannerListCard extends StatelessWidget {
-  // [FIX 2]: Add the variable to accept the function in this class
-  final VoidCallback? onEditClicked;
+  final List<SliderBannerModel> banners;
+  final bool isLoading;
+  final VoidCallback onRefresh;
+  final Function(SliderBannerModel) onUpdate;
+  final Function(String, bool) onToggle; // 👈 Add this line
 
-  // [FIX 3]: Add it to the constructor
-  const BannerListCard({super.key, this.onEditClicked});
+  const BannerListCard({
+    super.key, 
+    required this.banners, 
+    required this.isLoading, 
+    required this.onRefresh,
+    required this.onUpdate,
+    required this.onToggle, // 👈 Add this line
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Simplified Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                 const Text(
-                   'Banner List', 
-                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))
-                 ),
-                 Row(
-                   children: const [
-                     Text('Total Banners: ', style: TextStyle(color: Colors.grey)),
-                     Text('2', style: TextStyle(fontWeight: FontWeight.bold)),
-                   ],
-                 )
-              ],
-            ),
-          ),
-          Divider(height: 1, color: Colors.grey.shade200),
-          
-          // Search & Action Bar
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 45,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 12),
-                        const Icon(Icons.search, color: Colors.grey, size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Search here',
-                              border: InputBorder.none,
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 80,
-                          height: 45,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEB5725),
-                            borderRadius: BorderRadius.only(
-                              topRight: Radius.circular(5),
-                              bottomRight: Radius.circular(5),
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text('Search', style: TextStyle(color: Colors.white)),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download, size: 18, color: Colors.black87),
-                  label: const Text('Download', style: TextStyle(color: Colors.black87)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                  ),
-                )
-              ],
-            ),
-          ),
-
-          // Table
-          _buildTable(),
-
-          // Pagination
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Showing 1 to 2 of 2 entries', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                Row(
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      child: const Text('Previous', style: TextStyle(color: Colors.black54)),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEB5725),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text('1', style: TextStyle(color: Colors.white)),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      child: const Text('Next', style: TextStyle(color: Colors.black54)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        const ListTile(title: Text("Banner List", style: TextStyle(fontWeight: FontWeight.bold))),
+        const Divider(),
+        if (isLoading) const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()),
+        if (!isLoading && banners.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text("No banners found.")),
+        ...banners.map((banner) => _buildRow(context, banner)),
+      ]),
     );
   }
 
-  Widget _buildTable() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        border: Border.symmetric(horizontal: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-            child: Row(
-              children: [
-                _buildHeaderCell('SL', flex: 1),
-                _buildHeaderCell('TITLE', flex: 4),
-                _buildHeaderCell('TYPE', flex: 2),
-                _buildHeaderCell('STATUS', flex: 2),
-                _buildHeaderCell('ACTION', flex: 2),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          // Rows
-          _buildRow('1', 'Laptop Repair service', 'category'),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          _buildRow('2', 'House cleaning service', 'category'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderCell(String text, {int flex = 1}) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 11, 
-          fontWeight: FontWeight.bold, 
-          color: Color(0xFF64748B),
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRow(String sl, String title, String type) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      child: Row(
-        children: [
-          Expanded(flex: 1, child: Text(sl, style: const TextStyle(fontSize: 13))),
-          Expanded(flex: 4, child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-          Expanded(flex: 2, child: Text(type, style: const TextStyle(fontSize: 13, color: Colors.grey))),
-          Expanded(
-            flex: 2, 
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Transform.scale(
-                scale: 0.7,
-                alignment: Alignment.centerLeft,
-                child: Switch(
-                  value: true, 
-                  activeColor: const Color(0xFFEB5725),
-                  onChanged: (v) {},
+  Widget _buildRow(BuildContext context, SliderBannerModel banner) {
+    return Column(
+      children: [
+        ListTile(
+          leading: GestureDetector(
+            onTap: () => ImagePreviewDialog.show(context, url: banner.bannerUrl, title: "Banner Preview"),
+            child: Container(
+              width: 80, height: 50,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  banner.bannerUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, color: Colors.red),
                 ),
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                // [FIX 4]: Use the variable directly (no 'widget.' because it's stateless)
-                InkWell(
-                  onTap: onEditClicked, 
-                  child: _buildActionIcon(Icons.edit_outlined, const Color(0xFFEB5725)),
-                ),
-                const SizedBox(width: 8),
-                _buildActionIcon(Icons.delete_outline, Colors.red),
-              ],
-            ),
+          title: Text(banner.description, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text("${banner.category.name} > ${banner.serviceCategory.name}"),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                onPressed: () => onUpdate(banner),
+              ),
+              const SizedBox(width: 8),
+              // THE TOGGLE SWITCH
+              Switch(
+                value: banner.isActive,
+                activeColor: const Color(0xFFEB5725),
+                onChanged: (bool newValue) {
+                  onToggle(banner.id, banner.isActive); // Trigger the API call
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionIcon(IconData icon, Color color) {
-    return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.5)),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Icon(icon, size: 16, color: color),
+        ),
+        const Divider(),
+      ],
     );
   }
 }
-
-// =============================================================================
-// HELPER: DASHED BORDER PAINTER
-// =============================================================================
 
 class DashedRectPainter extends CustomPainter {
   final double strokeWidth;
@@ -593,15 +700,7 @@ class DashedRectPainter extends CustomPainter {
     double h = size.height;
 
     Path path = Path();
-    path.moveTo(x + 10, y); 
-    path.lineTo(w - 10, y);
-    path.quadraticBezierTo(w, y, w, y + 10); 
-    path.lineTo(w, h - 10);
-    path.quadraticBezierTo(w, h, w - 10, h); 
-    path.lineTo(x + 10, h);
-    path.quadraticBezierTo(x, h, x, h - 10); 
-    path.lineTo(x, y + 10);
-    path.quadraticBezierTo(x, y, x + 10, y); 
+    path.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), const Radius.circular(12)));
 
     Path dashPath = Path();
     for (ui.PathMetric pathMetric in path.computeMetrics()) {
@@ -611,11 +710,9 @@ class DashedRectPainter extends CustomPainter {
           pathMetric.extractPath(distance, distance + gap),
           Offset.zero,
         );
-        distance += (gap * 2); 
+        distance += (gap * 2);
       }
     }
-    
-    // [FIX 5]: Fixed the closing brace for the loop that was missing in your snippet
     canvas.drawPath(dashPath, dashedPaint);
   }
 

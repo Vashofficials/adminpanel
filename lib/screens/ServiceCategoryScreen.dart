@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../models/data_models.dart';
 import 'dart:ui'; // Required for PathMetric
 import '../widgets/custom_center_dialog.dart';
+import '../widgets/image_preview_dialog.dart';
 
 class ServiceCategoryScreen extends StatefulWidget {
   const ServiceCategoryScreen({super.key});
@@ -304,41 +305,38 @@ Future<void> _loadData() async {
       ),
     );
   }
-void _handleDelete(String serviceCategoryId, bool currentStatus) {
-    // 1. Show Confirmation using CustomCenterDialog
-    CustomCenterDialog.show(
-      context,
-      title: "Delete Service Category",
-      message: "Are you sure you want to delete this service category?",
-      type: DialogType.warning, // Orange warning icon for delete actions
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: () async {
-        // 2. Call API (This runs after the dialog closes)
-        bool success = await _api.deleteServiceCategory(serviceCategoryId, currentStatus);
+  void _handleToggleStatus(ServiceCategoryModel item, bool newValue) {
+  CustomCenterDialog.show(
+    context,
+    title: "Change Status",
+    message: "Are you sure you want to ${newValue ? 'Activate' : 'Deactivate'} this service category?",
+    type: DialogType.warning,
+    confirmText: "Yes, Change",
+    onConfirm: () async {
+      // Reusing your deleteServiceCategory API which flips the active state
+      bool success = await _api.deleteServiceCategory(item.id, item.isActive);
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        // 3. Handle Result
-        if (success) {
-          CustomCenterDialog.show(
-            context,
-            title: "Success",
-            message: "Service category deleted successfully",
-            type: DialogType.success,
-          );
-          _loadData(); // Refresh the list
-        } else {
-          CustomCenterDialog.show(
-            context,
-            title: "Error",
-            message: "Failed to delete item",
-            type: DialogType.error,
-          );
-        }
-      },
-    );
-  }
+      if (success) {
+        CustomCenterDialog.show(
+          context,
+          title: "Success",
+          message: "Status updated successfully",
+          type: DialogType.success,
+        );
+        _loadData(); // Refresh the list
+      } else {
+        CustomCenterDialog.show(
+          context,
+          title: "Error",
+          message: "Failed to update status",
+          type: DialogType.error,
+        );
+      }
+    },
+  );
+}
 
   Future<void> _showUpdateServiceCategoryDialog(ServiceCategoryModel serviceItem) async {
     // Initialize controllers with existing data
@@ -716,37 +714,48 @@ void _handleDelete(String serviceCategoryId, bool currentStatus) {
                                 // Look up parent name
                                 DataCell(Text(_getParentName(item.categoryId), style: TextStyle(color: Colors.grey[700]))),
                                 DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(border: Border.all(color: Colors.grey[200]!), borderRadius: BorderRadius.circular(4)),
-                                    child: _buildImage(item.imgLink),
-                                  )
-                                ),
-                                DataCell(
-                                  Switch(
-                                    value: true, // Defaulting to true as model lacks status
-                                    activeColor: _primaryOrange,
-                                    onChanged: (val) {}
-                                  )
-                                ),
-                               // Inside rows: List<DataRow>.generate...
-DataCell(Row(
-  children: [
-    IconButton(
-      icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-      onPressed: () {
-        // Trigger the new dialog
-        _showUpdateServiceCategoryDialog(item);
-      },
+                               DataCell(
+  GestureDetector(
+    onTap: () {
+      if (item.imgLink != null && item.imgLink!.isNotEmpty) {
+        ImagePreviewDialog.show(
+          context, 
+          url: item.imgLink, 
+          title: "${item.name} Icon"
+        );
+      }
+    },
+    child: MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!), 
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.grey[50], // Light background indicating it's an interactive area
+        ),
+        child: _buildImage(item.imgLink),
+      ),
     ),
-    IconButton(
-      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-      // 👇 UPDATED LINE
-      onPressed: () => _handleDelete(item.id, true), 
-    ),
-  ],
-)),
+  ),
+),
+                                // 1. Updated Toggle Logic
+      DataCell(
+        Switch(
+          value: item.isActive, // Use the actual value from your model
+          activeColor: _primaryOrange,
+          onChanged: (bool newValue) {
+            _handleToggleStatus(item, newValue);
+          },
+        )
+      ),
+      // 2. Simplified Action Cell (Removed Delete Button)
+      DataCell(
+        IconButton(
+          icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+          onPressed: () => _showUpdateServiceCategoryDialog(item),
+        ),
+      ),
                               ],
                             );
                           }),

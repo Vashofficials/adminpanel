@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
 import '../models/data_models.dart';
 import '../widgets/custom_center_dialog.dart';
+import 'package:file_picker/file_picker.dart'; // 👈 Add this
+import '../widgets/image_preview_dialog.dart';
 
 class ServiceScreen extends StatefulWidget {
   final VoidCallback? onAddService;
@@ -118,77 +120,288 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
     }
   }
 
-  Future<void> _toggleStatus(ServiceModel service) async {
-    setState(() => _isLoading = true);
+ 
+Future<void> _handleToggleStatus(ServiceModel service, bool newValue) async {
+  CustomCenterDialog.show(
+    context,
+    title: "Change Status",
+    message: "Are you sure you want to ${newValue ? 'Activate' : 'Deactivate'} the service '${service.name}'?",
+    type: DialogType.warning,
+    confirmText: "Yes, Change",
+    onConfirm: () async {
+      setState(() => _isLoading = true);
+
+      // Pass the current isActive status (e.g., true) to the API 
+      // so it knows to deactivate the service.
+      bool success = await _api.deleteService(
+        service.id, 
+        isActive: service.isActive // 👈 Passing current state
+      );
+
+      if (success) {
+        await _loadAllData(); // Refresh list to reflect state
+        if (mounted) {
+          CustomCenterDialog.show(
+            context,
+            title: "Success",
+            message: "Service status updated successfully.",
+            type: DialogType.success,
+          );
+        }
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          CustomCenterDialog.show(
+            context,
+            title: "Error",
+            message: "Failed to update status.",
+            type: DialogType.error,
+          );
+        }
+      }
+    },
+  );
+}
+  // --- Delete Logic (Explicitly Deactivates) ---
+
+ Future<void> _showUpdateServiceDialog(ServiceModel service) async {
+  final nameCtrl = TextEditingController(text: service.name);
+  final priceCtrl = TextEditingController(text: service.price.toString());
+  final descCtrl = TextEditingController(text: service.description ?? "");
+  final durationCtrl = TextEditingController(text: service.duration.toString());
+
+  Uint8List? newImageBytes;
+  String? newImageName;
+  bool isUpdating = false;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 550, // Slightly wider for Row comfort
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.edit_note, color: _primaryOrange),
+                      const SizedBox(width: 8),
+                      const Text("Update Service", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const Divider(height: 30),
+
+                  // Service Name
+                  _buildPopupLabel("Service Name *"),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: _popupInputDecoration("e.g. Full Body Massage"),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Price and Duration Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPopupLabel("Price (₹) *"),
+                            TextField(
+                              controller: priceCtrl, 
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: _popupInputDecoration("0.00"),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPopupLabel("Duration (Mins) *"),
+                            TextField(
+                              controller: durationCtrl, 
+                              keyboardType: TextInputType.number,
+                              decoration: _popupInputDecoration("60"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Description
+                  _buildPopupLabel("Description"),
+                  TextField(
+                    controller: descCtrl, 
+                    maxLines: 3,
+                    decoration: _popupInputDecoration("Describe the service details..."),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Image Upload Area (Dashed UI)
+                  _buildPopupLabel("Service Image (Optional)"),
+GestureDetector(
+  onTap: () async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom, 
+      allowedExtensions: ['png', 'jpg', 'jpeg'], 
+      withData: true
+    );
     
-    // Calculate the NEW status (flip the current one)
-    bool targetStatus = !service.isActive;
+    if (result != null && result.files.isNotEmpty) {
+      final selectedFile = result.files.first;
+      
+      // Calculate size in MB
+      double sizeInMb = selectedFile.size / (1024 * 1024);
 
-    bool success = await _api.deleteService(service.id, isActive: targetStatus);
+      if (sizeInMb > 1.0) {
+        // Show error dialog for files over 1 MB
+        CustomCenterDialog.show(
+          context,
+          title: "File Too Large",
+          message: "The selected image is ${sizeInMb.toStringAsFixed(2)} MB. "
+                   "Please upload an image under 1 MB.",
+          type: DialogType.error,
+        );
+        return; // Stop execution here
+      }
 
-    if (success) {
-      await _loadAllData(); // Reload to see changes
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Service ${targetStatus ? 'Activated' : 'Deactivated'} successfully"),
-            backgroundColor: targetStatus ? Colors.green : Colors.grey,
-            duration: const Duration(seconds: 1),
+      // If valid, update the dialog state
+      setDialogState(() {
+        newImageBytes = selectedFile.bytes;
+        newImageName = selectedFile.name;
+      });
+    }
+  },
+  child: CustomPaint(
+    painter: DashedBorderPainter(),
+    child: Container(
+      height: 100,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF9F5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (newImageBytes != null)
+            Image.memory(newImageBytes!, height: 40)
+          else if (service.imgLink != null)
+            _buildImage(service.imgLink)
+          else
+            Icon(Icons.cloud_upload_outlined, color: _primaryOrange, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            newImageName ?? "Click to upload new image",
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    ),
+  ),
+),
+                  const SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: isUpdating ? null : () async {
+                          // Validation
+                          if (nameCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Name and Price are required")),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isUpdating = true);
+                          bool success = await _api.updateService(
+                            serviceId: service.id,
+                            categoryId: service.categoryId,
+                            serviceCategoryId: service.serviceCategoryId,
+                            name: nameCtrl.text.trim(),
+                            price: double.tryParse(priceCtrl.text) ?? 0.0,
+                            description: descCtrl.text.trim(),
+                            duration: int.tryParse(durationCtrl.text) ?? 0,
+                            imageBytes: newImageBytes,
+                            imageName: newImageName,
+                          );
+                          setDialogState(() => isUpdating = false);
+
+                          if (success) {
+                            Navigator.pop(ctx);
+
+CustomCenterDialog.show(
+  context,
+  title: "Success",
+  message: "Service Updated",
+  type: DialogType.success,
+);
+
+Future.delayed(const Duration(milliseconds: 300), () async {
+  await _loadAllData();
+});
+                          } else {
+                            CustomCenterDialog.show(context, title: "Error", message: "Failed to update service", type: DialogType.error);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryOrange,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: isUpdating 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                          : const Text("Update", style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
           ),
         );
-      }
-    } else {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to update status")));
-      }
-    }
-  }
-
-  // --- Delete Logic (Explicitly Deactivates) ---
-void _confirmDelete(ServiceModel service) {
-    CustomCenterDialog.show(
-      context,
-      title: "Delete Service",
-      message: "Are you sure you want to remove '${service.name}'?",
-      type: DialogType.warning,
-      confirmText: "Delete",
-      cancelText: "Cancel",
-      onConfirm: () async {
-        // ❌ REMOVED: Navigator.pop(context); (Caused the white screen/double pop)
-        
-        // 1. Show Loading
-        setState(() => _isLoading = true);
-
-        // 2. Call API (Explicitly Deactivate)
-        bool success = await _api.deleteService(service.id, isActive: false);
-
-        // 3. Handle Result
-        if (success) {
-          await _loadAllData(); // Refresh list
-          if (mounted) {
-             CustomCenterDialog.show(
-               context, 
-               title: "Success", 
-               message: "Service deleted successfully.", 
-               type: DialogType.success
-             );
-          }
-        } else {
-          setState(() => _isLoading = false);
-          if (mounted) {
-            CustomCenterDialog.show(
-              context, 
-              title: "Error", 
-              message: "Failed to delete service.", 
-              type: DialogType.error
-            );
-          }
-        }
       },
-    );
-  }
+    ),
+  );
+}
 
+// Helper: Label Styling
+Widget _buildPopupLabel(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87)),
+  );
+}
+
+// Helper: Input Styling
+InputDecoration _popupInputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.grey[50],
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey[200]!)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: _primaryOrange)),
+  );
+}
   @override
   Widget build(BuildContext context) {
     // --- SEARCH FILTER LOGIC ---
@@ -399,11 +612,32 @@ void _confirmDelete(ServiceModel service) {
                                     DataCell(Text("${index + 1}")),
                                     
                                     // IMAGE
-                                    DataCell(Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                      child: _buildImage(svc.imgLink),
-                                    )),
-                                    
+DataCell(
+  Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4.0),
+    child: GestureDetector(
+      onTap: () {
+        if (svc.imgLink != null && svc.imgLink!.isNotEmpty) {
+          ImagePreviewDialog.show(
+            context, 
+            url: svc.imgLink, 
+            title: "${svc.name} Preview"
+          );
+        }
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[200]!),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: _buildImage(svc.imgLink),
+        ),
+      ),
+    ),
+  ),
+),
                                     // NAME
                                     DataCell(Text(svc.name, style: const TextStyle(fontWeight: FontWeight.w500))),
                                     
@@ -417,39 +651,26 @@ void _confirmDelete(ServiceModel service) {
                                     // PRICE
                                     DataCell(Text("₹ ${svc.price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))),
                                     
-                                    // STATUS
-DataCell(Switch(
-                                    value: svc.isActive, 
-                                    activeColor: _primaryOrange, 
-                                    // Calls toggle to flip the status
-                                    onChanged: (val) => _toggleStatus(svc),
-                                  )),                                    
-                                    // ACTION
-                                    DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.grey[300]!),
-                                          borderRadius: BorderRadius.circular(8)
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min, 
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18), 
-                                              onPressed: () {},
-                                              constraints: const BoxConstraints(), 
-                                              padding: const EdgeInsets.all(8),
-                                            ),
-                                            Container(width: 1, height: 20, color: Colors.grey[300]), 
-                                            IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18), 
-                                          onPressed: () => _confirmDelete(svc),
-                                        ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                    // 1. Updated STATUS Cell with Confirmation
+     DataCell(
+  Switch(
+    value: svc.isActive, 
+    activeColor: _primaryOrange, 
+    onChanged: (bool newValue) {
+      // We ignore newValue here and let the handle function 
+      // use svc.isActive to communicate with the API
+      _handleToggleStatus(svc, newValue); 
+    },
+  )
+),
+      
+      // 2. Simplified ACTION Cell (Delete Button Removed)
+      DataCell(
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20), 
+          onPressed: () => _showUpdateServiceDialog(svc),
+        ),
+      ),
                                   ],
                                 );
                               }),
@@ -490,4 +711,27 @@ DataCell(Switch(
        ),
     );
   }
+  
+}class DashedBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    double dashWidth = 5, dashSpace = 3, startX = 0;
+    final paint = Paint()
+      ..color = const Color(0xFFEF7822).withOpacity(0.3)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    var path = Path();
+    path.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height), const Radius.circular(8)));
+
+    for (var pathMetric in path.computeMetrics()) {
+      while (startX < pathMetric.length) {
+        canvas.drawPath(pathMetric.extractPath(startX, startX + dashWidth), paint);
+        startX += dashWidth + dashSpace;
+      }
+      startX = 0;
+    }
+  }
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

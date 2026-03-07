@@ -265,7 +265,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   ),
                   child: _isSubmitting 
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text("Next Step", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    : const Text("Submit", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -361,9 +361,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _buildTextField("Booking Duration *", _durCtrl, hint: "e.g. 30 minutes")),
+              Expanded(child: _buildTextField("Booking Duration *", _durCtrl, hint: "e.g. 180 (in minutes)")),
               const SizedBox(width: 20),
-              Expanded(child: _buildTextField("Price *", _priceCtrl, hint: "\$ 0.00")),
+              Expanded(child: _buildTextField("Price *", _priceCtrl, hint: "\₹ 0.00")),
             ],
           ),
           const SizedBox(height: 20),
@@ -416,13 +416,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-            if (showAI) 
-              TextButton.icon(
-                onPressed: (){}, 
-                icon: const Icon(Icons.auto_awesome, size: 14, color: Colors.orange),
-                label: const Text("Generate", style: TextStyle(color: Colors.orange, fontSize: 12)),
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0,0), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              )
+           
           ],
         ),
         const SizedBox(height: 8),

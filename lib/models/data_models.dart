@@ -19,9 +19,10 @@ class CategoryModel {
   final String id;
   final String name;
   final String? imgLink;
+  final String? bannerLink; // 👈 New Field
   final bool isActive;
 
-  CategoryModel({required this.id, required this.name, this.imgLink, this.isActive = true});
+  CategoryModel({required this.id, required this.name, this.imgLink, this.bannerLink, this.isActive = true});
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
@@ -29,6 +30,7 @@ class CategoryModel {
       name: json['name'] ?? 'Unknown',
       imgLink: json['imgLink'],
       isActive: json['isActive'] ?? true,
+      bannerLink: json['bannerLink'], // 👈 Map here
     );
   }
 }
@@ -37,12 +39,15 @@ class ServiceCategoryModel {
   final String id;
   final String name;
   final String? imgLink;
+  final bool isActive; // 👈 1. ADD THIS FIELD
   final String categoryId; // We need this for the UI, but the API doesn't return it!
+  
 
   ServiceCategoryModel({
     required this.id, 
     required this.name, 
     this.imgLink, 
+    this.isActive = true, // 👈 2. ADD TO CONSTRUCTOR WITH DEFAULT
     required this.categoryId
   });
 
@@ -56,37 +61,44 @@ class ServiceCategoryModel {
       imgLink: json['imgLink'],
       // FIX 2: Use the ID we pass in, because the JSON doesn't contain it
       categoryId: linkCategoryId, 
+      isActive: json['isActive'] ?? true,
     );
   }
 }
 class ServiceModel {
   final String id;
+  final String categoryId; // 🟢 Added
+  final String serviceCategoryId; // 🟢 Added
   final String name;
   final double price;
   final String? description;
   final int duration;
   final String? imgLink;
-  final bool isActive; // 🟢 Added Field
+  final bool isActive;
 
   ServiceModel({
     required this.id,
+    required this.categoryId,
+    required this.serviceCategoryId,
     required this.name,
     required this.price,
     this.description,
     required this.duration,
     this.imgLink,
-    this.isActive = true, // Default to true
+    this.isActive = true,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
     return ServiceModel(
       id: json['id']?.toString() ?? '',
+      categoryId: json['categoryId']?.toString() ?? '', // 🟢 Map from JSON
+      serviceCategoryId: json['serviceCategoryId']?.toString() ?? '', // 🟢 Map from JSON
       name: json['name'] ?? 'Unknown Service',
       price: double.tryParse(json['price'].toString()) ?? 0.0,
       description: json['description'],
       duration: int.tryParse(json['duration'].toString()) ?? 0,
       imgLink: json['imgLink'],
-      isActive: json['isActive'] ?? true, // 🟢 Map from JSON
+      isActive: json['isActive'] ?? true,
     );
   }
 }

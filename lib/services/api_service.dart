@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http_parser/http_parser.dart'; 
 import 'package:mime/mime.dart'; 
@@ -16,6 +17,8 @@ import '../models/buffer_time_model.dart';
 import '../models/service_provider_service.dart';
 import '../models/service_provider_location.dart';
 import '../models/discount_model.dart';
+import '../models/slider_banner_model.dart';
+import '../models/coupon_model.dart';
 
 class ApiService {
   // NO trailing slash
@@ -113,56 +116,68 @@ Future<dio.MultipartFile> getMultipart(PlatformFile file) async {
     } catch (e) { return []; }
   }
 
- Future<bool> addCategory(String name, Uint8List? imageBytes, String? imageName) async {
-    if (imageBytes == null) return false; // image required
+Future<bool> addCategory({
+  required String name, 
+  required Uint8List iconBytes, 
+  String? iconName,
+  required Uint8List bannerBytes, // 👈 New param
+  String? bannerName,            // 👈 New param
+}) async {
+  try {
+    FormData formData = FormData.fromMap({
+      "file": await _prepareFile(iconBytes, iconName ?? "icon.png"),
+      "banner": await _prepareFile(bannerBytes, bannerName ?? "banner.png"), // 👈 Added banner
+    });
 
-    try {
-      FormData formData = FormData.fromMap({
-        "file": await _prepareFile(imageBytes, imageName),
-      });
-
-      await _dio.post(
-        '/admin/addCategories',
-        queryParameters: {"name": name}, // 🔑 query param
-        data: formData,
-      );
-
-      return true;
-    } on DioException catch (e) {
-      print("❌ Add category failed: ${e.response?.data}");
-      return false;
-    }
+    await _dio.post(
+      '/admin/addCategories',
+      queryParameters: {"request": '{"name": "$name"}'}, // Note: Swagger shows 'request' object
+      data: formData,
+    );
+    return true;
+  } on DioException catch (e) {
+    print("❌ Add category failed: ${e.response?.data}");
+    return false;
   }
+}
 
-Future<bool> updateCategory(String id, String name, Uint8List imageBytes, String imageName) async {
-    try {
-      // 1. Prepare the FormData (matches -F 'file=@...')
-      FormData formData = FormData.fromMap({
-        "file": MultipartFile.fromBytes(
-          imageBytes,
-          filename: imageName,
-        ),
-      });
-
-      // 2. Execute POST Request
-      // Matches URL: .../admin/updateCategories?categoryId=...&name=...
-      var response = await _dio.patch(
-        '/admin/updateCategories',
-        queryParameters: {
-          "categoryId": id, // Sent in URL, not Body
-          "name": name,     // Sent in URL, not Body
-        },
-        data: formData,
-      );
-
-      return response.statusCode == 200;
-    } on DioException catch (e) {
-      print("❌ Update category failed: ${e.response?.data}");
-      // Optional: Print status code to debug 403 vs 500
-      print("Status Code: ${e.response?.statusCode}");
-      return false;
+Future<bool> updateCategory({
+  required String id, 
+  required String name, 
+  Uint8List? iconBytes, // 👈 Change to nullable
+  String? iconName,
+  Uint8List? bannerBytes, // 👈 Change to nullable 
+  String  ? bannerName,     // 👈 New Parameter
+}) async {
+  try {
+    Map<String, dynamic> body = {};
+    
+    // Only add to FormData if a NEW file was actually picked
+    if (iconBytes != null) {
+      body["file"] = MultipartFile.fromBytes(iconBytes, filename: iconName ?? "icon.png");
     }
+    
+    if (bannerBytes != null) {
+      body["banner"] = MultipartFile.fromBytes(bannerBytes, filename: bannerName ?? "banner.png");
+    }
+
+    FormData formData = FormData.fromMap(body);
+
+    var response = await _dio.patch(
+      '/admin/updateCategories',
+      queryParameters: {
+        "categoryId": id,
+        "name": name, 
+      },
+      data: formData,
+    );
+
+    return response.statusCode == 200;
+  } on DioException catch (e) {
+    print("❌ Update failed: ${e.response?.data}");
+    return false;
   }
+}
   Future<bool> deleteCategory(String categoryId, bool isActive) async {
     try {
       await _dio.delete(
@@ -265,6 +280,52 @@ Future<bool> updateServiceCategory(String serviceCatId, String parentCatId, Stri
       return false;
     }
   }
+  Future<bool> updateService({
+  required String serviceId,
+  required String categoryId,
+  required String serviceCategoryId,
+  required String name,
+  required double price,
+  required String description,
+  required int duration,
+  Uint8List? imageBytes,
+  String? imageName,
+}) async {
+  try {
+    FormData formData = FormData.fromMap({
+      if (imageBytes != null && imageName != null)
+        "file": MultipartFile.fromBytes(
+          imageBytes,
+          filename: imageName,
+        ),
+    });
+
+    final response = await _dio.patch(
+      '/admin/updateService',
+      queryParameters: {
+        "serviceId": serviceId,
+        "categoryId": categoryId,
+        "serviceCategoryId": serviceCategoryId,
+        "name": name,
+        "price": price,
+        "description": description,
+        "duration": duration,
+      },
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data',
+      ),
+    );
+
+    return response.statusCode == 200;
+  } catch (e) {
+    if (e is DioException) {
+      print("❌ ${e.response?.statusCode}");
+      print(e.response?.data);
+    }
+    return false;
+  }
+}
 Future<bool> deleteServiceCategory(String serviceCategoryId, bool isActive) async {
     try {
       await _dio.delete(
@@ -1112,4 +1173,179 @@ Future<bool> deleteServiceDiscount(String id, bool isActive) async {
       return false;
     }
   }
+  // POST: Add Slider Banner
+Future<bool> addSliderBanner({
+  required String categoryId,
+  required String serviceCategoryId,
+  required String description,
+  required Uint8List bannerBytes,
+  String? bannerName,
+}) async {
+  try {
+    // 1. Prepare FormData for the 'banner' file
+    FormData formData = FormData.fromMap({
+      "banner": MultipartFile.fromBytes(
+        bannerBytes, 
+        filename: bannerName ?? "banner.png"
+      ),
+    });
+
+    // 2. Use flat query parameters to match the successful pattern of the update API
+    await _dio.post(
+      '/admin/addSliderBanner',
+      queryParameters: {
+        "categoryId": categoryId,
+        "serviceCategoryId": serviceCategoryId,
+        "description": description,
+      },
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data',
+      ),
+    );
+    
+    return true;
+  } catch (e) {
+    if (e is DioException) {
+      print("❌ Add Banner Error: ${e.response?.statusCode}");
+      print(e.response?.data);
+    } else {
+      print("❌ Add Slider Banner failed: $e");
+    }
+    return false;
+  }
+}
+// GET: Fetch all slider banners
+Future<List<SliderBannerModel>> getAllSliderBanners() async {
+  try {
+    var response = await _dio.get('/admin/getAllSlideBanner');
+    
+    // Check if the data exists and is a list
+    if (response.data != null && response.data['result'] is List) {
+      final List<dynamic> rawList = response.data['result'];
+      
+      // MAP the raw JSON objects into your SliderBannerModel instances
+      return rawList.map((json) => SliderBannerModel.fromJson(json)).toList();
+    }
+    
+    return [];
+  } catch (e) {
+    // This will now catch mapping errors too if the JSON structure changes
+    print("❌ Fetch Slider Banners failed: $e");
+    return [];
+  }
+}
+Future<bool> updateSliderBanner({
+  required String bannerId,
+  required String categoryId,
+  required String serviceCategoryId,
+  required String description,
+  Uint8List? bannerBytes,
+  String? bannerName,
+}) async {
+  try {
+    // 1. Prepare the image as 'banner' (from your -F flag)
+    FormData formData = FormData.fromMap({
+      if (bannerBytes != null)
+        "banner": MultipartFile.fromBytes(
+          bannerBytes,
+          filename: bannerName ?? "banner.png",
+        ),
+    });
+
+    // 2. Use flat query parameters exactly like your successful curl
+    final response = await _dio.patch(
+      '/admin/updateSliderBanner',
+      queryParameters: {
+        "bannerId": bannerId,
+        "categoryId": categoryId,
+        "serviceCategoryId": serviceCategoryId,
+        "description": description,
+      },
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data', // Matches your curl -H
+      ),
+    );
+
+    return response.statusCode == 200;
+  } catch (e) {
+    if (e is DioException) {
+      print("❌ Update Failed: ${e.response?.statusCode}");
+     // paintImage("Response Body: ${e.response?.data}");
+    }
+    return false;
+  }
+}
+Future<bool> deleteSliderBanner({required String bannerId, required bool isActive}) async {
+  try {
+    final response = await _dio.delete(
+      '/admin/deleteSlideBanner',
+      queryParameters: {
+        "bannerId": bannerId,
+        "isActive": isActive, // Send true to make it false, and vice versa
+      },
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    if (e is DioException) {
+      debugPrint("❌ Delete Error: ${e.response?.statusCode} | ${e.response?.data}");
+    }
+    return false;
+  }
+}
+Future<bool> addCoupon({
+  required List<String> serviceIdList,
+  required String couponType,
+  required String couponCode,
+  required String discountType,
+  required String startDate,
+  required String endDate,
+  required double amount,
+  required double minPurchaseAmount,
+  required double discountPercentage,
+  required int sameUserLimit,
+}) async {
+ try {
+    final response = await _dio.post(
+      '/admin/addCoupon', // Make sure case matches exactly (addCoupon vs addcoupon)
+      data: {
+        "serviceIdList": serviceIdList,
+        "couponType": couponType,
+        "couponCode": couponCode,
+        "discountType": discountType,
+        "startDate": startDate,
+        "endDate": endDate,
+        "amount": amount,
+        "minPurchaseAmount": minPurchaseAmount,
+        "discountPercentage": discountPercentage,
+        "sameUserLimit": sameUserLimit
+      },
+      options: Options(
+        contentType: Headers.jsonContentType, // Force application/json
+      ),
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    if (e is DioException) {
+      // This will help you see if it's still a 403 or 400
+      print("❌ Server Response: ${e.response?.data}");
+    }
+    return false;
+  }
+}
+
+Future<List<CouponModel>> getAllCoupons() async {
+  try {
+    final response = await _dio.get('/admin/getAllCoupon');
+    if (response.data != null && response.data['result'] is List) {
+      final List<dynamic> rawList = response.data['result'];
+      return rawList.map((json) => CouponModel.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("❌ Fetch Coupons Error: $e");
+    return [];
+  }
+}
 }
