@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+
+  <meta name="description"
+    content="Secure login portal for the Chayankaro Admin Dashboard. Manage bookings and services effortlessly.">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <meta name="apple-mobile-web-app-title" content="Chayankaro Admin">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>Chayankaro Admin Portal</title>
+
+  <link rel="manifest" href="manifest.json">
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJsorrGKIgn2WoWP22VDCF1Utr8-Y1eqI"></script>
+  <script>
+    window.geocodeAddress = function (address) {
+      return new Promise((resolve, reject) => {
+        if (!google || !google.maps || !google.maps.Geocoder) {
+          reject("Google Maps API not loaded yet");
+          return;
+        }
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: address }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            resolve({
+              lat: results[0].geometry.location.lat(),
+              lng: results[0].geometry.location.lng()
+            });
+          } else {
+            reject('Geocoding failed: ' + status);
+          }
+        });
+      });
+    };
+  </script>
+
+
+
+
+</head>
+
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

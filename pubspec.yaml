@@ -1,0 +1,37 @@
+name: ck_admin_panel
+description: "Admin panel for Chayankaro."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0' # UPDATED: Allows a broader range of stable Dart SDKs (3.9.0 is very specific/futuristic)
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.4.0
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+  file_picker: ^6.1.1
+  mime: ^1.0.4
+  fl_chart: ^0.66.2 # UPDATED: fl_chart 1.1.1 is strictly for very new Dart versions. 0.66.2 is safer for general stability unless you need bleeding edge.
+  flutter_svg: ^2.0.10 # UPDATED: Ensure compatibility with recent Flutter versions
+  google_maps_flutter: ^2.5.0 # Or latest version
+  geocoding: ^2.1.0
+  get: ^4.7.3
+  uuid: ^4.5.2
+  dotted_border: ^2.1.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1 # Standard stable lints
+
+flutter:
+  uses-material-design: true
+
+  assets:
+     - assets/logo.svg 
+     - assets/bg.jpg
+     # Ensure the folder "assets/" actually exists in your project root
