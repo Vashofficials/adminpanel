@@ -19,6 +19,7 @@ import '../models/service_provider_location.dart';
 import '../models/discount_model.dart';
 import '../models/slider_banner_model.dart';
 import '../models/coupon_model.dart';
+import '../models/customer_refundbank.dart';
 
 class ApiService {
   // NO trailing slash
@@ -1295,7 +1296,7 @@ Future<bool> deleteSliderBanner({required String bannerId, required bool isActiv
   }
 }
 Future<bool> addCoupon({
-  required List<String> serviceIdList,
+  required String categoryId, // Changed from List<String> serviceIdList
   required String couponType,
   required String couponCode,
   required String discountType,
@@ -1306,11 +1307,11 @@ Future<bool> addCoupon({
   required double discountPercentage,
   required int sameUserLimit,
 }) async {
- try {
+  try {
     final response = await _dio.post(
-      '/admin/addCoupon', // Make sure case matches exactly (addCoupon vs addcoupon)
+      '/admin/addCoupon',
       data: {
-        "serviceIdList": serviceIdList,
+        "categoryId": categoryId, // Updated key
         "couponType": couponType,
         "couponCode": couponCode,
         "discountType": discountType,
@@ -1322,19 +1323,17 @@ Future<bool> addCoupon({
         "sameUserLimit": sameUserLimit
       },
       options: Options(
-        contentType: Headers.jsonContentType, // Force application/json
+        contentType: Headers.jsonContentType,
       ),
     );
     return response.statusCode == 200;
   } catch (e) {
     if (e is DioException) {
-      // This will help you see if it's still a 403 or 400
       print("❌ Server Response: ${e.response?.data}");
     }
     return false;
   }
 }
-
 Future<List<CouponModel>> getAllCoupons() async {
   try {
     final response = await _dio.get('/admin/getAllCoupon');
@@ -1345,6 +1344,63 @@ Future<List<CouponModel>> getAllCoupons() async {
     return [];
   } catch (e) {
     debugPrint("❌ Fetch Coupons Error: $e");
+    return [];
+  }
+}
+Future<bool> updateCouponStatus({
+  required String couponId,
+  required bool isActive,
+}) async {
+  try {
+    // 1. MUST use .delete as per your curl
+    // 2. Query parameters remain the same
+    final response = await _dio.delete(
+      '/admin/deleteCoupon', 
+      queryParameters: {
+        "couponId": couponId,
+        "isActive": isActive, 
+      },
+    );
+    
+    // Check for 200 OK or 204 No Content depending on your API
+    return response.statusCode == 200 || response.statusCode == 204;
+  } catch (e) {
+    if (e is DioException) {
+      debugPrint("❌ API Error: ${e.response?.data}");
+    }
+    return false;
+  }
+}
+Future<List<RefundBank>> getCustomerRefundBanks(String customerId) async {
+  try {
+    final response = await _dio.get(
+      '/admin/getRefundBanks',
+      queryParameters: {'customerId': customerId},
+    );
+    
+    if (response.statusCode == 200) {
+      final List data = response.data['result'];
+      return data.map((json) => RefundBank.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    rethrow;
+  }
+}
+Future<List<BookingReview>> getBookingRatings(String customerId) async {
+  try {
+    final response = await _dio.get(
+      '/admin/getBookingRatingByCustomer',
+      queryParameters: {'customerId': customerId},
+    );
+    
+    if (response.statusCode == 200) {
+      final List data = response.data['result'] ?? [];
+      return data.map((json) => BookingReview.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("❌ Error fetching reviews: $e");
     return [];
   }
 }

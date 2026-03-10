@@ -49,54 +49,40 @@ class _AddCouponScreenState extends State<AddCouponScreen> {
     setState(() => _categories = data);
   }
 
-  Future<void> _loadServices(String catId) async {
+Future<void> _loadServices(String catId) async {
     setState(() {
       _selectedCatId = catId;
-      _services = [];
-      _selectedServiceObjects.clear(); 
+      // We no longer need to fetch services for the coupon payload
     });
-    final data = await _api.getServices(categoryId: catId);
-    setState(() => _services = data);
   }
 
  Future<void> _submit() async {
   if (!_formKey.currentState!.validate()) return;
-  if (_selectedServiceObjects.isEmpty) {
-    CustomCenterDialog.show(context, 
-      title: "Selection Required", 
-      message: "Please select at least one service.", 
-      type: DialogType.required
+  if (_selectedCatId == null) {
+      CustomCenterDialog.show(context, 
+        title: "Selection Required", 
+        message: "Please select a category.", 
+        type: DialogType.required
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    bool success = await _api.addCoupon(
+      categoryId: _selectedCatId!, // Directly passing the ID string
+      couponType: "PROMO",
+      couponCode: _codeController.text.trim().toUpperCase(),
+      discountType: _discountType,
+      startDate: DateFormat('yyyy-MM-dd').format(_startDate!),
+      endDate: DateFormat('yyyy-MM-dd').format(_endDate!),
+      amount: _discountType == 'FIXED' ? (double.tryParse(_amountController.text) ?? 0) : 0,
+      discountPercentage: _discountType == 'PERCENTAGE' ? (double.tryParse(_amountController.text) ?? 0) : 0,
+      minPurchaseAmount: double.tryParse(_minPurchaseController.text) ?? 0,
+      sameUserLimit: int.tryParse(_limitUserController.text) ?? 1,
     );
-    return;
-  }
 
-  setState(() => _isSubmitting = true);
-
-  // --- THE CRITICAL FIX ---
-  // 1. Get the raw IDs
-  final List<String> individualIds = _selectedServiceObjects.map((s) => s.id).toList();
-  
-  // 2. Join them with a comma but NO extra spaces
-  final String rawJoinedString = individualIds.join(",");
-  
-  // 3. Create the list containing that single raw string
-  final List<String> payloadIdList = [rawJoinedString];
-
-  bool success = await _api.addCoupon(
-    serviceIdList: payloadIdList, 
-    couponType: "PROMO",
-    couponCode: _codeController.text.trim().toUpperCase(),
-    discountType: _discountType,
-    startDate: DateFormat('yyyy-MM-dd').format(_startDate!),
-    endDate: DateFormat('yyyy-MM-dd').format(_endDate!),
-    // Ensure numbers are handled strictly
-    amount: _discountType == 'FIXED' ? (double.tryParse(_amountController.text) ?? 0) : 0,
-    discountPercentage: _discountType == 'PERCENTAGE' ? (double.tryParse(_amountController.text) ?? 0) : 0,
-    minPurchaseAmount: double.tryParse(_minPurchaseController.text) ?? 0,
-    sameUserLimit: int.tryParse(_limitUserController.text) ?? 1,
-  );
-
-  setState(() => _isSubmitting = false);
+    setState(() => _isSubmitting = false);
   
   if (success) {
     CustomCenterDialog.show(context, title: "Success", message: "Coupon created successfully!", type: DialogType.success);
@@ -205,7 +191,6 @@ class _AddCouponScreenState extends State<AddCouponScreen> {
                         onChanged: (val) => _loadServices(val!),
                         decoration: _buildDecoration("Choose Category"),
                       )),
-                      _buildServiceDisplayField(),
                     ]),
                     const Divider(height: 64),
                     _buildDiscountSection(),

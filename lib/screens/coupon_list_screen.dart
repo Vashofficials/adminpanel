@@ -169,8 +169,46 @@ Future<void> _showUpdateCouponDialog(BuildContext context, CouponModel coupon) a
   );
 }
 
-// --- Internal Helpers for the Dialog ---
+Future<void> _handleToggleStatus(CouponModel coupon, bool newValue) async {
+  CustomCenterDialog.show(
+    context,
+    title: "Change Status",
+    message: "Are you sure you want to ${newValue ? 'Activate' : 'Deactivate'} the coupon '${coupon.couponCode}'?",
+    type: DialogType.warning,
+    confirmText: "Yes, Change",
+    onConfirm: () async {
+      setState(() => _isLoading = true); // Start global loader
 
+      // We pass coupon.isActive (the current state) as per your logic
+      bool success = await _api.updateCouponStatus(
+        couponId: coupon.id,
+        isActive: coupon.isActive, 
+      );
+
+      if (success) {
+        await _fetchCoupons(); // Refresh the list to get updated states
+        if (mounted) {
+          CustomCenterDialog.show(
+            context,
+            title: "Success",
+            message: "Coupon status updated successfully.",
+            type: DialogType.success,
+          );
+        }
+      } else {
+        setState(() => _isLoading = false); // Stop loader if failed
+        if (mounted) {
+          CustomCenterDialog.show(
+            context,
+            title: "Error",
+            message: "Failed to update coupon status.",
+            type: DialogType.error,
+          );
+        }
+      }
+    },
+  );
+}
 Widget _buildPopupLabelField(String label, TextEditingController ctrl, {bool isNumber = false}) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,6 +342,7 @@ Widget build(BuildContext context) {
 
   Widget _buildRow(int sl, CouponModel coupon) {
     // Dynamic Subtitle based on API response
+    final couponIndex = _allCoupons.indexOf(coupon);
     String subTitle = "Default Coupon";
     if (coupon.service != null) {
       subTitle = "Service: ${coupon.service!.name}";
@@ -351,9 +390,7 @@ Widget build(BuildContext context) {
                   value: coupon.isActive,
                   activeTrackColor: const Color(0xFFEB5725),
                   activeColor: Colors.white,
-                  onChanged: (v) {
-                    // Logic for status toggle
-                  },
+onChanged: (bool val) => _handleToggleStatus(coupon, val),
                 ),
               ),
             ),
@@ -364,18 +401,7 @@ Widget build(BuildContext context) {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
 _buildActionBtn(Icons.edit_outlined, Colors.blue, () => _showUpdateCouponDialog(context, coupon)),
-                const SizedBox(width: 8),
-                _buildActionBtn(Icons.delete_outline, Colors.red, () {
-                  CustomCenterDialog.show(
-                    context,
-                    title: "Delete Coupon",
-                    message: "Are you sure you want to delete ${coupon.couponCode}?",
-                    type: DialogType.warning,
-                    onConfirm: () {
-                      // Logic for deletion
-                    },
-                  );
-                }),
+               
               ],
             ),
           ),

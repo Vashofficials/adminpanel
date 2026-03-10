@@ -403,7 +403,7 @@ Future<void> _handleToggleBanner(String id, bool currentState) async {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Promotional Banners',
+        const Text('Sliding Banners',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
         IconButton(onPressed: _fetchBanners, icon: const Icon(Icons.refresh, color: Colors.grey)),
       ],

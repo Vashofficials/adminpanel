@@ -576,7 +576,7 @@ NavTile(
                 // 1. Promotion Banners (Separate, Top-Level)
                 NavTile(
                   icon: Icons.image_outlined,
-                  label: 'Promotion Banners',
+                  label: 'Sliding Banners',
                   collapsed: collapsed,
                   isActive: _isActive('promotion/banner'),
                   onTap: () => widget.onNav?.call('promotion/banner'),

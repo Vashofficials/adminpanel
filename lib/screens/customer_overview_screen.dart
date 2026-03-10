@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/customer_models.dart'; // Ensure this import points to your model file
 import '../repositories/booking_repository.dart';
 import '../models/booking_models.dart';
+import '../services/api_service.dart';
+import '../models/customer_refundbank.dart';
 
 // --- Constants ---
 const Color kPrimaryOrange = Color(0xFFFF6B00);
@@ -107,8 +109,9 @@ _BookingsTab(
                   customerId: widget.customer.id,
                   onViewBooking: widget.onViewBooking, // <--- PASS IT HERE
                 ),
-                       const _ReviewsTab(),  // You can pass customer here later for API calls
-              ],
+_ReviewsTab(
+      customerId: widget.customer.id, 
+    ),              ],
             ),
           ],
         ),
@@ -144,17 +147,90 @@ _BookingsTab(
 // =============================================================================
 // TAB 1: OVERVIEW (Dynamic Data)
 // =============================================================================
-class _OverviewTab extends StatelessWidget {
+// --- Add this model inside your file or models folder ---
+class RefundBankModel {
+  final String id;
+  final String bankName;
+  final String accountNumber;
+  final String ifscCode;
+  final String upiId;
+  final bool isActive;
+
+  RefundBankModel({
+    required this.id,
+    required this.bankName,
+    required this.accountNumber,
+    required this.ifscCode,
+    required this.upiId,
+    required this.isActive,
+  });
+
+  factory RefundBankModel.fromJson(Map<String, dynamic> json) {
+    return RefundBankModel(
+      id: json['id'] ?? '',
+      bankName: json['bankName'] ?? '',
+      accountNumber: json['accountNumber'] ?? '',
+      ifscCode: json['ifscCode'] ?? '',
+      upiId: json['upiId'] ?? '',
+      isActive: json['isActive'] ?? false,
+    );
+  }
+}
+
+// =============================================================================
+// TAB 1: OVERVIEW (Updated to StatefulWidget)
+// =============================================================================
+class _OverviewTab extends StatefulWidget {
   final VoidCallback? onEdit;
-  final Customer customer; // Receive customer data
-  
+  final Customer customer;
+
   const _OverviewTab({this.onEdit, required this.customer});
 
   @override
+  State<_OverviewTab> createState() => _OverviewTabState();
+}
+
+class _OverviewTabState extends State<_OverviewTab> {
+  // Assuming you have an ApiService instance. Replace with your actual service.
+  final ApiService _api = ApiService();
+  
+List<RefundBank> _banks = [];
+  bool _isBankLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBankDetails();
+  }
+
+Future<void> _fetchBankDetails() async {
+  if (!mounted) return;
+  setState(() => _isBankLoading = true);
+  
+  try {
+    // 1. Call the actual API via your ApiService
+    // Make sure your ApiService has the getCustomerRefundBanks method (see step 2 below)
+final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.customer.id);
+    if (mounted) {
+      setState(() {
+        _banks = realBanks;
+        _isBankLoading = false;
+      });
+    }
+  } catch (e) {
+    debugPrint("❌ Error fetching real bank data: $e");
+    if (mounted) {
+      setState(() {
+        _banks = [];
+        _isBankLoading = false;
+      });
+    }
+  }
+}
+  @override
   Widget build(BuildContext context) {
-    // Dynamic Stats (Using placeholders if data isn't in model yet)
-    final bookingsCount = customer.bookings.toString();
-    const totalAmount = "\u20B90.00"; // API doesn't provide this yet
+    final bookingsCount = widget.customer.bookings.toString();
+    const totalAmount = "\u20B90.00";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,17 +239,15 @@ class _OverviewTab extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card 1: Total Booking Placed
             Expanded(
               child: _buildStatCard(
-                value: bookingsCount, 
+                value: bookingsCount,
                 label: "Total Booking Placed",
                 valueColor: kPrimaryOrange,
                 bgColor: const Color(0xFFFFF7ED),
               ),
             ),
             const SizedBox(width: 20),
-            // Card 2: Total Booking Amount
             Expanded(
               child: _buildStatCard(
                 value: totalAmount,
@@ -183,130 +257,219 @@ class _OverviewTab extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 20),
-            // Card 3: Booking Overview Chart (Static for now, can be dynamic later)
             Expanded(
-              flex: 1, 
-              child: Container(
-                height: 140,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: kBorderColor),
-                ),
-                child: Row(
-                  children: [
-                    // Donut Chart
-                    SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: Stack(
-                        children: [
-                          PieChart(
-                            PieChartData(
-                              sectionsSpace: 0,
-                              centerSpaceRadius: 35,
-                              sections: [
-                                PieChartSectionData(color: kPrimaryOrange, value: 30, title: '', radius: 12),
-                                PieChartSectionData(color: const Color(0xFF10B981), value: 70, title: '', radius: 12),
-                              ],
-                            ),
-                          ),
-                          Center(
-                            child: Text(
-                              "$bookingsCount\nBookings",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, height: 1.2),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Legend
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text("Booking Overview", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight)),
-                          SizedBox(height: 8),
-                          _ChartLegend(color: kPrimaryOrange, label: "Pending"),
-                          SizedBox(height: 4),
-                          _ChartLegend(color: Color(0xFF10B981), label: "Accepted"),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
+              flex: 1,
+              child: _buildOverviewChart(bookingsCount),
             ),
           ],
         ),
         const SizedBox(height: 32),
 
-        // --- Personal Details (Dynamic) ---
+        // --- Personal Details ---
         const Text("Personal Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextDark)),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(24),
+        _buildPersonalDetailsCard(),
+
+        const SizedBox(height: 32),
+
+        // --- Refund Bank Details Section ---
+        const Text("Refund Bank Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextDark)),
+        const SizedBox(height: 16),
+        
+        if (_isBankLoading)
+          const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Center(child: CircularProgressIndicator(color: kPrimaryOrange)),
+          )
+        else if (_banks.isEmpty)
+          _buildEmptyBankState()
+        else
+          _buildBankGrid(),
+      ],
+    );
+  }
+
+  // --- Helper Widgets ---
+
+  Widget _buildOverviewChart(String count) {
+    return Container(
+      height: 140,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorderColor),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            height: 100,
+            child: Stack(
+              children: [
+                PieChart(
+                  PieChartData(
+                    sectionsSpace: 0,
+                    centerSpaceRadius: 35,
+                    sections: [
+                      PieChartSectionData(color: kPrimaryOrange, value: 30, title: '', radius: 12),
+                      PieChartSectionData(color: const Color(0xFF10B981), value: 70, title: '', radius: 12),
+                    ],
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    "$count\nBookings",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, height: 1.2),
+                  ),
+                )
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("Overview", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight)),
+                SizedBox(height: 8),
+                _ChartLegend(color: kPrimaryOrange, label: "Pending"),
+                SizedBox(height: 4),
+                _ChartLegend(color: Color(0xFF10B981), label: "Accepted"),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalDetailsCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorderColor),
+      ),
+      child: Row(
+        children: [
+          _buildAvatar(),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.customer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextDark)),
+                const SizedBox(height: 8),
+                _buildInfoRow(Icons.phone_android, widget.customer.phone.isNotEmpty ? widget.customer.phone : "No Phone"),
+                const SizedBox(height: 4),
+                _buildInfoRow(Icons.email_outlined, widget.customer.email.isNotEmpty ? widget.customer.email : "No Email"),
+                const SizedBox(height: 4),
+                _buildInfoRow(Icons.location_on_outlined, widget.customer.location),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: widget.onEdit,
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: const Text("Edit", style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimaryOrange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (widget.customer.imgLink != null && widget.customer.imgLink!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 36,
+        backgroundImage: NetworkImage(widget.customer.imgLink!),
+      );
+    }
+    return CircleAvatar(
+      radius: 36,
+      backgroundColor: Color(int.tryParse(widget.customer.avatarColor) ?? 0xFFFFE4B5),
+      child: Text(
+        widget.customer.name.isNotEmpty ? widget.customer.name[0].toUpperCase() : "U",
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildBankGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _banks.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        mainAxisExtent: 160,
+      ),
+      itemBuilder: (context, index) {
+        final bank = _banks[index];
+        return Container(
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: kBorderColor),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dynamic Avatar
-              if (customer.imgLink != null && customer.imgLink!.isNotEmpty)
-                CircleAvatar(
-                  radius: 36,
-                  backgroundImage: NetworkImage(customer.imgLink!),
-                  onBackgroundImageError: (_, __) {},
-                )
-              else
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Color(int.tryParse(customer.avatarColor) ?? 0xFFFFE4B5),
-                  child: Text(
-                    customer.name.isNotEmpty ? customer.name[0].toUpperCase() : "U",
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
-              const SizedBox(width: 24),
-              
-              // Dynamic Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(customer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextDark)),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(Icons.phone_android, customer.phone.isNotEmpty ? customer.phone : "No Phone"),
-                    const SizedBox(height: 4),
-                    _buildInfoRow(Icons.email_outlined, customer.email.isNotEmpty ? customer.email : "No Email"),
-                    const SizedBox(height: 4),
-                    _buildInfoRow(Icons.location_on_outlined, customer.location),
-                  ],
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(bank.bankName, style: const TextStyle(fontWeight: FontWeight.bold, color: kPrimaryOrange, fontSize: 16)),
+                  if (bank.isActive)
+                    const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 18),
+                ],
               ),
-              // Edit Button
-              ElevatedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-                label: const Text("Edit", style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryOrange,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-              )
+              const Divider(height: 24),
+              _buildBankDetailRow(Icons.account_balance, "A/C Number", bank.accountNumber),
+              const SizedBox(height: 8),
+              _buildBankDetailRow(Icons.qr_code, "IFSC Code", bank.ifscCode),
+              const SizedBox(height: 8),
+              _buildBankDetailRow(Icons.alternate_email, "UPI ID", bank.upiId),
             ],
           ),
-        ),
+        );
+      }
+    );
+  }
+
+  Widget _buildBankDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: kTextLight),
+        const SizedBox(width: 8),
+        Text("$label: ", style: const TextStyle(fontSize: 12, color: kTextLight)),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kTextDark)),
       ],
+    );
+  }
+
+  Widget _buildEmptyBankState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kBorderColor, style: BorderStyle.solid),
+      ),
+      child: const Center(
+        child: Text("No refund bank accounts found.", style: TextStyle(color: kTextLight)),
+      ),
     );
   }
 
@@ -341,6 +504,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 }
+ 
 
 class _ChartLegend extends StatelessWidget {
   final Color color;
@@ -512,8 +676,41 @@ class _BookingTableHeader extends StatelessWidget {
 // =============================================================================
 // TAB 3: REVIEWS (Static / Mock)
 // =============================================================================
-class _ReviewsTab extends StatelessWidget {
-  const _ReviewsTab();
+class _ReviewsTab extends StatefulWidget {
+  final String customerId;
+  const _ReviewsTab({super.key, required this.customerId});
+
+  @override
+  State<_ReviewsTab> createState() => _ReviewsTabState();
+}
+
+class _ReviewsTabState extends State<_ReviewsTab> {
+  final ApiService _api = ApiService();
+  List<BookingReview> _reviews = [];
+  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReviews();
+  }
+
+  Future<void> _fetchReviews() async {
+    setState(() => _isLoading = true);
+    try {
+      // API call to /admin/getBookingRatingByCustomer
+      final response = await _api.getBookingRatings(widget.customerId);
+      if (mounted) {
+        setState(() {
+          _reviews = response;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -522,13 +719,14 @@ class _ReviewsTab extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          // --- Search Bar ---
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-                Expanded(
+              Expanded(
                 child: TextField(
+                  controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search here',
+                    hintText: 'Search by Booking ID...',
                     prefixIcon: const Icon(Icons.search, color: kTextLight),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kBorderColor)),
@@ -538,7 +736,7 @@ class _ReviewsTab extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: _fetchReviews,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimaryOrange,
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -550,24 +748,45 @@ class _ReviewsTab extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // Header
-           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: const [
-                Expanded(flex: 2, child: Text("BOOKING ID", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-                Expanded(flex: 2, child: Text("BOOKING DATE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-                Expanded(flex: 2, child: Text("RATINGS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-                Expanded(flex: 4, child: Text("REVIEWS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-              ],
-            ),
-          ),
+          // --- Table Header ---
+          const _ReviewTableHeader(),
           const Divider(height: 1, color: kBorderColor),
 
-          // Rows
-          _buildReviewRow("#LKO-2401-892", "22 Jan, 2025", 4.0, "Excellent service by the team. The cleaning was thorough and timely."),
-          const Divider(height: 1, color: kBorderColor),
-          _buildReviewRow("#LKO-2312-455", "15 Dec, 2024", 5.0, "Very professional staff."),
+          // --- Dynamic Content ---
+          if (_isLoading)
+            const Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: kPrimaryOrange))
+          else if (_reviews.isEmpty)
+            _buildEmptyState()
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _reviews.length,
+              separatorBuilder: (context, index) => const Divider(height: 1, color: kBorderColor),
+              itemBuilder: (context, index) {
+                final item = _reviews[index];
+                return _buildReviewRow(
+                  item.bookingId, 
+                  item.bookingDate.split('T')[0], // Simple date format
+                  item.rating, 
+                  item.review
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.all(60),
+      child: Column(
+        children: [
+          Icon(Icons.rate_review_outlined, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text("No reviews found for this customer.", 
+            style: TextStyle(color: kTextLight, fontSize: 14, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -593,6 +812,24 @@ class _ReviewsTab extends StatelessWidget {
             ],
           )),
           Expanded(flex: 4, child: Text(review, style: const TextStyle(fontSize: 13, color: kTextLight, height: 1.4))),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewTableHeader extends StatelessWidget {
+  const _ReviewTableHeader();
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: const [
+          Expanded(flex: 2, child: Text("BOOKING ID", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
+          Expanded(flex: 2, child: Text("BOOKING DATE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
+          Expanded(flex: 2, child: Text("RATINGS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
+          Expanded(flex: 4, child: Text("REVIEWS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
         ],
       ),
     );
