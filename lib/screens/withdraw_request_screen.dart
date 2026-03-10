@@ -534,12 +534,9 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
                               children: const [
                                 SizedBox(width: 50, child: _Th('SL')),
                                 SizedBox(width: 240, child: _Th('PROVIDER NAME')),
-                                SizedBox(width: 200, child: _Th('CONTACT INFO')),
-                                SizedBox(width: 130, child: _Th('TOTAL EARNING')),
-                                SizedBox(width: 130, child: _Th('TOTAL SETTLEMENT')),
-                                SizedBox(width: 130, child: _Th('PENDING SETTLEMENT')),
-                                SizedBox(width: 220, child: _Th('ADMIN DEPARTMENT NOTE')),
-                                SizedBox(width: 180, child: _Th('REQUEST TIME')),
+                                SizedBox(width: 280, child: _Th('ADMIN NOTE')),
+                                SizedBox(width: 130, child: _Th('AMOUNT')),
+                                SizedBox(width: 150, child: _Th('REQUEST')),
                                 SizedBox(width: 120, child: _Th('STATUS', alignCenter: true)),
                                 SizedBox(width: 160, child: _Th('ACTION', alignCenter: true)),
                               ],
@@ -599,55 +596,9 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
                                     ),
                                   ),
                                   
-                                  // Contact Info
-                                  SizedBox(
-                                    width: 200,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          req['phone'],
-                                          style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500, fontSize: 13),
-                                        ),
-                                        Text(
-                                          req['email'],
-                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Total Earning
-                                  SizedBox(
-                                    width: 130,
-                                    child: Text(
-                                      req['totalEarning'],
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
-                                    ),
-                                  ),
-
-                                  // Total Settlement
-                                  SizedBox(
-                                    width: 130,
-                                    child: Text(
-                                      req['totalSettlement'],
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF10B981)),
-                                    ),
-                                  ),
-
-                                  // Pending Settlement
-                                  SizedBox(
-                                    width: 130,
-                                    child: Text(
-                                      req['pendingSettlement'],
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFFF97316)),
-                                    ),
-                                  ),
-
                                   // Admin Note
                                   SizedBox(
-                                    width: 220,
+                                    width: 280,
                                     child: req['adminNote'] == 'Not Provided Yet'
                                         ? Align(
                                             alignment: Alignment.centerLeft,
@@ -667,28 +618,19 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                   ),
-                                  
-                                  // Total Bookings
+
+                                  // Amount
                                   SizedBox(
-                                    width: 120,
+                                    width: 130,
                                     child: Text(
-                                      '${req['totalBookings']}',
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF334155)),
+                                      req['pendingSettlement'],
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF97316)),
                                     ),
                                   ),
 
-                                  // Total Services
+                                  // Request Date/Time
                                   SizedBox(
-                                    width: 120,
-                                    child: Text(
-                                      '${req['totalServices']}',
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF334155)),
-                                    ),
-                                  ),
-
-                                  // Request Time
-                                  SizedBox(
-                                    width: 180,
+                                    width: 150,
                                     child: Text(
                                       req['requestTime'],
                                       style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
