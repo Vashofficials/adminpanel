@@ -151,7 +151,7 @@ class _FiltersSection extends StatelessWidget {
               Icon(Icons.filter_alt_outlined,
                   size: 20, color: Color(0xFFF97316)),
               SizedBox(width: 8),
-              Text('Transaction Report Filters',
+              Text('Provider Earn Filters',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -330,7 +330,7 @@ class _DataTableSection extends StatelessWidget {
                             size: 20, color: Color(0xFF94A3B8)),
                         const SizedBox(width: 8),
                         const Expanded(
-                          child: Text('Search by Trx ID, Name...',
+                          child: Text('Search by Provider Name...',
                               style: TextStyle(color: Color(0xFF94A3B8))),
                         ),
                         Container(
@@ -375,13 +375,8 @@ class _DataTableSection extends StatelessWidget {
             child: Row(
               children: const [
                 SizedBox(width: 40, child: _Th('SL')),
-                Expanded(flex: 2, child: _Th('TRANSACTION ID')),
-                Expanded(flex: 2, child: _Th('TRANSACTION DATE')),
-                Expanded(flex: 3, child: _Th('TRANSACTION FROM')),
-                Expanded(flex: 3, child: _Th('TRANSACTION TO')),
-                Expanded(flex: 2, child: _Th('TRANSACTION TYPE')),
-                Expanded(flex: 2, child: _Th('PAYMENT AMOUNT', alignRight: true)),
-                Expanded(flex: 2, child: _Th('BALANCE', alignRight: true)),
+                Expanded(flex: 1, child: _Th('PROVIDER INFO')),
+                Expanded(flex: 1, child: _Th('TOTAL EARN', alignRight: true)),
               ],
             ),
           ),
@@ -389,66 +384,30 @@ class _DataTableSection extends StatelessWidget {
           // Table Rows
           const _Tr(
             sl: '01',
-            id: '704d55ec-fcec',
-            date: '25-08-2025',
-            time: '11:30 AM',
-            from: 'Ellison Trading',
-            fromSub: 'Account payable',
-            to: 'Ellison Cardenas',
-            type: 'Extra Fee',
-            typeColor: Color(0xFFDBEAFE),
-            typeTextColor: Color(0xFF1E40AF),
-            amount: '- ₹10.00',
-            amountColor: Color(0xFFDC2626),
-            balance: '₹17,909.89',
+            providerInfo: 'Ellison Trading',
+            providerSub: 'Account payable',
+            totalEarn: '₹17,909.89',
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const _Tr(
             sl: '02',
-            id: '703de3b3-9170',
-            date: '25-08-2025',
-            time: '11:30 AM',
-            from: 'Ellison Cardenas',
-            fromSub: 'Account receivable',
-            to: 'John Roy',
-            type: 'Received Fee',
-            typeColor: Color(0xFFDCFCE7),
-            typeTextColor: Color(0xFF166534),
-            amount: '+ ₹10.00',
-            amountColor: Color(0xFF16A34A),
-            balance: '₹21,839.69',
+            providerInfo: 'Ellison Cardenas',
+            providerSub: 'Account receivable',
+            totalEarn: '₹21,839.69',
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const _Tr(
             sl: '03',
-            id: '11dade7c-4100',
-            date: '25-08-2025',
-            time: '11:30 AM',
-            from: 'John Roy',
-            fromSub: 'Account receivable',
-            to: 'Ellison Cardenas',
-            type: 'Commission',
-            typeColor: Color(0xFFF3E8FF),
-            typeTextColor: Color(0xFF6B21A8),
-            amount: '+ ₹792.00',
-            amountColor: Color(0xFF16A34A),
-            balance: '₹21,829.69',
+            providerInfo: 'John Roy',
+            providerSub: 'Account receivable',
+            totalEarn: '₹21,829.69',
           ),
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           const _Tr(
             sl: '04',
-            id: '7fee601b-5b92',
-            date: '24-08-2025',
-            time: '09:15 AM',
-            from: 'Ellison Cardenas',
-            fromSub: '',
-            to: 'Ellison Cardenas',
-            type: 'Transfer',
-            typeColor: Color(0xFFF1F5F9),
-            typeTextColor: Color(0xFF475569),
-            amount: '₹0.00',
-            amountColor: Color(0xFF64748B),
-            balance: '₹72,010.15',
+            providerInfo: 'Ellison Cardenas',
+            providerSub: '',
+            totalEarn: '₹72,010.15',
           ),
 
           // Pagination
@@ -528,33 +487,15 @@ class _Th extends StatelessWidget {
 
 class _Tr extends StatelessWidget {
   final String sl;
-  final String id;
-  final String date;
-  final String time;
-  final String from;
-  final String fromSub;
-  final String to;
-  final String type;
-  final Color typeColor;
-  final Color typeTextColor;
-  final String amount;
-  final Color amountColor;
-  final String balance;
+  final String providerInfo;
+  final String providerSub;
+  final String totalEarn;
 
   const _Tr({
     required this.sl,
-    required this.id,
-    required this.date,
-    required this.time,
-    required this.from,
-    required this.fromSub,
-    required this.to,
-    required this.type,
-    required this.typeColor,
-    required this.typeTextColor,
-    required this.amount,
-    required this.amountColor,
-    required this.balance,
+    required this.providerInfo,
+    required this.providerSub,
+    required this.totalEarn,
   });
 
   @override
@@ -568,103 +509,25 @@ class _Tr extends StatelessWidget {
               child: Text(sl,
                   style: const TextStyle(fontWeight: FontWeight.w600))),
           Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(id,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontFamily: 'Courier',
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF475569))),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
+            flex: 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 12, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 4),
-                  Text(date,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w500)),
-                ]),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Text(time,
-                      style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF94A3B8))),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(from,
+                Text(providerInfo,
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1E293B))),
-                if (fromSub.isNotEmpty)
-                  Text(fromSub,
+                if (providerSub.isNotEmpty)
+                  Text(providerSub,
                       style: const TextStyle(
                           fontSize: 11, color: Color(0xFF64748B))),
               ],
             ),
           ),
           Expanded(
-            flex: 3,
-            child: Text(to,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B))),
-          ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: typeColor,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(type,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: typeTextColor)),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(amount,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: amountColor)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(balance,
+            flex: 1,
+            child: Text(totalEarn,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                     fontSize: 13,
