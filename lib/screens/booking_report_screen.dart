@@ -25,11 +25,15 @@ class BookingReportScreen extends StatefulWidget {
 class _BookingReportScreenState extends State<BookingReportScreen> {
   // --- FILTER STATE ---
   String? _selectedProvider;
-  String? _selectedStatus; // Replaced _selectedDateRange
   String? _activeCardStatus; // For tapable cards
   bool _isLoading = false;
 
-  final List<String> _statuses = ['Ongoing', 'Completed', 'Cancelled', 'Pending'];
+  final Map<String, GlobalKey> _chartKeys = {
+    'Completed': GlobalKey(),
+    'Ongoing': GlobalKey(),
+    'Pending': GlobalKey(),
+    'Cancelled': GlobalKey(),
+  };
 
   // Mock Data for Dropdowns
   final List<String> _providers = ['All Providers', 'Lucknow Home Svcs', 'Gomti Cleaners'];
@@ -73,8 +77,14 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
                 onStatusTap: (status) {
                   setState(() {
                     _activeCardStatus = (_activeCardStatus == status) ? null : status;
-                    _selectedStatus = _activeCardStatus;
                   });
+                  if (_activeCardStatus != null && _chartKeys[_activeCardStatus] != null && _chartKeys[_activeCardStatus]!.currentContext != null) {
+                    Scrollable.ensureVisible(
+                      _chartKeys[_activeCardStatus]!.currentContext!,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                    );
+                  }
                   _applyFilters();
                 },
               ),
@@ -89,18 +99,22 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
                     runSpacing: 24,
                     children: [
                       SizedBox(
+                        key: _chartKeys['Completed'],
                         width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
                         child: const _StatusChartCard(title: 'Completed Bookings'),
                       ),
                       SizedBox(
+                        key: _chartKeys['Ongoing'],
                         width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
                         child: const _StatusChartCard(title: 'Ongoing Bookings'),
                       ),
                       SizedBox(
+                        key: _chartKeys['Pending'],
                         width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
                         child: const _StatusChartCard(title: 'Pending Bookings'),
                       ),
                       SizedBox(
+                        key: _chartKeys['Cancelled'],
                         width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
                         child: const _StatusChartCard(title: 'Cancelled Bookings'),
                       ),
@@ -148,7 +162,6 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
                 crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
                   _buildDropdown('Provider', _providers, _selectedProvider, (v) => setState(() => _selectedProvider = v)),
-                  _buildDropdown('Booking Status', _statuses, _selectedStatus, (v) => setState(() => _selectedStatus = v)),
 
                   // Submit Button
                   SizedBox(
@@ -411,10 +424,19 @@ class _StatusChartCard extends StatefulWidget {
 }
 
 class _StatusChartCardState extends State<_StatusChartCard> {
-  String _selectedYear = '2025';
+  late String _selectedYear;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedYear = DateTime.now().year.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentYear = DateTime.now().year;
+    final years = List.generate(currentYear - 2022, (i) => (2023 + i).toString());
+
     final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     // Fake data for Cash and Online
     final random = Random(widget.title.hashCode + _selectedYear.hashCode);
@@ -459,7 +481,7 @@ class _StatusChartCardState extends State<_StatusChartCard> {
                         value: _selectedYear,
                         icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: _muted),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textDark),
-                        items: ['2023', '2024', '2025'].map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                        items: years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
                         onChanged: (val) {
                           if (val != null) setState(() => _selectedYear = val);
                         },
@@ -504,26 +526,28 @@ class _StatusChartCardState extends State<_StatusChartCard> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Tooltip(
-                                    message: '${(onlineValues[i] * 1000).toInt()} Online',
-                                    child: Container(
-                                      width: w * 0.35,
-                                      height: hOnline,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF10B981),
-                                        borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Tooltip(
-                                    message: '${(cashValues[i] * 1000).toInt()} Cash',
-                                    child: Container(
-                                      width: w * 0.35,
-                                      height: hCash,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF3B82F6),
-                                        borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
-                                      ),
+                                    message: 'Total: ${((onlineValues[i] + cashValues[i]) * 1000).toInt()}\nOnline: ${(onlineValues[i] * 1000).toInt()}\nCash: ${(cashValues[i] * 1000).toInt()}',
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          width: w * 0.35,
+                                          height: hOnline,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF10B981),
+                                            borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Container(
+                                          width: w * 0.35,
+                                          height: hCash,
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF3B82F6),
+                                            borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
