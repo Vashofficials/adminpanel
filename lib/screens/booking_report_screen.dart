@@ -29,7 +29,7 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
   String? _activeCardStatus; // For tapable cards
   bool _isLoading = false;
 
-  final List<String> _statuses = ['Ongoing', 'Completed', 'Cancelled', 'Pending', 'Accepted'];
+  final List<String> _statuses = ['Ongoing', 'Completed', 'Cancelled', 'Pending'];
 
   // Mock Data for Dropdowns
   final List<String> _providers = ['All Providers', 'Lucknow Home Svcs', 'Gomti Cleaners'];
@@ -66,49 +66,46 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
               _buildSearchFilters(),
               const SizedBox(height: 24),
               
-              // Stats & Chart (Responsive)
+              // Stats
+              _SummaryStatsCard(
+                isFullWidth: true,
+                activeStatus: _activeCardStatus,
+                onStatusTap: (status) {
+                  setState(() {
+                    _activeCardStatus = (_activeCardStatus == status) ? null : status;
+                    _selectedStatus = _activeCardStatus;
+                  });
+                  _applyFilters();
+                },
+              ),
+              const SizedBox(height: 24),
+              
+              // 4 Separate Charts
               LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth > 1100) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 3, 
-                          child: _SummaryStatsCard(
-                            activeStatus: _activeCardStatus,
-                            onStatusTap: (status) {
-                              setState(() {
-                                _activeCardStatus = (_activeCardStatus == status) ? null : status;
-                                _selectedStatus = _activeCardStatus;
-                              });
-                              _applyFilters();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        const Expanded(flex: 7, child: _BookingChartCard()),
-                      ],
-                    );
-                  } else {
-                    return Column(
-                      children: [
-                        _SummaryStatsCard(
-                          isFullWidth: true,
-                          activeStatus: _activeCardStatus,
-                          onStatusTap: (status) {
-                             setState(() {
-                                _activeCardStatus = (_activeCardStatus == status) ? null : status;
-                                _selectedStatus = _activeCardStatus;
-                              });
-                              _applyFilters();
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        const _BookingChartCard(),
-                      ],
-                    );
-                  }
+                  final isLarge = constraints.maxWidth > 1100;
+                  return Wrap(
+                    spacing: 24,
+                    runSpacing: 24,
+                    children: [
+                      SizedBox(
+                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                        child: const _StatusChartCard(title: 'Completed Bookings'),
+                      ),
+                      SizedBox(
+                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                        child: const _StatusChartCard(title: 'Ongoing Bookings'),
+                      ),
+                      SizedBox(
+                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                        child: const _StatusChartCard(title: 'Pending Bookings'),
+                      ),
+                      SizedBox(
+                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                        child: const _StatusChartCard(title: 'Cancelled Bookings'),
+                      ),
+                    ],
+                  );
                 },
               ),
               
@@ -313,15 +310,6 @@ class _SummaryStatsCard extends StatelessWidget {
                 cash: '800', online: '354',
               ),
               _StatItem(
-                color: const Color(0xFF3B82F6), 
-                label: 'Accepted', 
-                value: '128', 
-                icon: Icons.thumb_up_outlined,
-                isActive: activeStatus == 'Accepted',
-                onTap: () => onStatusTap?.call('Accepted'),
-                cash: '50', online: '78',
-             ),
-              _StatItem(
                 color: const Color(0xFFF59E0B), 
                 label: 'Ongoing', 
                 value: '85', 
@@ -414,13 +402,24 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-class _BookingChartCard extends StatelessWidget {
-  const _BookingChartCard();
+class _StatusChartCard extends StatefulWidget {
+  final String title;
+  const _StatusChartCard({required this.title});
+
+  @override
+  State<_StatusChartCard> createState() => _StatusChartCardState();
+}
+
+class _StatusChartCardState extends State<_StatusChartCard> {
+  String _selectedYear = '2025';
 
   @override
   Widget build(BuildContext context) {
     final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    final values = [0.1, 0.2, 0.25, 0.5, 0.3, 0.4, 0.45, 0.6, 0.8, 0.7, 0.9, 1.0]; 
+    // Fake data for Cash and Online
+    final random = Random(widget.title.hashCode + _selectedYear.hashCode);
+    final cashValues = List.generate(12, (_) => random.nextDouble() * 0.5 + 0.1);
+    final onlineValues = List.generate(12, (_) => random.nextDouble() * 0.5 + 0.1);
 
     return Container(
       height: 340, 
@@ -429,7 +428,7 @@ class _BookingChartCard extends StatelessWidget {
         color: _panelBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _border),
-        boxShadow: [_shadow],
+        boxShadow: const [_shadow],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,17 +436,38 @@ class _BookingChartCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Monthly Booking Statistics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
-                child: Row(
-                  children: const [
-                    Text('2025', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
-                    Icon(Icons.keyboard_arrow_down, size: 16, color: _muted)
-                  ],
-                ),
-              )
+              Text(widget.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+              Row(
+                children: [
+                  // Legend
+                  Container(width: 10, height: 10, color: const Color(0xFF10B981)),
+                  const SizedBox(width: 4),
+                  const Text('Online', style: TextStyle(fontSize: 10, color: _muted)),
+                  const SizedBox(width: 12),
+                  Container(width: 10, height: 10, color: const Color(0xFF3B82F6)),
+                  const SizedBox(width: 4),
+                  const Text('Cash', style: TextStyle(fontSize: 10, color: _muted)),
+                  const SizedBox(width: 16),
+                  
+                  // Year Filter
+                  Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedYear,
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: _muted),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textDark),
+                        items: ['2023', '2024', '2025'].map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedYear = val);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -464,44 +484,53 @@ class _BookingChartCard extends StatelessWidget {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      // FIX: Explicitly reserving height for labels to prevent bottom overflow
                       const double labelHeight = 24.0;
                       final double maxBarHeight = constraints.maxHeight - labelHeight;
-                      
                       final w = constraints.maxWidth / months.length;
                       
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: List.generate(months.length, (i) {
-                          // Prevent overflow by clamping calculation
-                          double h = maxBarHeight * values[i];
-                          if (h < 0) h = 0;
+                          double hCash = maxBarHeight * cashValues[i];
+                          double hOnline = maxBarHeight * onlineValues[i];
+                          if (hCash < 0) hCash = 0;
+                          if (hOnline < 0) hOnline = 0;
 
                           return Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Tooltip(
-                                message: '${(values[i] * 1000).toInt()} bookings',
-                                child: Container(
-                                  width: w * 0.5,
-                                  height: h,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                      colors: [
-                                        _orange.withOpacity(0.8),
-                                        _orange,
-                                      ],
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Tooltip(
+                                    message: '${(onlineValues[i] * 1000).toInt()} Online',
+                                    child: Container(
+                                      width: w * 0.35,
+                                      height: hOnline,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF10B981),
+                                        borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+                                      ),
                                     ),
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                                   ),
-                                ),
+                                  const SizedBox(width: 2),
+                                  Tooltip(
+                                    message: '${(cashValues[i] * 1000).toInt()} Cash',
+                                    child: Container(
+                                      width: w * 0.35,
+                                      height: hCash,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF3B82F6),
+                                        borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               SizedBox(
-                                height: 16, // Fixed height for text
+                                height: 16,
                                 child: Text(months[i], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: _muted)),
                               ),
                             ],
