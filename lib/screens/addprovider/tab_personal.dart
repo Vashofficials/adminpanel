@@ -238,33 +238,75 @@ class TabPersonalDetails extends GetView<AddProviderController> {
 
   void _showOnboardDialog(BuildContext context) {
     final TextEditingController mobileInput = TextEditingController();
+    final TextEditingController emailInput = TextEditingController();
+    
     showDialog(
       context: context,
       barrierDismissible: false, 
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text("Onboard New Provider"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Enter the mobile number to register immediately."),
+              const Text("Enter details to register immediately.", style: TextStyle(fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 16),
+              
+              const Text("Mobile Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 8),
               TextField(
                 controller: mobileInput,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
-                decoration: const InputDecoration(labelText: "Mobile Number", prefixText: "+91 ", border: OutlineInputBorder(), counterText: ""),
+                decoration: const InputDecoration(
+                  hintText: "Enter Mobile Number",
+                  prefixText: "+91 ", 
+                  border: OutlineInputBorder(), 
+                  counterText: "",
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              const Text("Email ID", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: emailInput,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  hintText: "Enter Email Address",
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), 
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey))
+            ),
             ElevatedButton(
               onPressed: () {
+                if (mobileInput.text.length != 10) {
+                  Get.snackbar("Error", "Enter valid 10-digit mobile number", backgroundColor: Colors.red, colorText: Colors.white);
+                  return;
+                }
+                if (emailInput.text.isEmpty || !GetUtils.isEmail(emailInput.text)) {
+                  Get.snackbar("Error", "Enter valid email address", backgroundColor: Colors.red, colorText: Colors.white);
+                  return;
+                }
                 Navigator.of(context).pop(); 
-                controller.quickOnboardProvider(mobileInput.text);
+                controller.quickOnboardProvider(mobileInput.text, emailInput.text);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316), foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF97316), 
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
               child: const Text("Onboard Now"),
             )
           ],

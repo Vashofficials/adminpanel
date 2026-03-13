@@ -670,16 +670,14 @@ Future<dynamic> getAllCustomers({required int page, required int size}) async {
       return false;
     }
   }
-  // 1. Onboard Provider (Get SP ID)
- Future<String?> onboardServiceProvider(String mobileNo) async {
+ // 1. Onboard Provider (Get SP ID)
+ Future<dynamic> onboardServiceProvider(String mobileNo, String emailId) async {
     try {
-      final response = await _dio.post('/admin/onboardServiceProvider', data: {"mobileNo": mobileNo});
-      final data = response.data;
-      // Handle structure { "result": { "id": "..." } } or { "id": "..." }
-      if (data['result'] != null && data['result'] is Map && data['result']['id'] != null) {
-        return data['result']['id'];
-      }
-      return data['id']; // Fallback
+      final response = await _dio.post('/admin/onboardServiceProvider', data: {
+        "mobileNo": mobileNo,
+        "emailId": emailId
+      });
+      return response.data;
     } catch (e) {
       throw Exception("Onboard Error: ${e.toString()}");
     }

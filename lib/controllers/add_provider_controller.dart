@@ -185,51 +185,78 @@ if (Get.isRegistered<DocumentController>()) {
 
 
   // --- IMMEDIATE ONBOARDING LOGIC ---
-  Future<void> quickOnboardProvider(String mobileNumber) async {
+  Future<void> quickOnboardProvider(String mobileNumber, String emailId) async {
     if (mobileNumber.length != 10) {
-CustomCenterDialog.show(
-  Get.context!,
-  title: "Error",
-  message: "Please enter a valid 10-digit mobile number",
-  type: DialogType.error,
-);      return;
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "Please enter a valid 10-digit mobile number",
+        type: DialogType.error,
+      );
+      return;
+    }
+
+    if (emailId.isEmpty || !GetUtils.isEmail(emailId)) {
+      CustomCenterDialog.show(
+        Get.context!,
+        title: "Error",
+        message: "Please enter a valid email address",
+        type: DialogType.error,
+      );
+      return;
     }
 
     try {
       isLoading.value = true;
-      String? newId = await _apiService.onboardServiceProvider(mobileNumber);
+      dynamic responseData = await _apiService.onboardServiceProvider(mobileNumber, emailId);
       
-      if (newId != null) {
-        print("API Success: New Provider ID: $newId");
+      // The API returns { "result": "Service provider onboarded successfully.", "type": "..." }
+      // It does NOT return an ID directly in this call per user screenshot.
+      bool isSuccess = responseData != null && 
+                       (responseData['result'] == "Service provider onboarded successfully." || 
+                        responseData['type'] == "Onboard service provider");
+
+      if (isSuccess) {
+        String successMsg = responseData['result'] ?? "Onboarded successfully!";
+        print("API Success: $successMsg");
+
+        // 1. Refresh list to get the new provider (with its ID)
         await providerListController.fetchProviders();
         
-        var provider = providerListController.allProviders.firstWhereOrNull((p) => p.id == newId);
+        // 2. Find by Mobile Number
+        var provider = providerListController.allProviders.firstWhereOrNull((p) => p.mobileNo == mobileNumber);
         
         if (provider == null) {
+          // Retry once after a short delay if not found immediately
           await Future.delayed(const Duration(milliseconds: 1500));
           await providerListController.fetchProviders(); 
-          provider = providerListController.allProviders.firstWhereOrNull((p) => p.id == newId);
+          provider = providerListController.allProviders.firstWhereOrNull((p) => p.mobileNo == mobileNumber);
         }
 
         if (provider == null) {
-          throw Exception("New provider ID returned by API, but not found in the list. Please try again.");
+          throw Exception("Onboarding was successful, but the provider could not be found in the list yet. Please refresh and select manually.");
         }
 
-        onSelectExistingProvider(newId);
+        // 3. Select the provider and update UI fields
+        onSelectExistingProvider(provider.id);
 
         if (mobileCtrl.text.isEmpty) {
           mobileCtrl.text = mobileNumber;
         }
+        if (emailCtrl.text.isEmpty) {
+          emailCtrl.text = emailId;
+        }
         
         CustomCenterDialog.show(
-  Get.context!,
-  title: "Success",
-  message: "Provider onboarded! Please complete details.",
-  type: DialogType.success,
-);
+          Get.context!,
+          title: "Success",
+          message: successMsg,
+          type: DialogType.success,
+        );
 
       } else {
-        throw Exception("API returned null ID");
+        String errMsg = responseData?['result'] ?? "API returned unexpected response";
+        throw Exception(errMsg);
       }
 
     } catch (e) {
@@ -240,11 +267,15 @@ CustomCenterDialog.show(
           final data = e.response?.data;
           if (data['result'] != null) {
             userMessage = data['result'].toString(); 
+          } else if (data['message'] != null) {
+            userMessage = data['message'].toString();
           } else {
              userMessage = e.message ?? "Server Error";
           }
         } else if (e.response?.statusCode == 412) {
           userMessage = "This provider is already registered.";
+        } else if (e.response?.statusCode == 400) {
+          userMessage = "Invalid request details. Please check mobile and email.";
         } else {
           userMessage = e.message ?? "Connection Error";
         }
@@ -256,14 +287,11 @@ CustomCenterDialog.show(
 
       Future.delayed(const Duration(milliseconds: 300), () {
         if (Get.context != null) {
-          ScaffoldMessenger.of(Get.context!).showSnackBar(
-            SnackBar(
-              content: Text(userMessage),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating, 
-              margin: const EdgeInsets.all(10),
-              duration: const Duration(seconds: 4),
-            ),
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Error",
+            message: userMessage,
+            type: DialogType.error,
           );
         }
       });
