@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Ensure you have this package
-import 'custom_center_dialog.dart'; // Import your dialog file
-// Import your LoginScreen
-// import 'package:your_app/screens/login_screen.dart'; 
-// For now I will assume a class named LoginScreen exists, update the import above.
-import '../main.dart'; // Or wherever your LoginScreen is defined
-import '../screens/login_screen.dart'; // Import the LoginScreen
+import 'custom_center_dialog.dart';
+import '../screens/login_screen.dart'; 
+import '../repositories/auth_repository.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class DashboardTopBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
@@ -159,20 +158,21 @@ class DashboardTopBar extends StatelessWidget {
       confirmText: "Yes, Logout",
       cancelText: "No",
       onConfirm: () async {
-        // 1. Clear Session
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', false);
+        // 1. Clear Session & Cache
+        await AuthRepository().logout();
 
-        // 2. Navigate
+        // 2. Perform Hard Reload for Web
+        if (kIsWeb) {
+          html.window.location.reload();
+          return; // Reload will handle navigation
+        }
+
+        // 3. Fallback Navigation for Mobile
         if (context.mounted) {
-           // Replace 'LoginScreen()' with your actual login widget class
            Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (Route<dynamic> route) => false, 
+             MaterialPageRoute(builder: (context) => const LoginScreen()),
+             (Route<dynamic> route) => false, 
            );
-           
-           // For testing/example if LoginScreen isn't imported yet:
-           print("Logged out successfully");
         }
       },
     );

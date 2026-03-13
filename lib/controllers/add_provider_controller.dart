@@ -349,7 +349,7 @@ if (Get.isRegistered<DocumentController>()) {
         cityCtrl.text = provider.city ?? "";
         stateCtrl.text = provider.state ?? "";
         pincodeCtrl.text = provider.zipCode ?? "";
-
+        
         // --- 2. 🟢 FETCH & SET LOCATION MAP DIRECTLY ---
         try {
            // A. Fetch the map from API
@@ -685,7 +685,7 @@ CustomCenterDialog.show(
       "lastName": lastNameCtrl.text.trim(),
       "gender": selectedGender.value,
       "aadharNo": aadharCtrl.text.trim(),
-      "isAadharVerified": 0
+      "isAadharVerified": false // Reverted to false
     };
 
     // 3. Call API
@@ -755,8 +755,8 @@ CustomCenterDialog.show(
           message: "Profile picture updated successfully!",
           type: DialogType.success,
         );
-        // Optional: Refresh provider list to get the new URL if your API returns it
-        await providerListController.fetchProviders();
+        
+        profileImageFile.value = null; // Clear local pick
       } else {
         CustomCenterDialog.show(
           Get.context!,

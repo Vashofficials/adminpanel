@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/onboarding_request_controller.dart';
+import '../controllers/add_provider_controller.dart';
+import './provider_add_screen.dart';
 
 class ProviderOnboardingRequestScreen extends StatelessWidget {
   final OnboardingRequestController controller = Get.put(OnboardingRequestController());
@@ -51,10 +53,9 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(4),
                   child: Row(
                     children: [
-                      _buildTab("All", 3, true),
-                      _buildTab("Pending", 3, false),
+                      _buildTab("All", 0, true),
+                      _buildTab("Pending", 0, false),
                       _buildTab("Approved", 0, false),
-                      _buildTab("Rejected", 0, false),
                     ],
                   ),
                 )
@@ -197,13 +198,18 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                         children: [
                           _actionButton(Icons.check_circle_outline, successGreen, () => controller.approveRequest(req.id)),
                           const SizedBox(width: 8),
-                          _actionButton(Icons.cancel_outlined, dangerRed, () => controller.rejectRequest(req.id)),
-                          const SizedBox(width: 8),
                           
                           // 3. UPDATE: View Icon Tap Logic
                           _actionButton(Icons.visibility_outlined, textGrey, () {
                             if (onViewRequest != null) {
                               onViewRequest!(req);
+                            } else {
+                              // Direct navigation fallback
+                              final AddProviderController addCtrl = Get.put(AddProviderController());
+                              addCtrl.isViewOnly.value = false; // Open in edit mode for onboarding
+                              addCtrl.currentStep.value = 0;
+                              addCtrl.onSelectExistingProvider(req.id);
+                              Get.to(() => AddProviderScreen());
                             }
                           }),
                         ],

@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'provider_controller.dart';
+import '../models/provider_model.dart';
 
 class OnboardingRequestModel {
   final String id;
@@ -22,60 +24,60 @@ class OnboardingRequestModel {
     required this.documents,
   });
 }
-
 class OnboardingRequestController extends GetxController {
   var selectedTab = "All".obs;
   var requestList = <OnboardingRequestModel>[].obs;
+  final ProviderController _providerController = Get.find<ProviderController>();
+  var approvedIds = <String>{}.obs;
 
   @override
   void onInit() {
     super.onInit();
+    // Listen to changes in the global provider list
+    ever(_providerController.allProviders, (_) => fetchRequests());
     fetchRequests();
   }
 
   void fetchRequests() {
-    // Mock Data matching your screenshot
-    requestList.value = [
-      OnboardingRequestModel(
-        id: "1",
-        name: "Amit Verma",
-        phone: "+91 8887776665",
-        email: "amit.v@example.com",
-        requestType: "New Registration",
-        requestDate: DateTime(2023, 11, 20),
-        status: "Pending",
-        documents: ["Aadhar Card", "PAN Card"],
-      ),
-      OnboardingRequestModel(
-        id: "2",
-        name: "Suman Gupta",
-        phone: "+91 7778889991",
-        email: "suman.g@example.com",
-        requestType: "Bank Update",
-        requestDate: DateTime(2023, 11, 21),
-        status: "Pending",
-        documents: ["Passbook Front"],
-      ),
-      OnboardingRequestModel(
-        id: "3",
-        name: "Karan Mehra",
-        phone: "+91 9996667776",
-        email: "karan.m@example.com",
-        requestType: "New Registration",
-        requestDate: DateTime(2023, 11, 22),
-        status: "Pending",
-        documents: ["Driving License", "Training Certificate"],
-      ),
-    ];
+    final unverified = _providerController.allProviders.where((p) => !p.isAadharVerified).toList();
+    
+    var filtered = unverified.map((p) => OnboardingRequestModel(
+      id: p.id,
+      name: p.fullName,
+      phone: p.mobileNo,
+      email: p.emailId ?? "No Email",
+      requestType: "New Registration",
+      requestDate: DateTime.now(), 
+      status: approvedIds.contains(p.id) ? "Approved" : "Pending",
+      documents: p.aadharNo.isNotEmpty ? ["Aadhar Card"] : [],
+    )).toList();
+
+    // Filter based on selected tab
+    if (selectedTab.value == "Pending") {
+      filtered = filtered.where((req) => req.status == "Pending").toList();
+    } else if (selectedTab.value == "Approved") {
+      filtered = filtered.where((req) => req.status == "Approved").toList();
+    }
+
+    requestList.value = filtered;
   }
 
   void setTab(String tab) {
     selectedTab.value = tab;
-    // In a real app, you would filter requestList here
+    fetchRequests();
   }
 
   void approveRequest(String id) {
-    Get.snackbar("Success", "Request Approved", backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM, maxWidth: 400);
+    final provider = _providerController.allProviders.firstWhereOrNull((p) => p.id == id);
+    if (provider == null) return;
+
+    if (provider.isAadharVerified) {
+      Get.snackbar("Info", "Provider is already verified and moved to active list.", backgroundColor: Colors.blue, colorText: Colors.white);
+    } else {
+      approvedIds.add(id);
+      fetchRequests();
+      Get.snackbar("Success", "Provider approved locally. They will stay in 'Approved' tab until Aadhar is verified.", backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM, maxWidth: 400);
+    }
   }
 
   void rejectRequest(String id) {

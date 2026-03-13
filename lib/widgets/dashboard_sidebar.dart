@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'sidebar_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../screens/login_screen.dart'; // Make sure this path is correct
+import '../screens/login_screen.dart'; 
+import '../repositories/auth_repository.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class DashboardSidebar extends StatefulWidget {
   final bool collapsed;
@@ -773,12 +776,16 @@ NavTile(
   label: 'Logout',
   collapsed: collapsed,
   onTap: () async {
-    // 1. Clear the Session Lock
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
+    // 1. Clear Session & Cache
+    await AuthRepository().logout();
 
-    // 2. Navigate immediately to LoginScreen
-    // Using pushAndRemoveUntil ensures the user can't hit "Back" to return to the dashboard
+    // 2. Perform Hard Reload for Web
+    if (kIsWeb) {
+      html.window.location.reload();
+      return; // Reload will handle navigation
+    }
+
+    // 3. Fallback Navigation for Mobile
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),

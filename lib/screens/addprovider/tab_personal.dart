@@ -197,7 +197,6 @@ class TabPersonalDetails extends GetView<AddProviderController> {
   // --- Helper: Determine Image Provider ---
   DecorationImage? _buildProfileImageProvider(AddProviderController controller) {
     if (controller.profileImageFile.value != null) {
-      // 1. Show Newly Picked Local File
       if (kIsWeb) {
         return DecorationImage(
           image: MemoryImage(controller.profileImageFile.value!.bytes!),
@@ -210,13 +209,11 @@ class TabPersonalDetails extends GetView<AddProviderController> {
         );
       }
     } else if (controller.profileImageUrl.value != null && controller.profileImageUrl.value!.isNotEmpty) {
-      // 2. Show Existing Network URL
       return DecorationImage(
-        image: NetworkImage(controller.profileImageUrl.value!), // Ensure valid URL
+        image: NetworkImage(controller.profileImageUrl.value!),
         fit: BoxFit.cover,
       );
     }
-    // 3. No Image
     return null;
   }
 

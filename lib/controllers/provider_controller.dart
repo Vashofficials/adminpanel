@@ -47,9 +47,12 @@ class ProviderController extends GetxController {
   void _applyFilters() {
     List<ProviderModel> temp = List.from(allProviders);
 
+    // Filter: Only show verified providers in the main list
+    temp = temp.where((p) => p.isAadharVerified).toList();
+
     // Filter by tab
     if (selectedTab.value == 'Active') {
-      temp = temp.where((p) => p.isAadharVerified).toList();
+      temp = temp.where((p) => p.isAadharVerified).toList(); // Redundant but consistent
     } else if (selectedTab.value == 'Inactive') {
       temp = temp.where((p) => !p.isAadharVerified).toList();
     }
