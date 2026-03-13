@@ -28,6 +28,7 @@ class ProviderModel {
   final String? zipCode;
   final String aadharNo;
   final bool isAadharVerified;
+  final String? imageUrl; // Added imageUrl
 
   ProviderModel({
     required this.id,
@@ -45,13 +46,14 @@ class ProviderModel {
     this.zipCode,
     required this.aadharNo,
     required this.isAadharVerified,
+    this.imageUrl,
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) {
     return ProviderModel(
       id: json['id'] ?? '',
       mobileNo: json['mobileNo'] ?? '',
-      emailId: json['emailId'],
+      emailId: json['emailId'] ?? json['email'], // Safe fallback
       firstName: json['firstName'] ?? 'Unknown',
       middleName: json['middleName'],
       lastName: json['lastName'],
@@ -63,7 +65,11 @@ class ProviderModel {
       state: json['state'],
       zipCode: json['postCode'],
       aadharNo: json['aadharNo'] ?? '',
-      isAadharVerified: json['isAadharVerified'] ?? false,
+      // Handle both bool and int (1/0) or String representations
+      isAadharVerified: json['isAadharVerified'] == true || 
+                       json['isAadharVerified'] == 1 || 
+                       json['isAadharVerified']?.toString() == 'true',
+      imageUrl: json['imageUrl'] ?? json['profilePic'],
     );
   }
 

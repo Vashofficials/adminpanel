@@ -350,6 +350,23 @@ if (Get.isRegistered<DocumentController>()) {
         stateCtrl.text = provider.state ?? "";
         pincodeCtrl.text = provider.zipCode ?? "";
         
+        // --- Added: Populating Email and Gender (approved plan) ---
+        emailCtrl.text = provider.emailId ?? "";
+        selectedGender.value = provider.gender ?? "";
+        
+        // Construct profile pic URL safely
+        if (provider.imageUrl != null && provider.imageUrl!.isNotEmpty) {
+           profileImageUrl.value = provider.imageUrl;
+        } else if (provider.mobileNo.isNotEmpty) {
+           // Construction from mobile No - sanitize to digits only (e.g. remove +91, spaces)
+           final rawDigits = provider.mobileNo.replaceAll(RegExp(r'[^0-9]'), '');
+           // Use last 10 digits to match S3 pattern if country code present
+           final cleanMobile = rawDigits.length >= 10 ? rawDigits.substring(rawDigits.length - 10) : rawDigits;
+           profileImageUrl.value = "https://chayankaro.s3.amazonaws.com/provider_profile/$cleanMobile";
+        } else {
+           profileImageUrl.value = null;
+        }
+        
         // --- 2. 🟢 FETCH & SET LOCATION MAP DIRECTLY ---
         try {
            // A. Fetch the map from API
@@ -685,7 +702,8 @@ CustomCenterDialog.show(
       "lastName": lastNameCtrl.text.trim(),
       "gender": selectedGender.value,
       "aadharNo": aadharCtrl.text.trim(),
-      "isAadharVerified": false // Reverted to false
+      "emailId": emailCtrl.text.trim(), // Added emailId
+      "isAadharVerified": 1 // Set to 1 as requested
     };
 
     // 3. Call API
@@ -756,7 +774,14 @@ CustomCenterDialog.show(
           type: DialogType.success,
         );
         
+        // Refresh local URL to force UI update (cache busting)
+        final mobile = mobileCtrl.text;
+        if (mobile.isNotEmpty) {
+           profileImageUrl.value = "https://chayankaro.s3.amazonaws.com/provider_profile/$mobile?v=${DateTime.now().millisecondsSinceEpoch}";
+        }
+
         profileImageFile.value = null; // Clear local pick
+        await providerListController.fetchProviders(); // Refresh list to ensure data sync
       } else {
         CustomCenterDialog.show(
           Get.context!,

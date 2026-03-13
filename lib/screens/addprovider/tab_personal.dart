@@ -209,6 +209,7 @@ class TabPersonalDetails extends GetView<AddProviderController> {
         );
       }
     } else if (controller.profileImageUrl.value != null && controller.profileImageUrl.value!.isNotEmpty) {
+      // 2. Show Existing Network URL (S3)
       return DecorationImage(
         image: NetworkImage(controller.profileImageUrl.value!),
         fit: BoxFit.cover,
