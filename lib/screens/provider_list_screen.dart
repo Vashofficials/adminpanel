@@ -185,18 +185,27 @@ class ProviderListScreen extends StatelessWidget {
                                 )),
 
                                 // Status
-                                DataCell(Transform.scale(
-                                  scale: 0.8,
-                                  child: Switch(
-                                    value: provider.isAadharVerified,
-                                    activeColor: Colors.white,
-                                    activeTrackColor: primaryOrange,
-                                    inactiveThumbColor: Colors.white,
-                                    inactiveTrackColor: Colors.grey.shade300,
-                                    onChanged: (val) => controller.toggleStatus(index, val),
-                                  ),
-                                )),
-
+                            // Status DataCell
+DataCell(
+  Obx(() {
+    // We access the provider through the controller list to ensure reactivity
+    final provider = controller.providerList[index];
+    
+    return Transform.scale(
+      scale: 0.8,
+      child: Switch(
+        // 1. Point to the correct status field (Active = true, Inactive = false)
+        value: provider.isActive, 
+        activeColor: Colors.white,
+        activeTrackColor: primaryOrange,
+        inactiveThumbColor: Colors.white,
+        inactiveTrackColor: Colors.grey.shade300,
+        // 2. Call the handler that manages the Confirmation Dialog and flipped API logic
+        onChanged: (bool val) => controller.handleToggleStatus(context, index, val),
+      ),
+    );
+  }),
+),
                                 // Onboarding Badge
                                 DataCell(_buildStatusBadge(provider.onboardingStatus)),
 

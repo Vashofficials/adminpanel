@@ -29,6 +29,7 @@ class ProviderModel {
   final String aadharNo;
   final bool isAadharVerified;
   final String? imageUrl; // Added imageUrl
+  bool isActive; 
 
   ProviderModel({
     required this.id,
@@ -44,6 +45,7 @@ class ProviderModel {
     this.city,
     this.state,
     this.zipCode,
+    this.isActive = false, // Default value
     required this.aadharNo,
     required this.isAadharVerified,
     this.imageUrl,

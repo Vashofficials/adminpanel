@@ -1402,4 +1402,18 @@ Future<List<BookingReview>> getBookingRatings(String customerId) async {
     return [];
   }
 }
+// Inside your ApiService class
+Future<Response> deleteServiceProvider(String providerId, bool isActive) async {
+  try {
+    return await _dio.delete(
+      '/admin/deleteServiceProvider',
+      queryParameters: {
+        "providerId": providerId,
+        "isActive": isActive, // Sends true for Inactive, false for Active
+      },
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
 }

@@ -17,7 +17,19 @@ class ProviderRepository {
       print("Provider Repo Error: $e");
       return [];
     }
+    
   }
+  Future<bool> updateProviderStatus(String providerId, bool apiValue) async {
+    try {
+      // Logic remains: apiValue true = Inactive, false = Active
+      final response = await _api.deleteServiceProvider(providerId, apiValue);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("❌ Repository Error: $e");
+      return false;
+    }
+  }
+  
 
   // 2. ADD PROVIDER (Endpoint Placeholder)
   // You can update the Map structure based on your Add API requirements
