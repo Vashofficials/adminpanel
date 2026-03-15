@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import '../../controllers/add_provider_controller.dart';
 import 'common_widgets.dart';
 import '../../widgets/searchable_selection_sheet.dart';
+import 'package:flutter/services.dart'; // Required for FilteringTextInputFormatter
+import '../../widgets/custom_center_dialog.dart';
 
 class TabPersonalDetails extends GetView<AddProviderController> {
   const TabPersonalDetails({super.key});
@@ -238,64 +240,104 @@ class TabPersonalDetails extends GetView<AddProviderController> {
     final TextEditingController mobileInput = TextEditingController();
     final TextEditingController emailInput = TextEditingController();
     
-    showDialog(
-      context: context,
-      barrierDismissible: false, 
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text("Onboard New Provider"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Enter details to register immediately.", style: TextStyle(fontSize: 13, color: Colors.grey)),
-              const SizedBox(height: 16),
-              
-              const Text("Mobile Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: mobileInput,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: const InputDecoration(
-                  hintText: "Enter Mobile Number",
-                  prefixText: "+91 ", 
-                  border: OutlineInputBorder(), 
-                  counterText: "",
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
+    // Validation Logic
+  bool isValidMobile(String phone) => RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
+  bool isValidEmail(String email) => GetUtils.isEmail(email);
+
+  showDialog(
+    context: context,
+    barrierDismissible: false, 
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text("Onboard New Provider"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Enter details to register immediately.", style: TextStyle(fontSize: 13, color: Colors.grey)),
+            const SizedBox(height: 16),
+            
+            const Text("Mobile Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: mobileInput,
+              keyboardType: TextInputType.phone,
+              maxLength: 10,
+              // Block non-digits and limit entry to numbers only
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
+              decoration: const InputDecoration(
+                hintText: "Enter Mobile Number",
+                prefixText: "+91 ", 
+                border: OutlineInputBorder(), 
+                counterText: "",
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
-              const SizedBox(height: 16),
-              
-              const Text("Email ID", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: emailInput,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  hintText: "Enter Email Address",
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(), 
-              child: const Text("Cancel", style: TextStyle(color: Colors.grey))
             ),
-            ElevatedButton(
-              onPressed: () {
-                if (mobileInput.text.length != 10) {
-                  Get.snackbar("Error", "Enter valid 10-digit mobile number", backgroundColor: Colors.red, colorText: Colors.white);
-                  return;
-                }
-                if (emailInput.text.isEmpty || !GetUtils.isEmail(emailInput.text)) {
-                  Get.snackbar("Error", "Enter valid email address", backgroundColor: Colors.red, colorText: Colors.white);
-                  return;
-                }
+            const SizedBox(height: 16),
+            
+            const Text("Email ID", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: emailInput,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: "Enter Email Address",
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey))
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final mobile = mobileInput.text.trim();
+              final email = emailInput.text.trim();
+
+              // 1. Mobile Validation
+          if (mobile.isEmpty) {
+      CustomCenterDialog.show(
+        context,
+        title: "Field Required",
+        message: "Mobile number is required to proceed with onboarding.",
+        type: DialogType.required,
+      );
+      return;
+    }
+    if (!isValidMobile(mobile)) {
+      CustomCenterDialog.show(
+        context,
+        title: "Invalid Number",
+        message: "Please enter a valid 10-digit Indian mobile number.",
+        type: DialogType.error,
+      );
+      return;
+    }
+
+    // 2. Email Validation
+    if (email.isEmpty) {
+      CustomCenterDialog.show(
+        context,
+        title: "Field Required",
+        message: "Email address is required for registration.",
+        type: DialogType.required,
+      );
+      return;
+    }
+    if (!isValidEmail(email)) {
+      CustomCenterDialog.show(
+        context,
+        title: "Invalid Email",
+        message: "The email format provided is incorrect. Please check and try again.",
+        type: DialogType.error,
+      );
+      return;
+    }
                 Navigator.of(context).pop(); 
                 controller.quickOnboardProvider(mobileInput.text, emailInput.text);
               },
