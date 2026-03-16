@@ -334,7 +334,7 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                                                 ],
                                               )
                                             : Text("Unassigned", style: GoogleFonts.inter(fontSize: 13, color: Colors.redAccent, fontWeight: FontWeight.w500))),
-                                          DataCell(Text("₹${data.totalAmount}", style: _cellStyle(bold: true))),
+                                          DataCell(Text("₹${data.grandTotalPrice.toStringAsFixed(2)}", style: _cellStyle(bold: true))),
                                           DataCell(_StatusBadge(status: data.paymentStatus)),
                                           DataCell(_ActionButton(
                                             icon: Icons.visibility_outlined, 

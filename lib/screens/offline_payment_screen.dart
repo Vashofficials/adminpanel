@@ -428,10 +428,19 @@ DataCell(
                                                 )),
 
                                                 // Amount
-                                                DataCell(Text(
-                                                    "₹${data.totalAmount}",
-                                                    style: _cellStyle(
-                                                        bold: true))),
+                                                DataCell(
+  Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "₹${data.grandTotalPrice.toStringAsFixed(2)}", // Use grandTotalPrice instead of totalAmount
+        style: _cellStyle(bold: true, size: 14, color: const Color(0xFF2563EB)),
+      ),
+     
+    ],
+  ),
+),
 
                                                 // Payment Status Badge
                                                 DataCell(Container(
@@ -673,12 +682,11 @@ DataCell(
   }
 
   // STYLES & WIDGETS
-  static TextStyle _cellStyle({bool bold = false, double size = 13}) {
+  static TextStyle _cellStyle({bool bold = false, double size = 13,Color? color}) {
     return GoogleFonts.inter(
       fontSize: size,
       fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-      color: const Color(0xFF334155),
-    );
+color: color ?? const Color(0xFF334155),    );
   }
 
   static TextStyle _subStyle() {

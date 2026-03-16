@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 // --- IMPORTANT: This import provides the 'Customer' class ---
 import '../repositories/customer_repository.dart';
 import '../models/customer_models.dart'; 
+import '../widgets/custom_center_dialog.dart';
 // -----------------------------------------------------------
 
 class CustomerListScreen extends StatefulWidget {
@@ -18,6 +19,21 @@ class CustomerListScreen extends StatefulWidget {
 
   @override
   State<CustomerListScreen> createState() => _CustomerListScreenState();
+}
+// Add this inside _CustomerListScreenState
+Customer _updateCustomerActiveState(Customer old, bool active) {
+  return Customer(
+    id: old.id,
+    name: old.name,
+    email: old.email,
+    phone: old.phone,
+    bookings: old.bookings,
+    joinedDate: old.joinedDate,
+    location: old.location,
+    isActive: active, // This sets the new toggle state
+    avatarColor: old.avatarColor,
+    imgLink: old.imgLink,
+  );
 }
 
 class _CustomerListScreenState extends State<CustomerListScreen> {
@@ -77,6 +93,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             name: '${apiModel.firstName} ${apiModel.lastName ?? ""}'.trim(),
             email: apiModel.emailId ?? 'N/A',
             phone: apiModel.mobileNo,
+            referralCode: apiModel.referralCode, // <-- ADD THIS LINE
             bookings: 0, // Placeholder
             joinedDate: 'N/A', // Placeholder
             location: 'Lucknow', // Placeholder
@@ -323,7 +340,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         SizedBox(width: 40, child: Text('SL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
                         Expanded(flex: 2, child: Text('CUSTOMER NAME', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
                         Expanded(flex: 2, child: Text('CONTACT INFO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
-                        Expanded(flex: 1, child: Text('BOOKINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
+                        Expanded(flex: 1, child: Text('REFER CODE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
                         Expanded(flex: 2, child: Text('JOINED', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
                         Expanded(flex: 1, child: Text('STATUS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
                         Expanded(flex: 1, child: Text('ACTION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: kTextLight))),
@@ -400,17 +417,29 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                 ),
                               ),
                               Expanded(
-                                flex: 1,
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(color: kBgColor, borderRadius: BorderRadius.circular(4)),
-                                      child: Text('${customer.bookings}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                    ),
-                                  ],
-                                ),
-                              ),
+  flex: 1,
+  child: Row(
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: kBgColor, 
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          (customer.referralCode != null && customer.referralCode!.isNotEmpty) 
+              ? customer.referralCode! 
+              : 'N/A', // Fallback if no code exists
+          style: const TextStyle(
+            fontWeight: FontWeight.bold, 
+            fontSize: 12,
+            color: kTextDark,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
                               Expanded(
                                 flex: 2,
                                 child: Column(
@@ -427,9 +456,51 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                   value: customer.isActive,
                                   activeColor: Colors.white,
                                   activeTrackColor: kPrimaryOrange,
-                                  onChanged: (v) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Status update API not integrated yet")));
-                                  },
+                                 onChanged: (bool newValue) {
+  CustomCenterDialog.show(
+    context,
+    title: "Confirm Status Change",
+    message: "Are you sure you want to ${newValue ? 'Activate' : 'Deactivate'} ${customer.name}?",
+    type: DialogType.warning,
+    confirmText: "Yes",
+    onConfirm: () async {
+      // THE FLIP:
+      // If newValue is true (Active/1), send 'false' to API.
+      // If newValue is false (Inactive/0), send 'true' to API.
+      final bool apiValue = !newValue; 
+
+      try {
+        final success = await _repository.updateCustomerStatus(
+          customerId: customer.id, 
+          isActive: apiValue, // Sending the flipped value
+        );
+
+        if (success) {
+          setState(() {
+            int index = _customers.indexWhere((c) => c.id == customer.id);
+            if (index != -1) {
+              _customers[index] = _updateCustomerActiveState(customer, newValue);
+            }
+          });
+
+          CustomCenterDialog.show(
+            context,
+            title: "Success",
+            message: "Status updated successfully!",
+            type: DialogType.success,
+          );
+        }
+      } catch (e) {
+        CustomCenterDialog.show(
+          context,
+          title: "Error",
+          message: "Could not update status",
+          type: DialogType.error,
+        );
+      }
+    },
+  );
+}
                                 ),
                               ),
                               Expanded(

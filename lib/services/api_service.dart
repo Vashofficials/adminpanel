@@ -1416,4 +1416,31 @@ Future<Response> deleteServiceProvider(String providerId, bool isActive) async {
     rethrow;
   }
 }
+// Inside your ApiService class
+Future<Response> getHolidays(String providerId) async {
+  try {
+    return await _dio.get(
+      '/admin/getHolidays',
+      queryParameters: {"providerId": providerId},
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
+Future<Response> updateCustomerStatus({
+  required String customerId, 
+  required bool isActive,
+}) async {
+  try {
+    return await _dio.delete(
+      '/admin/deleteCustomer',
+      queryParameters: {
+        "customerId": customerId,
+        "isActive": isActive, // Sends true/false as expected by the API
+      },
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
 }

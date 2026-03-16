@@ -12,4 +12,21 @@ class CustomerRepository {
       throw Exception('Failed to load customers: $e');
     }
   }
+  Future<bool> updateCustomerStatus({
+    required String customerId, 
+    required bool isActive,
+  }) async {
+    try {
+      final response = await _apiService.updateCustomerStatus(
+        customerId: customerId,
+        isActive: isActive,
+      );
+      
+      // Return true if the status code indicates success (200 or 204)
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print("Repository Error: $e");
+      return false; 
+    }
+  }
 }

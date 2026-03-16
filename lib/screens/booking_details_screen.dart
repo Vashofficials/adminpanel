@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; 
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../models/booking_models.dart';
+import 'package:flutter/services.dart'; // For loading SVG from assets
 
 class BookingDetailsScreen extends StatefulWidget {
   final BookingModel booking; // <--- Changed: Accept Full Object
@@ -18,7 +22,189 @@ class BookingDetailsScreen extends StatefulWidget {
 
 class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String _currentTab = "Details"; 
+// --- NEW: INVOICE GENERATION LOGIC ---
+  // --- NEW: DYNAMIC INVOICE GENERATION LOGIC ---
+  Future<void> _printInvoice(BookingModel booking) async {
+    final pdf = pw.Document();
 
+    // Load SVG Logo from Assets
+    String svgRaw = "";
+    try {
+      svgRaw = await rootBundle.loadString('assets/logo.svg');
+    } catch (e) {
+      debugPrint("SVG Logo not found: $e");
+    }
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(30),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // 1. BRANDED HEADER
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        if (svgRaw.isNotEmpty)
+                          pw.SizedBox(
+                            width: 100,
+                            height: 50,
+                            child: pw.SvgImage(svg: svgRaw),
+                          ),
+                        pw.SizedBox(height: 5),
+                        pw.Text("Chayan Karo", 
+                          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.orange)),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text("INVOICE", style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                        pw.Text("Booking Ref: ${booking.bookingRef}"),
+                        pw.Text("Date: ${DateFormat('dd-MMM-yyyy').format(DateTime.now())}"),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 15),
+                pw.Divider(thickness: 2, color: PdfColors.orange),
+                pw.SizedBox(height: 20),
+
+                // 2. CUSTOMER & BILLING DETAILS
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text("BILL TO:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
+                          pw.SizedBox(height: 5),
+                          pw.Text(booking.customerName, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
+                          pw.Text(booking.customerPhone),
+                          pw.SizedBox(height: 2),
+                          pw.Text(booking.address?.fullFormattedAddress ?? ""),
+                        ],
+                      ),
+                    ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text("PAYMENT INFO:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.grey700)),
+                          pw.SizedBox(height: 5),
+                          pw.Text("Status: ${booking.paymentStatus}"),
+                          pw.Text("Method: ${booking.paymentMode}"),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 30),
+
+                // 3. SERVICE TABLE
+                pw.TableHelper.fromTextArray(
+                  border: null,
+                  headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold),
+                  headerDecoration: const pw.BoxDecoration(color: PdfColors.orange),
+                  cellHeight: 30,
+                  cellAlignments: {
+                    0: pw.Alignment.centerLeft,
+                    1: pw.Alignment.center,
+                    2: pw.Alignment.centerRight,
+                  },
+                  headers: ['Service Description', 'Qty', 'Price (INR)'],
+                  data: booking.services.map((s) => [
+                    s.serviceName,
+                    '1',
+                    s.price.toStringAsFixed(2),
+                  ]).toList(),
+                ),
+                pw.Divider(thickness: 0.5),
+
+                // 4. BILLING SUMMARY
+                pw.Container(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.SizedBox(height: 10),
+                      _pdfPriceRow("Service Subtotal:", "INR ${booking.totalServicePrice.toStringAsFixed(2)}"),
+                      if (booking.couponDiscountValue > 0)
+                        _pdfPriceRow(
+                          "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}:", 
+                          "- INR ${booking.couponDiscountValue.toStringAsFixed(2)}",
+                          color: PdfColors.green,
+                        ),
+                      _pdfPriceRow("GST (${booking.gstPercentage}%):", "+ INR ${booking.gstAmount.toStringAsFixed(2)}"),
+                      pw.SizedBox(height: 10),
+                      pw.Container(
+                        width: 210,
+                        padding: const pw.EdgeInsets.all(10),
+                        decoration: const pw.BoxDecoration(color: PdfColors.orange100),
+                        child: pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text("Grand Total:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                            pw.Text("INR ${booking.grandTotalPrice.toStringAsFixed(2)}", 
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14, color: PdfColors.blue800)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                pw.Spacer(),
+                // 5. FOOTER
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text("Thank you for choosing Chayan Karo!", 
+                        style: pw.TextStyle(fontStyle: pw.FontStyle.italic, color: PdfColors.grey700)),
+                      pw.SizedBox(height: 5),
+                      pw.Text("This is a computer-generated document. No signature required.",
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Invoice_${booking.bookingRef}',
+    );
+  }
+
+  // PDF Row Helper
+  pw.Widget _pdfPriceRow(String label, String value, {PdfColor? color}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(width: 20),
+          pw.SizedBox(
+            width: 90,
+            child: pw.Text(value, textAlign: pw.TextAlign.right, 
+              style: pw.TextStyle(fontSize: 10, color: color ?? PdfColors.black)),
+          ),
+        ],
+      ),
+    );
+  }
   // Helper: Status Color
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -78,8 +264,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     Text("Booking Placed : ${_formatDate(booking.creationTime)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {}, 
+               ElevatedButton.icon(
+                  onPressed: () => _printInvoice(booking), // Trigger PDF generation
                   icon: const Icon(Icons.description, size: 18),
                   label: const Text("Invoice"),
                   style: ElevatedButton.styleFrom(
@@ -251,6 +437,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   // --- COLUMNS ---
 
+// --- UPDATED LEFT COLUMN (BILLING FOCUS) ---
   Widget _buildLeftColumn(BookingModel booking) {
     return Column(
       children: [
@@ -265,7 +452,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   const SizedBox(height: 8),
                   Text(booking.paymentMode, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  Text("Amount : ₹${booking.totalAmount}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  // Updated to show Grand Total (without Platform Fee)
+                  Text("Total Payable: ₹${booking.grandTotalPrice.toStringAsFixed(2)}", 
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF2563EB))),
                 ],
               ),
               Column(
@@ -273,7 +462,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text("Payment Status : ", style: TextStyle(color: Colors.grey)),
+                      const Text("Status: ", style: TextStyle(color: Colors.grey)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -291,20 +480,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  
-                  // Booking OTP
-                  Row(
-                    children: [
-                      const Text("Booking OTP : ", style: TextStyle(color: Colors.grey)),
-                      Text(
-                        "${booking.bookingPin}", 
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
-                      ),
-                    ],
-                  ),
-                  
+                  Text("OTP: ${booking.bookingPin}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
-                  Text("Schedule : ${_formatDate(booking.bookingDate)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text("Schedule: ${_formatDate(booking.bookingDate)}", style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               )
             ],
@@ -312,42 +490,97 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         ),
         const SizedBox(height: 24),
         
-        // --- SERVICES SUMMARY ---
+        // --- UPDATED BILLING SUMMARY ---
         _buildCard(
-          title: "Booking Summary",
+          title: "Billing Summary",
           child: Column(
             children: [
               _buildSummaryHeader(),
               const Divider(),
+              
               if (booking.services.isEmpty)
                  const Padding(padding: EdgeInsets.all(8.0), child: Text("No services listed")),
               
               ...booking.services.map((s) => _buildSummaryRow(
                 s.serviceName, 
-                "Standard Service", 
-                "₹${s.price}", 
+                "Original Price", 
+                "₹${s.price.toStringAsFixed(2)}", 
                 "1", 
-                "₹${s.price}"
+                "₹${s.price.toStringAsFixed(2)}"
               )),
               
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
 
-              // Price Breakdown
-              _buildTotalRow("Service Discount", "- ₹${booking.totalDiscountAmount}", color: Colors.green),
-              _buildTotalRow("Coupon Discount", "- ₹${booking.totalCouponDiscountAmount}", color: Colors.green),
-              _buildTotalRow("Tax / GST", "+ ₹${booking.totalTaxAmount}", color: Colors.red),
+              // Breakdown Section
+              _buildTotalRow("Service Total", "₹${booking.totalServicePrice.toStringAsFixed(2)}"),
+              
+              // Coupon Discount (Original Price - Discount Price)
+              if (booking.couponDiscountValue > 0)
+                _buildTotalRow(
+                  "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}", 
+                  "- ₹${booking.couponDiscountValue.toStringAsFixed(2)}", 
+                  color: Colors.green
+                ),
+              
+              _buildTotalRow("GST (${booking.gstPercentage}%)", "+ ₹${booking.gstAmount.toStringAsFixed(2)}"),
+              
+              // Platform Fee shown but noted as (Excluded from Total)
+              _buildTotalRow(
+                "Platform Fee", 
+                "₹${booking.platformFee.toStringAsFixed(2)}", 
+                color: Colors.grey,
+                isNote: true // Added a flag for small "Excluded" text if you want
+              ),
               
               const SizedBox(height: 8),
-              const Divider(),
+              const Divider(thickness: 1.2),
               const SizedBox(height: 8),
 
-              _buildTotalRow("Grand Total", "₹${booking.totalAmount}", isBold: true, color: const Color(0xFF2563EB)),
+              // Final Grand Total (Total - Coupon + GST)
+              _buildTotalRow(
+                "Grand Total", 
+                "₹${booking.grandTotalPrice.toStringAsFixed(2)}", 
+                isBold: true, 
+                color: const Color(0xFF2563EB)
+              ),
+              
+              const SizedBox(height: 10),
+              const Text(
+                "*Platform fee is not included in the grand total.",
+                style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+              )
             ],
           ),
         ),
       ],
+    );
+  }
+
+  // Modified helper to handle the "Note" style
+  Widget _buildTotalRow(String label, String value, {bool isBold = false, Color? color, bool isNote = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(label, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 13)),
+              if (isNote) 
+                const Text("(Not included in total)", style: TextStyle(fontSize: 9, color: Colors.grey)),
+            ],
+          ),
+          const SizedBox(width: 40),
+          SizedBox(
+            width: 120, 
+            child: Text(value, textAlign: TextAlign.end, 
+              style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: color, fontSize: isBold ? 16 : 13)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -554,7 +787,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     );
   }
 
-  Widget _buildTotalRow(String label, String value, {bool isBold = false, Color? color}) {
+  /*Widget _buildTotalRow(String label, String value, {bool isBold = false, Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -569,5 +802,5 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         ],
       ),
     );
-  }
+  } */
 }

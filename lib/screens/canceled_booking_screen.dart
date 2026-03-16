@@ -463,7 +463,7 @@ DataCell(
 
                                                 // Amount
                                                 DataCell(Text(
-                                                    "₹${data.totalAmount}",
+                                                   "₹${data.grandTotalPrice.toStringAsFixed(2)}",
                                                     style: _cellStyle(
                                                         bold: true))),
 

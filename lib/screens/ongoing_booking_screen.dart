@@ -462,7 +462,7 @@ DataCell(
                                                           FontWeight.w500))),
                                           
                                           // Amount
-                                          DataCell(Text("₹${data.totalAmount}",
+                                          DataCell(Text("₹${data.grandTotalPrice.toStringAsFixed(2)}",
                                               style: _cellStyle(bold: true))),
                                           
                                           // Payment Status

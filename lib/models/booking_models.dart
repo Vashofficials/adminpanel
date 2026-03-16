@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class BookingResponse {
   final List<BookingModel> content;
   final int totalPages;
@@ -54,6 +56,13 @@ class BookingModel {
   final ServiceProvider? provider;
   final CustomerDetails? customerDetails;
   final List<BookingService> services;
+  final CouponModel? coupon;
+
+  // Billing fields extracted from amountString JSON
+  final double actualAmount;
+  final double platformFee;
+  final double gstAmount;
+  final double gstPercentage;
 
   BookingModel({
     required this.id,
@@ -72,9 +81,22 @@ class BookingModel {
     this.provider,
     this.customerDetails,
     required this.services,
+    this.coupon,
+    required this.actualAmount,
+    required this.platformFee,
+    required this.gstAmount,
+    required this.gstPercentage,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> amountData = {};
+    if (json['amountString'] != null) {
+      try {
+        amountData = jsonDecode(json['amountString']);
+      } catch (e) {
+        amountData = {};
+      }
+    }
     return BookingModel(
       id: json['id']?.toString() ?? '',
       bookingRef: json['bookingReferenceNumber']?.toString() ?? 'N/A',
@@ -102,10 +124,46 @@ class BookingModel {
       services: (json['bookingService'] as List? ?? [])
           .map((e) => BookingService.fromJson(e))
           .toList(),
+          coupon: json['coupon'] != null ? CouponModel.fromJson(json['coupon']) : null,
+      
+      actualAmount: (amountData['actualAmount'] as num?)?.toDouble() ?? 0.0,
+      platformFee: (amountData['plateFormFee'] as num?)?.toDouble() ?? 0.0,
+      gstAmount: (amountData['gstAmount'] as num?)?.toDouble() ?? 0.0,
+      gstPercentage: (amountData['gstPercentage'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
   // --- Getters for UI Compatibility ---
+  double get totalServicePrice => services.fold(0.0, (sum, item) => sum + item.price);
+
+/// Total discount (Original Price - Discount Price) across all services
+double get totalServiceDiscount => services.fold(0.0, (sum, item) => sum + (item.price - item.discountPrice));
+
+/// Logic: Total Price - Total Discount Price (represents the coupon/offer value)
+double get couponDiscountValue => totalServicePrice - services.fold(0.0, (sum, item) => sum + item.discountPrice);
+
+/// Grand Total Calculation: (Service Total - Coupon Discount) + GST
+/// Platform Fee is NOT added here as per your requirement.
+double get grandTotalPrice {
+  double afterDiscount = totalServicePrice - couponDiscountValue;
+  return afterDiscount + gstAmount;
+}
+  /// Sum of original prices before any discount
+
+
+  /// Discount from global coupon if applicable
+  double get totalCouponDiscountAmount {
+    if (coupon == null || coupon!.discountPercentage == null) return 0.0;
+    double priceAfterServiceDiscount = totalServicePrice - totalServiceDiscount;
+    return priceAfterServiceDiscount * (coupon!.discountPercentage! / 100);
+  }
+
+  /// Total discount (Service Level + Coupon Level)
+  double get totalDiscountPrice => totalServiceDiscount + totalCouponDiscountAmount;
+
+  /// Final amount: (Price - Discount) + Tax + Platform Fee
+  double get totalFinalPrice => (totalServicePrice - totalDiscountPrice) + gstAmount + platformFee;
+
   double get totalAmount {
     if (services.isEmpty) return 0.0;
     return services.fold(0.0, (sum, item) => sum + item.price);
@@ -115,10 +173,10 @@ class BookingModel {
     return 0.0; // Placeholder until integrated with real API data
   }
 
-  double get totalCouponDiscountAmount {
+  /*double get totalCouponDiscountAmount {
     return 0.0; // Placeholder until integrated with real API data
   }
-
+*/
   double get totalTaxAmount {
     return 0.0; // Placeholder until integrated with real API data
   }
@@ -227,11 +285,14 @@ class BookingService {
   final String id;
   final String serviceName;
   final double price;
+  final double discountPrice; // Price after service-specific discount
+  final double discountPercentage;
 
   BookingService({
     required this.id,
     required this.serviceName,
     required this.price,
+    required this.discountPrice, required this.discountPercentage
   });
 
   factory BookingService.fromJson(Map<String, dynamic> json) {
@@ -239,6 +300,23 @@ class BookingService {
       id: json['id']?.toString() ?? '',
       serviceName: json['serviceIName']?.toString() ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      discountPrice: (json['discountPrice'] as num?)?.toDouble() ?? 0.0,
+      discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+class CouponModel {
+  final String? couponCode;
+  final double? discountPercentage;
+  final String? couponType;
+
+  CouponModel({this.couponCode, this.discountPercentage, this.couponType});
+
+  factory CouponModel.fromJson(Map<String, dynamic> json) {
+    return CouponModel(
+      couponCode: json['couponCode']?.toString(),
+      discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
+      couponType: json['couponType']?.toString(),
     );
   }
 }

@@ -67,11 +67,13 @@ class ProviderModel {
       state: json['state'],
       zipCode: json['postCode'],
       aadharNo: json['aadharNo'] ?? '',
+      isActive: json['status'] == 1 || json['status'] == true || json['status']?.toString() == '1',
       // Handle both bool and int (1/0) or String representations
       isAadharVerified: json['isAadharVerified'] == true || 
                        json['isAadharVerified'] == 1 || 
                        json['isAadharVerified']?.toString() == 'true',
       imageUrl: json['imageUrl'] ?? json['profilePic'],
+      
     );
   }
 

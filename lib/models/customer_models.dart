@@ -6,6 +6,7 @@ class Customer {
   final String name;
   final String email;
   final String phone;
+  final String? referralCode; // Add this
   final int bookings;
   final String joinedDate;
   final String location;
@@ -19,6 +20,7 @@ class Customer {
     required this.email,
     required this.phone,
     required this.bookings,
+    this.referralCode,
     required this.joinedDate,
     required this.location,
     required this.isActive,
@@ -30,32 +32,54 @@ class Customer {
 // 2. THE API MODEL (Used to parse JSON from backend)
 class CustomerModel {
   final String id;
+  final String? referralCode;
   final String mobileNo;
   final String? emailId;
   final String firstName;
+  final String? middleName;
   final String? lastName;
+  final String? gender;
+  final String? fcmToken;
+  final double averageRating;
   final String? imgLink;
-  final int status; // 1 for active
+  final int status; // Keep as int for API consistency
+  bool isActive;    // Mutable boolean for UI toggling
 
   CustomerModel({
     required this.id,
+    this.referralCode,
     required this.mobileNo,
     this.emailId,
     required this.firstName,
+    this.middleName,
     this.lastName,
+    this.gender,
+    this.fcmToken,
+    required this.averageRating,
     this.imgLink,
     required this.status,
+    this.isActive = false,
   });
 
   factory CustomerModel.fromJson(Map<String, dynamic> json) {
+    // Map status 1 to true, others to false
+    int apiStatus = json['status'] ?? 0;
+    
     return CustomerModel(
       id: json['id'] ?? '',
+      referralCode: json['referralCode'],
       mobileNo: json['mobileNo'] ?? '',
       emailId: json['emailId'],
-      firstName: json['firstName'] ?? '',
-      lastName: json['lastName'],
+      firstName: json['firstName'] ?? 'Unknown',
+      middleName: json['middleName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      gender: json['gender'],
+      fcmToken: json['fcmToken'],
+      // averageRating might come as int or double from JSON
+      averageRating: (json['averageRating'] ?? 0).toDouble(),
       imgLink: json['imgLink'],
-      status: json['status'] ?? 0,
+      status: apiStatus,
+      isActive: apiStatus == 1,
     );
   }
 }
