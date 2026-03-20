@@ -2,14 +2,99 @@ import 'package:flutter/material.dart';
 import 'custom_center_dialog.dart';
 import '../screens/login_screen.dart'; 
 import '../repositories/auth_repository.dart';
+import '../config/admin_navigation.dart'; // Ensure this points to your extracted NavItem file
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
-class DashboardTopBar extends StatelessWidget {
+class DashboardTopBar extends StatefulWidget {
   final VoidCallback? onMenuTap;
+  final ValueChanged<String>? onNav; // Callback to handle navigation from search
 
-  const DashboardTopBar({super.key, this.onMenuTap});
+  const DashboardTopBar({super.key, this.onMenuTap, this.onNav});
+
+  @override
+  State<DashboardTopBar> createState() => _DashboardTopBarState();
+}
+
+class _DashboardTopBarState extends State<DashboardTopBar> {
+  final TextEditingController _searchController = TextEditingController();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  List<NavItem> _searchResults = [];
+
+  @override
+  void dispose() {
+    _hideOverlay();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // --- SEARCH OVERLAY LOGIC ---
+  void _showOverlay() {
+    _hideOverlay();
+    if (_searchResults.isEmpty) return;
+
+    final overlay = Overlay.of(context);
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: 400, // Matches search bar width
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 45), // Pushes dropdown below the search bar
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: Container(
+              color: Colors.white,
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.separated(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: _searchResults.length,
+                separatorBuilder: (context, i) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                itemBuilder: (context, index) {
+                  final item = _searchResults[index];
+                  return ListTile(
+                    leading: Icon(item.icon, size: 20, color: const Color(0xFFF59E0B)),
+                    title: Text(item.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      widget.onNav?.call(item.route);
+                      _searchController.clear();
+                      _hideOverlay();
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _hideOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _onSearchChanged(String query) {
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+      _hideOverlay();
+      return;
+    }
+
+    setState(() {
+      _searchResults = AdminNavigation.searchRegistry
+          .where((item) => item.label.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+    _showOverlay();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,24 +107,29 @@ class DashboardTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.menu_rounded), onPressed: onMenuTap),
+          IconButton(icon: const Icon(Icons.menu_rounded), onPressed: widget.onMenuTap),
           const SizedBox(width: 16),
           
-          // Search Bar
+          // --- SEARCH BAR SECTION ---
           Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+            child: CompositedTransformTarget(
+              link: _layerLink,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: const InputDecoration(
+                    hintText: 'Search dashboard menus...',
+                    prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
                 ),
               ),
             ),
@@ -60,27 +150,24 @@ class DashboardTopBar extends StatelessWidget {
           
           const SizedBox(width: 16),
           
-          // --- PROFILE DROPDOWN (Updated) ---
+          // --- PROFILE DROPDOWN ---
           Theme(
             data: Theme.of(context).copyWith(
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
             ),
             child: PopupMenuButton<String>(
-              offset: const Offset(0, 60), // Pushes the menu down slightly
+              offset: const Offset(0, 60),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
               tooltip: 'User Menu',
-              // This acts as the Trigger Widget
               child: const CircleAvatar(
                 backgroundColor: Color(0xFFF59E0B),
                 child: Text("A", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
-              // Menu Items
               itemBuilder: (context) => [
-                // 1. Header Item (Non-clickable User Info)
                 PopupMenuItem<String>(
-                  enabled: false, // Disables click effect
+                  enabled: false, 
                   child: Container(
                     padding: const EdgeInsets.only(bottom: 8),
                     decoration: const BoxDecoration(
@@ -106,8 +193,6 @@ class DashboardTopBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-                // 2. Settings
                 const PopupMenuItem<String>(
                   value: 'settings',
                   height: 40,
@@ -119,26 +204,21 @@ class DashboardTopBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                
-                // 3. Sign Out
                 const PopupMenuItem<String>(
                   value: 'logout',
                   height: 40,
                   child: Row(
                     children: [
-                      Icon(Icons.logout, size: 20, color: Colors.redAccent), // Red icon for logout
+                      Icon(Icons.logout, size: 20, color: Colors.redAccent),
                       SizedBox(width: 12),
                       Text("Sign Out", style: TextStyle(fontSize: 14, color: Colors.redAccent)),
                     ],
                   ),
                 ),
               ],
-              // Handle Selection
               onSelected: (value) {
                 if (value == 'logout') {
                   _handleLogoutRequest(context);
-                } else if (value == 'settings') {
-                  // Handle settings navigation
                 }
               },
             ),
@@ -148,26 +228,21 @@ class DashboardTopBar extends StatelessWidget {
     );
   }
 
-  // --- LOGOUT LOGIC WITH POPUP ---
+  // --- LOGOUT LOGIC ---
   void _handleLogoutRequest(BuildContext context) {
     CustomCenterDialog.show(
       context,
       title: "Sign Out?",
       message: "Are you sure you want to log out of the admin panel?",
-      type: DialogType.warning, // Uses your generic Warning style (Blue/Orange)
+      type: DialogType.warning,
       confirmText: "Yes, Logout",
       cancelText: "No",
       onConfirm: () async {
-        // 1. Clear Session & Cache
         await AuthRepository().logout();
-
-        // 2. Perform Hard Reload for Web
         if (kIsWeb) {
           html.window.location.reload();
-          return; // Reload will handle navigation
+          return;
         }
-
-        // 3. Fallback Navigation for Mobile
         if (context.mounted) {
            Navigator.of(context).pushAndRemoveUntil(
              MaterialPageRoute(builder: (context) => const LoginScreen()),

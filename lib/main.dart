@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 
 import './screens/login_screen.dart';
 import './screens/dashboard_screen.dart';
+import './controllers/provider_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   // Check if session exists
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+  Get.put(ProviderController());
 
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }

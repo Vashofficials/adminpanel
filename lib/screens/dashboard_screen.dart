@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'employee_role_setup_screen.dart';
 import 'employee_role_list_screen.dart';
@@ -48,6 +49,7 @@ import 'holiday_management_screen.dart'; // <--- IMPORT THE NEW SCREEN
 import 'MasterSetupScreen.dart'; // <--- IMPORT THE NEW SCREEN
 import 'withdraw_request_screen.dart'; // <--- ADD WITHDRAW REQUEST SCREEN
 import '../models/booking_models.dart';
+import '../controllers/provider_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -63,7 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
  // Map<String, String>? _selectedBooking; 
   BookingModel? _selectedBooking;
 
-dynamic _selectedOnboardingRequest;
+final ProviderController providerController = Get.put(ProviderController());
 
 // Add this method to _DashboardScreenState
   void _viewBookingDetails(BookingModel booking) {
@@ -303,7 +305,7 @@ onEditCustomer: (customer) {
       onViewRequest: (requestData) {
         setState(() {
           // If you have logic to pass data, do it here
-          _selectedOnboardingRequest = requestData; 
+          var _selectedOnboardingRequest = requestData; 
           _currentRoute = 'provider/add'; 
         });
       },
@@ -338,6 +340,7 @@ onEditCustomer: (customer) {
       setState(() {
         _currentRoute = route;
         _selectedBooking = null; 
+        _selectedCustomer = null; // Clear selections when navigating via search
       });
     }
   }
@@ -358,6 +361,7 @@ onEditCustomer: (customer) {
               children: [
                 DashboardTopBar(
                   onMenuTap: () => setState(() => _collapsed = !_collapsed),
+                  onNav: _handleNavigation,
                  // onLogout: () => _handleNavigation('auth/login'),
                 ),
                 Expanded(
