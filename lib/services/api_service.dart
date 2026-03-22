@@ -1443,4 +1443,25 @@ Future<Response> updateCustomerStatus({
     rethrow;
   }
 }
+Future<Response> getWithdrawRequests() async {
+  try {
+    return await _dio.get('/admin/getProviderSettlement');
+  } catch (e) {
+    rethrow;
+  }
+}
+
+Future<Response> updateWithdrawStatus(String id, String status) async {
+  try {
+    return await _dio.patch(
+      '/admin/updateWithdrawStatus',
+      queryParameters: {
+        "withdrawId": id,
+        "status": status,
+      },
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
 }

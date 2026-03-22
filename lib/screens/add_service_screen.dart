@@ -398,7 +398,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 const SizedBox(height: 15),
                 Text(_imgName ?? "Add image", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500)),
                 const SizedBox(height: 5),
-                const Text("Image format - png, jpg, jpeg, gif\nImage Size - Maximum size 1 MB", 
+                const Text("Image format - png and jpg only\nImage Size - Maximum size 1 MB", 
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 11)),
               ],
             ),

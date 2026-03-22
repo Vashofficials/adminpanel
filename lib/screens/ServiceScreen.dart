@@ -440,6 +440,17 @@ InputDecoration _popupInputDecoration(String hint) {
                       // Shows count of FILTERED results
                       child: Text("Total Services: ${filteredServices.length}", style: TextStyle(color: _primaryOrange, fontWeight: FontWeight.bold)),
                     ),
+                    const SizedBox(width: 10), // Space for the new button
+                    IconButton(
+      onPressed: _loadAllData, // Calls your API loading function
+      icon: Icon(Icons.refresh, color: _primaryOrange),
+      tooltip: "Refresh Data",
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        side: BorderSide(color: Colors.grey[300]!),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
                     const SizedBox(width: 15),
                     ElevatedButton.icon(
                       onPressed: () {
