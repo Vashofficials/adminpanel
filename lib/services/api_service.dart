@@ -20,6 +20,7 @@ import '../models/discount_model.dart';
 import '../models/slider_banner_model.dart';
 import '../models/coupon_model.dart';
 import '../models/customer_refundbank.dart';
+import '../models/booking_report_model.dart';
 
 class ApiService {
   // NO trailing slash
@@ -1463,5 +1464,16 @@ Future<Response> updateWithdrawStatus(String id, String status) async {
   } catch (e) {
     rethrow;
   }
+}
+Future<BookingReportModel?> getBookingReport(int year) async {
+  try {
+    final response = await _dio.get('/admin/getBookingReport', queryParameters: {'year': year});
+    if (response.statusCode == 200) {
+      return BookingReportModel.fromJson(response.data);
+    }
+  } catch (e) {
+    debugPrint("Error fetching report: $e");
+  }
+  return null;
 }
 }

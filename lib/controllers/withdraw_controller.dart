@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../widgets/custom_center_dialog.dart';
 
 class WithdrawController extends GetxController {
   var isLoading = false.obs;
@@ -27,19 +28,33 @@ class WithdrawController extends GetxController {
     }
   }
 
-  Future<void> updateStatus(String id, String status) async {
+ Future<void> updateStatus(String id, String status) async {
     try {
-      // Optional: Show a loading overlay or dialog
       var response = await _apiService.updateWithdrawStatus(id, status);
       
       if (response.statusCode == 200) {
-        Get.snackbar("Success", "Withdraw status updated successfully", 
-            backgroundColor: Colors.green, colorText: Colors.white);
         await fetchRequests(); // Refresh the list from the server
+        
+        // Show Success Popup
+        if (Get.context != null) {
+          CustomCenterDialog.show(
+            Get.context!,
+            title: "Success",
+            message: "Withdraw status updated successfully!",
+            type: DialogType.success,
+          );
+        }
       }
     } catch (e) {
-      Get.snackbar("Update Failed", e.toString(), 
-          backgroundColor: Colors.red, colorText: Colors.white);
+      // Show Error Popup matching your requested static text
+      if (Get.context != null) {
+        CustomCenterDialog.show(
+          Get.context!,
+          title: "Error",
+          message: "Failed to update service",
+          type: DialogType.error,
+        );
+      }
     }
   }
 }
