@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 // --- THEME COLORS ---
 const _bg = Color(0xFFF1F5F9); // Slate-100
@@ -17,22 +18,46 @@ class ProviderReportScreen extends StatefulWidget {
 }
 
 class _ProviderReportScreenState extends State<ProviderReportScreen> {
+  final ApiService _api = ApiService();
+  
   // Filter State
-  String? _selectedProvider;
-  String? _selectedSubcategory;
-  DateTime? _startDate;
-  DateTime? _endDate;
-  bool _isLoading = false;
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 365));
+  DateTime _endDate = DateTime.now();
+  bool _isLoading = true;
+  
+  // Report Data
+  List<dynamic> _reportData = [];
 
-  // Mock Data
-  final List<String> _providers = ['Select a provider', 'Rajesh Kumar', 'Amit Singh', 'Priya Sharma', 'Vijay Verma', 'Anjali Gupta'];
-  final List<String> _subcategories = ['Select Subcategory', 'Plumbing', 'Electrical', 'Cleaning', 'Carpentry'];
+  // Helper for Date Formatting
+  String _formatDateForApi(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReportData();
+  }
+
+  Future<void> _fetchReportData() async {
+    setState(() => _isLoading = true);
+    final data = await _api.getProviderBookingPayment(
+      _formatDateForApi(_startDate),
+      _formatDateForApi(_endDate),
+    );
+    if (mounted) {
+      setState(() {
+        _reportData = data ?? [];
+        _isLoading = false;
+      });
+    }
+  }
 
   // Helper for Date Picking
   Future<void> _pickDate(bool isStart) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: isStart ? _startDate : _endDate,
       firstDate: DateTime(2023),
       lastDate: DateTime.now(),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
@@ -54,8 +79,19 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startDate = picked;
-        else _endDate = picked;
+        if (isStart) {
+          _startDate = picked;
+          // Ensure end date is not before start date
+          if (_endDate.isBefore(_startDate)) {
+            _endDate = _startDate;
+          }
+        } else {
+          _endDate = picked;
+          // Ensure start date is not after end date
+          if (_startDate.isAfter(_endDate)) {
+            _startDate = _endDate;
+          }
+        }
       });
     }
   }
@@ -147,44 +183,35 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
             runSpacing: 16,
             children: [
               _buildFilterItem(
-                label: 'Select Provider',
-                width: itemWidth,
-                child: _buildDropdown(
-                  value: _selectedProvider,
-                  hint: 'Select a provider',
-                  items: _providers,
-                  onChanged: (val) => setState(() => _selectedProvider = val),
-                ),
-              ),
-              _buildFilterItem(
                 label: 'Start Date',
                 width: itemWidth,
                 child: _buildDateInput(true),
               ),
               _buildFilterItem(
                 label: 'End Date',
-                width: itemWidth, // Allow button to share row logic if needed
-                child: Row(
-                  children: [
-                    Expanded(child: _buildDateInput(false)),
-                    const SizedBox(width: 16),
-                     SizedBox(
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Submit'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _orange,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                width: itemWidth,
+                child: _buildDateInput(false),
+              ),
+              _buildFilterItem(
+                label: '',
+                width: itemWidth,
+                child: SizedBox(
+                   height: 48,
+                   child: ElevatedButton.icon(
+                     onPressed: _isLoading ? null : _fetchReportData,
+                     icon: _isLoading 
+                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                       : const Icon(Icons.check, size: 18),
+                     label: Text(_isLoading ? 'Wait...' : 'Apply Filter'),
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: _orange,
+                       foregroundColor: Colors.white,
+                       elevation: 0,
+                       padding: const EdgeInsets.symmetric(horizontal: 24),
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                     ),
+                   ),
+                 ),
               ),
             ],
           );
@@ -199,39 +226,21 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark)),
-          const SizedBox(height: 8),
+          if (label.isNotEmpty) ...[
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark)),
+            const SizedBox(height: 8),
+          ] else ...[
+            const SizedBox(height: 25), // Adjust empty space to align horizontally
+          ],
           child,
         ],
       ),
     );
   }
 
-  Widget _buildDropdown({required String? value, required String hint, required List<String> items, required ValueChanged<String?> onChanged}) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _border),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(hint, style: const TextStyle(fontSize: 14, color: _muted)),
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: _muted),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
   Widget _buildDateInput(bool isStart) {
     final date = isStart ? _startDate : _endDate;
-    final text = date == null ? 'mm/dd/yyyy' : '${date.month}/${date.day}/${date.year}';
+    final text = '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
     
     return InkWell(
       onTap: () => _pickDate(isStart),
@@ -246,7 +255,7 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(text, style: TextStyle(fontSize: 14, color: date == null ? _muted : _textDark)),
+            Text(text, style: const TextStyle(fontSize: 14, color: _textDark)),
             const Icon(Icons.calendar_today_outlined, size: 18, color: _textDark),
           ],
         ),
@@ -271,20 +280,6 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Provider List', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
-                SizedBox(
-                  width: 200,
-                  height: 40,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      hintText: 'Search provider...',
-                      hintStyle: const TextStyle(fontSize: 13, color: _muted),
-                      prefixIcon: const Icon(Icons.search, size: 18, color: _muted),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: _border)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: _border)),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -297,26 +292,45 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
             child: Row(
               children: const [
                 SizedBox(width: 40, child: _Th('SL')),
-                Expanded(flex: 3, child: _Th('PROVIDER NAME')),
-                Expanded(flex: 4, child: _Th('CONTACT INFO')),
-                Expanded(flex: 2, child: _Th('TOTAL\nEARNING', align: TextAlign.center)),
-                Expanded(flex: 2, child: _Th('TOTAL\nSETTLEMENT', align: TextAlign.center)),
-                Expanded(flex: 2, child: _Th('PENDING\nSETTLEMENT', align: TextAlign.right)),
+                Expanded(flex: 3, child: _Th('PROVIDER INFO')),
+                Expanded(flex: 2, child: _Th('TOTAL\nBOOKINGS', align: TextAlign.center)),
+                Expanded(flex: 2, child: _Th('TOTAL\nEARN', align: TextAlign.center)),
+                Expanded(flex: 2, child: _Th('TOTAL\nSETTLED', align: TextAlign.center)),
                 SizedBox(width: 60, child: _Th('ACTION', align: TextAlign.right)),
               ],
             ),
           ),
 
           // Table Rows
-          _buildRow('01', 'Rajesh Kumar', 'ID: P-202301', '+91 98765 43210', 'rajesh.k@gmail.com', '₹ 45,000', '₹ 38,000', '₹ 7,000', 'assets/p1.jpg'),
-          const Divider(height: 1, color: _border),
-          _buildRow('02', 'Amit Singh', 'ID: P-202345', '+91 87654 32109', 'amit.singh@yahoo.com', '₹ 12,500', '₹ 12,500', '₹ 0', 'assets/p2.jpg'),
-          const Divider(height: 1, color: _border),
-          _buildRow('03', 'Priya Sharma', 'ID: P-202388', '+91 76543 21098', 'priya.sharma@gmail.com', '₹ 89,200', '₹ 80,000', '₹ 9,200', 'assets/p3.jpg'),
-          const Divider(height: 1, color: _border),
-          _buildRow('04', 'Vijay Verma', 'ID: P-202392', '+91 99887 76655', 'vijay.v@outlook.com', '₹ 8,400', '₹ 5,000', '₹ 3,400', 'assets/p4.jpg'),
-          const Divider(height: 1, color: _border),
-          _buildRow('05', 'Anjali Gupta', 'ID: P-202401', '+91 90123 45678', 'anjali.g@gmail.com', '₹ 32,150', '₹ 20,000', '₹ 12,150', 'assets/p5.jpg'),
+          if (_isLoading && _reportData.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_reportData.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: Text("No records found", style: TextStyle(color: _muted))),
+            )
+          else
+            ..._reportData.asMap().entries.map((entry) {
+              int idx = entry.key;
+              Map<String, dynamic> row = entry.value;
+              String providerName = row['providerName'] ?? 'Unknown';
+              String providerId = row['providerId'] ?? '';
+              
+              String sl = (idx + 1).toString().padLeft(2, '0');
+              String bookings = (row['totalBookings'] ?? 0).toString();
+              String earn = '₹${(row['totalPayment'] ?? 0.0).toStringAsFixed(2)}';
+              String settled = '₹${(row['totalSettled'] ?? 0.0).toStringAsFixed(2)}';
+              return Column(
+                children: [
+                  _buildRow(sl, providerName, providerId, bookings, earn, settled),
+                  if (idx < _reportData.length - 1)
+                     const Divider(height: 1, color: _border),
+                ],
+              );
+            }).toList(),
 
           // Pagination
           Padding(
@@ -325,14 +339,14 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 13, color: _muted),
+                  text: TextSpan(
+                    style: const TextStyle(fontSize: 13, color: _muted),
                     children: [
-                      TextSpan(text: 'Showing '),
-                      TextSpan(text: '1-5', style: TextStyle(fontWeight: FontWeight.bold, color: _textDark)),
-                      TextSpan(text: ' of '),
-                      TextSpan(text: '1240', style: TextStyle(fontWeight: FontWeight.bold, color: _textDark)),
-                      TextSpan(text: ' providers'),
+                      const TextSpan(text: 'Showing '),
+                      TextSpan(text: _reportData.isEmpty ? '0' : '1-${_reportData.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark)),
+                      const TextSpan(text: ' of '),
+                      TextSpan(text: '${_reportData.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark)),
+                      const TextSpan(text: ' providers'),
                     ],
                   ),
                 ),
@@ -341,13 +355,7 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
                     _PageBtn('Previous'),
                     const SizedBox(width: 8),
                     _PageNumBtn('1', true),
-                    const SizedBox(width: 4),
-                    _PageNumBtn('2', false),
-                    const SizedBox(width: 4),
-                    _PageNumBtn('3', false),
-                    const SizedBox(width: 4),
-                    const Text('...', style: TextStyle(color: _muted)),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     _PageBtn('Next'),
                   ],
                 ),
@@ -359,7 +367,7 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
     );
   }
 
-  Widget _buildRow(String sl, String name, String id, String phone, String email, String earning, String settlement, String pending, String imgPath) {
+  Widget _buildRow(String sl, String name, String id, String bookings, String earning, String settlement) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
@@ -372,43 +380,25 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
                 CircleAvatar(
                   radius: 18,
                   backgroundColor: _orangeLight,
-                  // Placeholder for image logic; replace with NetworkImage if needed
-                  child: Text(name[0], style: const TextStyle(color: _orange, fontWeight: FontWeight.bold)),
+                  child: Text(name.isNotEmpty ? name[0] : 'U', style: const TextStyle(color: _orange, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textDark)),
-                    const SizedBox(height: 2),
-                    Text(id, style: const TextStyle(fontSize: 11, color: _muted)),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textDark)),
+                      const SizedBox(height: 2),
+                      Text("ID: $id", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: _muted)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  const Icon(Icons.phone, size: 12, color: _muted),
-                  const SizedBox(width: 6),
-                  Text(phone, style: const TextStyle(fontSize: 12, color: _textDark)),
-                ]),
-                const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.email, size: 12, color: _muted),
-                  const SizedBox(width: 6),
-                  Text(email, style: const TextStyle(fontSize: 12, color: _muted)),
-                ]),
-              ],
-            ),
-          ),
+          Expanded(flex: 2, child: Text(bookings, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark))),
           Expanded(flex: 2, child: Text(earning, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark))),
           Expanded(flex: 2, child: Text(settlement, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF10B981)))),
-          Expanded(flex: 2, child: Text(pending, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, color: _orange))),
           const SizedBox(width: 60, child: Align(alignment: Alignment.centerRight, child: Icon(Icons.remove_red_eye, color: _muted, size: 20))),
         ],
       ),

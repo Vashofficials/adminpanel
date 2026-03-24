@@ -1,5 +1,7 @@
 import 'dart:math'; // Required for max function
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../models/booking_report_model.dart';
 
 // --- THEME COLORS ---
 const _bg = Color(0xFFF1F5F9); 
@@ -25,8 +27,13 @@ class BookingReportScreen extends StatefulWidget {
 class _BookingReportScreenState extends State<BookingReportScreen> {
   // --- FILTER STATE ---
   String? _selectedProvider;
+  String _selectedYear = DateTime.now().year.toString();
   String? _activeCardStatus; // For tapable cards
   bool _isLoading = false;
+
+  final ApiService _api = ApiService();
+  List<Map<String, dynamic>> _providersData = [];
+  BookingReportModel? _reportData;
 
   final Map<String, GlobalKey> _chartKeys = {
     'Completed': GlobalKey(),
@@ -35,20 +42,37 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
     'Cancelled': GlobalKey(),
   };
 
-  // Mock Data for Dropdowns
-  final List<String> _providers = ['All Providers', 'Lucknow Home Svcs', 'Gomti Cleaners'];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-  void _applyFilters() async {
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Filters applied successfully!')),
-      );
+    try {
+      if (_providersData.isEmpty) {
+        final pData = await _api.getAllServiceProviders();
+        if (pData != null && pData['result'] != null) {
+          _providersData = List<Map<String, dynamic>>.from(pData['result']);
+        }
+      }
+      
+      final report = await _api.getBookingReport(_selectedYear, providerId: _selectedProvider);
+      
+      if (mounted) {
+        setState(() {
+          _reportData = report;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _applyFilters() {
+    _loadData();
   }
 
   // Removed _pickDateRange as it is replaced by Status filter
@@ -71,23 +95,24 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
               const SizedBox(height: 24),
               
               // Stats
-              _SummaryStatsCard(
-                isFullWidth: true,
-                activeStatus: _activeCardStatus,
-                onStatusTap: (status) {
-                  setState(() {
-                    _activeCardStatus = (_activeCardStatus == status) ? null : status;
-                  });
-                  if (_activeCardStatus != null && _chartKeys[_activeCardStatus] != null && _chartKeys[_activeCardStatus]!.currentContext != null) {
-                    Scrollable.ensureVisible(
-                      _chartKeys[_activeCardStatus]!.currentContext!,
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                  _applyFilters();
-                },
-              ),
+              if (_reportData != null && _reportData!.result != null)
+                _SummaryStatsCard(
+                  reportResult: _reportData!.result!,
+                  isFullWidth: true,
+                  activeStatus: _activeCardStatus,
+                  onStatusTap: (status) {
+                    setState(() {
+                      _activeCardStatus = (_activeCardStatus == status) ? null : status;
+                    });
+                    if (_activeCardStatus != null && _chartKeys[_activeCardStatus] != null && _chartKeys[_activeCardStatus]!.currentContext != null) {
+                      Scrollable.ensureVisible(
+                        _chartKeys[_activeCardStatus]!.currentContext!,
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                      );
+                    }
+                  },
+                ),
               const SizedBox(height: 24),
               
               // 4 Separate Charts
@@ -98,26 +123,40 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
                     spacing: 24,
                     runSpacing: 24,
                     children: [
-                      SizedBox(
-                        key: _chartKeys['Completed'],
-                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
-                        child: const _StatusChartCard(title: 'Completed Bookings'),
-                      ),
-                      SizedBox(
-                        key: _chartKeys['Ongoing'],
-                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
-                        child: const _StatusChartCard(title: 'Ongoing Bookings'),
-                      ),
-                      SizedBox(
-                        key: _chartKeys['Pending'],
-                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
-                        child: const _StatusChartCard(title: 'Pending Bookings'),
-                      ),
-                      SizedBox(
-                        key: _chartKeys['Cancelled'],
-                        width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
-                        child: const _StatusChartCard(title: 'Cancelled Bookings'),
-                      ),
+                      if (_reportData != null && _reportData!.result != null) ...[
+                        SizedBox(
+                          key: _chartKeys['Completed'],
+                          width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                          child: _StatusChartCard(
+                            title: 'Completed Bookings',
+                            dataList: _reportData!.result!.completedMonth ?? [],
+                          ),
+                        ),
+                        SizedBox(
+                          key: _chartKeys['Ongoing'],
+                          width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                          child: _StatusChartCard(
+                            title: 'Ongoing Bookings',
+                            dataList: _reportData!.result!.ongoingMonth ?? [],
+                          ),
+                        ),
+                        SizedBox(
+                          key: _chartKeys['Pending'],
+                          width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                          child: _StatusChartCard(
+                            title: 'Pending Bookings',
+                            dataList: _reportData!.result!.pendingMonth ?? [],
+                          ),
+                        ),
+                        SizedBox(
+                          key: _chartKeys['Cancelled'],
+                          width: isLarge ? (constraints.maxWidth - 24) / 2 : constraints.maxWidth,
+                          child: _StatusChartCard(
+                            title: 'Cancelled Bookings',
+                            dataList: _reportData!.result!.cancelledMonth ?? [],
+                          ),
+                        ),
+                      ],
                     ],
                   );
                 },
@@ -161,7 +200,8 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
                 runSpacing: 16,
                 crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
-                  _buildDropdown('Provider', _providers, _selectedProvider, (v) => setState(() => _selectedProvider = v)),
+                  _buildProviderDropdown(),
+                  _buildYearDropdown(),
 
                   // Submit Button
                   SizedBox(
@@ -190,13 +230,87 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
     );
   }
 
-  Widget _buildDropdown(String label, List<String> items, String? currentValue, ValueChanged<String?> onChanged) {
+  Widget _buildProviderDropdown() {
+    // Safely build unique items
+    final List<DropdownMenuItem<String>> dropdownItems = [
+      const DropdownMenuItem<String>(value: null, child: Text("All Providers", style: TextStyle(fontSize: 13))),
+    ];
+    final Set<String> seenIds = {};
+    for (var p in _providersData) {
+      final id = p['_id']?.toString() ?? p['id']?.toString() ?? '';
+      if (id.isNotEmpty && !seenIds.contains(id)) {
+        seenIds.add(id);
+        dropdownItems.add(
+          DropdownMenuItem<String>(
+            value: id,
+            child: Text(p['name']?.toString() ?? 'Unknown', style: const TextStyle(fontSize: 13)),
+          )
+        );
+      }
+    }
+
+    // Ensure currently selected value is valid or reset to null
+    if (_selectedProvider != null && !seenIds.contains(_selectedProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedProvider = null);
+      });
+      _selectedProvider = null;
+    }
+
     return SizedBox(
       width: 240,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+          const Text('Provider (Disabled temporarily)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
+          const SizedBox(height: 6),
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              // make it look visually disabled
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedProvider,
+                hint: const Text('Select Provider', style: TextStyle(fontSize: 13, color: _muted)),
+                isExpanded: true,
+                icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: _muted),
+                items: dropdownItems,
+                // Passing null disables the DropdownButton
+                onChanged: null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYearDropdown() {
+    int currentYear = DateTime.now().year;
+    // ensure at least 2026/2027 logic if system clock is behind
+    if (currentYear < 2025) currentYear = 2026; 
+    
+    final int startYear = 2025;
+    final int count = max(1, currentYear - startYear + 1);
+    final years = List.generate(count, (i) => (startYear + i).toString());
+    
+    // Ensure selected year is in the list to prevent assertion errors
+    if (!years.contains(_selectedYear)) {
+      years.add(_selectedYear);
+      years.sort((a, b) => b.compareTo(a)); // Sort descending if adding outside range
+    }
+
+    return SizedBox(
+      width: 150,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Year', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _muted)),
           const SizedBox(height: 6),
           Container(
             height: 48,
@@ -208,12 +322,13 @@ class _BookingReportScreenState extends State<BookingReportScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: currentValue,
-                hint: Text('Select $label', style: const TextStyle(fontSize: 13, color: _muted)),
+                value: _selectedYear,
                 isExpanded: true,
                 icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: _muted),
-                items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
-                onChanged: onChanged,
+                items: years.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _selectedYear = v);
+                },
               ),
             ),
           ),
@@ -265,14 +380,34 @@ class _TopAppBar extends StatelessWidget {
 }
 
 class _SummaryStatsCard extends StatelessWidget {
+  final BookingResult reportResult;
   final bool isFullWidth;
   final String? activeStatus;
   final Function(String)? onStatusTap;
   
-  const _SummaryStatsCard({this.isFullWidth = false, this.activeStatus, this.onStatusTap});
+  const _SummaryStatsCard({required this.reportResult, this.isFullWidth = false, this.activeStatus, this.onStatusTap});
 
   @override
   Widget build(BuildContext context) {
+    int cancelled = reportResult.cancelled ?? 0;
+    int completed = reportResult.completed ?? 0;
+    int ongoing = reportResult.ongoing ?? 0;
+    int pending = reportResult.pending ?? 0;
+    int total = cancelled + completed + ongoing + pending;
+
+    int totalCashCancelled = (reportResult.cancelledMonth ?? []).fold(0, (sum, item) => sum + (item.cashBooking ?? 0));
+    int totalOnlineCancelled = (reportResult.cancelledMonth ?? []).fold(0, (sum, item) => sum + (item.onlineBooking ?? 0));
+
+    int totalCashCompleted = (reportResult.completedMonth ?? []).fold(0, (sum, item) => sum + (item.cashBooking ?? 0));
+    int totalOnlineCompleted = (reportResult.completedMonth ?? []).fold(0, (sum, item) => sum + (item.onlineBooking ?? 0));
+
+    int totalCashOngoing = (reportResult.ongoingMonth ?? []).fold(0, (sum, item) => sum + (item.cashBooking ?? 0));
+    int totalOnlineOngoing = (reportResult.ongoingMonth ?? []).fold(0, (sum, item) => sum + (item.onlineBooking ?? 0));
+
+    int totalCashPending = (reportResult.pendingMonth ?? []).fold(0, (sum, item) => sum + (item.cashBooking ?? 0));
+    int totalOnlinePending = (reportResult.pendingMonth ?? []).fold(0, (sum, item) => sum + (item.onlineBooking ?? 0));
+
+
     return Container(
       width: isFullWidth ? double.infinity : null,
       padding: const EdgeInsets.all(24),
@@ -297,7 +432,7 @@ class _SummaryStatsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('1,452', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: _textDark)),
+          Text(total.toString(), style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: _textDark)),
           const SizedBox(height: 24),
           
           Wrap(
@@ -307,38 +442,38 @@ class _SummaryStatsCard extends StatelessWidget {
               _StatItem(
                 color: const Color(0xFFEF4444), 
                 label: 'Canceled', 
-                value: '42', 
+                value: cancelled.toString(), 
                 icon: Icons.cancel_outlined,
                 isActive: activeStatus == 'Cancelled',
                 onTap: () => onStatusTap?.call('Cancelled'),
-                cash: '12', online: '30',
+                cash: totalCashCancelled.toString(), online: totalOnlineCancelled.toString(),
               ),
               _StatItem(
                 color: const Color(0xFF10B981), 
                 label: 'Completed', 
-                value: '1,154', 
+                value: completed.toString(), 
                 icon: Icons.check_circle_outline,
                 isActive: activeStatus == 'Completed',
                 onTap: () => onStatusTap?.call('Completed'),
-                cash: '800', online: '354',
+                cash: totalCashCompleted.toString(), online: totalOnlineCompleted.toString(),
               ),
               _StatItem(
                 color: const Color(0xFFF59E0B), 
                 label: 'Ongoing', 
-                value: '85', 
+                value: ongoing.toString(), 
                 icon: Icons.timelapse,
                 isActive: activeStatus == 'Ongoing',
                 onTap: () => onStatusTap?.call('Ongoing'),
-                cash: '40', online: '45',
+                cash: totalCashOngoing.toString(), online: totalOnlineOngoing.toString(),
               ),
               _StatItem(
                 color: const Color(0xFF64748B), 
                 label: 'Pending', 
-                value: '43', 
+                value: pending.toString(), 
                 icon: Icons.pending_outlined,
                 isActive: activeStatus == 'Pending',
                 onTap: () => onStatusTap?.call('Pending'),
-                cash: '10', online: '33',
+                cash: totalCashPending.toString(), online: totalOnlinePending.toString(),
               ),
             ],
           ),
@@ -415,33 +550,40 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-class _StatusChartCard extends StatefulWidget {
+class _StatusChartCard extends StatelessWidget {
   final String title;
-  const _StatusChartCard({required this.title});
-
-  @override
-  State<_StatusChartCard> createState() => _StatusChartCardState();
-}
-
-class _StatusChartCardState extends State<_StatusChartCard> {
-  late String _selectedYear;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedYear = DateTime.now().year.toString();
-  }
+  final List<MonthData> dataList;
+  
+  const _StatusChartCard({required this.title, required this.dataList});
 
   @override
   Widget build(BuildContext context) {
-    final currentYear = DateTime.now().year;
-    final years = List.generate(currentYear - 2022, (i) => (2023 + i).toString());
-
     final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    // Fake data for Cash and Online
-    final random = Random(widget.title.hashCode + _selectedYear.hashCode);
-    final cashValues = List.generate(12, (_) => random.nextDouble() * 0.5 + 0.1);
-    final onlineValues = List.generate(12, (_) => random.nextDouble() * 0.5 + 0.1);
+
+    // Map the returned dataList to the 12 UI months
+    List<int> cashValues = List.filled(12, 0);
+    List<int> onlineValues = List.filled(12, 0);
+
+    for (var mData in dataList) {
+      if (mData.mothName != null) {
+        int idx = months.indexOf(mData.mothName!);
+        if (idx != -1) {
+          cashValues[idx] = mData.cashBooking ?? 0;
+          onlineValues[idx] = mData.onlineBooking ?? 0;
+        }
+      }
+    }
+
+    // Determine scale for chart
+    int maxVal = 0;
+    for (int i = 0; i < 12; i++) {
+        maxVal = max(maxVal, cashValues[i]);
+        maxVal = max(maxVal, onlineValues[i]);
+    }
+    
+    // Default Y axis scale
+    int yMax = maxVal > 0 ? ((maxVal / 5).ceil() * 5) : 10;
+    if (yMax == 0) yMax = 5;
 
     return Container(
       height: 340, 
@@ -458,7 +600,7 @@ class _StatusChartCardState extends State<_StatusChartCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
               Row(
                 children: [
                   // Legend
@@ -469,25 +611,6 @@ class _StatusChartCardState extends State<_StatusChartCard> {
                   Container(width: 10, height: 10, color: const Color(0xFF3B82F6)),
                   const SizedBox(width: 4),
                   const Text('Cash', style: TextStyle(fontSize: 10, color: _muted)),
-                  const SizedBox(width: 16),
-                  
-                  // Year Filter
-                  Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedYear,
-                        icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: _muted),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _textDark),
-                        items: years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedYear = val);
-                        },
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -498,8 +621,8 @@ class _StatusChartCardState extends State<_StatusChartCard> {
               children: [
                 Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: ['1000', '800', '600', '400', '200', '0']
-                      .map((e) => Text(e, style: const TextStyle(fontSize: 10, color: _muted)))
+                  children: [yMax, (yMax*0.8).toInt(), (yMax*0.6).toInt(), (yMax*0.4).toInt(), (yMax*0.2).toInt(), 0]
+                      .map((e) => Text(e.toString(), style: const TextStyle(fontSize: 10, color: _muted)))
                       .toList(),
                 ),
                 const SizedBox(width: 16),
@@ -514,8 +637,12 @@ class _StatusChartCardState extends State<_StatusChartCard> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: List.generate(months.length, (i) {
-                          double hCash = maxBarHeight * cashValues[i];
-                          double hOnline = maxBarHeight * onlineValues[i];
+                          double hCash = yMax > 0 ? (maxBarHeight * (cashValues[i] / yMax)) : 0;
+                          double hOnline = yMax > 0 ? (maxBarHeight * (onlineValues[i] / yMax)) : 0;
+                          
+                          if (hCash > maxBarHeight) hCash = maxBarHeight;
+                          if (hOnline > maxBarHeight) hOnline = maxBarHeight;
+
                           if (hCash < 0) hCash = 0;
                           if (hOnline < 0) hOnline = 0;
 
@@ -526,7 +653,7 @@ class _StatusChartCardState extends State<_StatusChartCard> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Tooltip(
-                                    message: 'Total: ${((onlineValues[i] + cashValues[i]) * 1000).toInt()}\nOnline: ${(onlineValues[i] * 1000).toInt()}\nCash: ${(cashValues[i] * 1000).toInt()}',
+                                    message: 'Total: ${onlineValues[i] + cashValues[i]}\nOnline: ${onlineValues[i]}\nCash: ${cashValues[i]}',
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [

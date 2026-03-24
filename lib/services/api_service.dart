@@ -528,6 +528,44 @@ Future<dynamic> getAllCustomers({required int page, required int size}) async {
       return {'result': []}; 
     }
   }
+
+  // GET BOOKING REPORT
+  Future<BookingReportModel?> getBookingReport(String year, {String? providerId}) async {
+    try {
+      final queryParams = <String, dynamic>{'year': year};
+      if (providerId != null && providerId.isNotEmpty && providerId != 'All Providers') {
+        queryParams['serviceProviderId'] = providerId;
+      }
+      final response = await _dio.get('/admin/getBookingReport', queryParameters: queryParams);
+      if (response.statusCode == 200 && response.data != null) {
+        return BookingReportModel.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      print("❌ Get Booking Report Error: $e");
+      return null;
+    }
+  }
+  
+  // GET PROVIDER BOOKING PAYMENT REPORT
+  Future<List<dynamic>?> getProviderBookingPayment(String fromDate, String toDate) async {
+    try {
+      final response = await _dio.get(
+        '/admin/getProviderBookingPayment',
+        queryParameters: {
+          'fromDate': fromDate,
+          'toDate': toDate,
+        },
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['result'] as List<dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print("❌ Get Provider Booking Payment Error: $e");
+      return null;
+    }
+  }
   Future<dynamic> getAllServiceProviders() async {
     try {
       final response = await _dio.get('/admin/getAllServiceProvider');
@@ -1464,16 +1502,5 @@ Future<Response> updateWithdrawStatus(String id, String status) async {
   } catch (e) {
     rethrow;
   }
-}
-Future<BookingReportModel?> getBookingReport(int year) async {
-  try {
-    final response = await _dio.get('/admin/getBookingReport', queryParameters: {'year': year});
-    if (response.statusCode == 200) {
-      return BookingReportModel.fromJson(response.data);
-    }
-  } catch (e) {
-    debugPrint("Error fetching report: $e");
-  }
-  return null;
 }
 }
