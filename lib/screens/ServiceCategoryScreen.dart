@@ -26,6 +26,7 @@ class _ServiceCategoryScreenState extends State<ServiceCategoryScreen> {
   // Form State
   String? _selectedParentId;
   final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _searchCtrl = TextEditingController();
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
   bool _isUploading = false;
@@ -37,7 +38,19 @@ class _ServiceCategoryScreenState extends State<ServiceCategoryScreen> {
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(_onSearchChanged);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.removeListener(_onSearchChanged);
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {});
   }
 
 Future<void> _loadData() async {
@@ -672,6 +685,7 @@ Future<void> _loadData() async {
                   width: 200,
                   height: 40,
                   child: TextField(
+                    controller: _searchCtrl,
                     decoration: InputDecoration(
                       hintText: "Search...",
                       prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
@@ -690,6 +704,23 @@ Future<void> _loadData() async {
               ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
               : LayoutBuilder(
                   builder: (context, constraints) {
+                    final searchText = _searchCtrl.text.toLowerCase();
+                    final filteredList = _serviceCategories.where((cat) {
+                      return cat.name.toLowerCase().contains(searchText);
+                    }).toList();
+
+                    if (filteredList.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Center(
+                          child: Text(
+                            "No service categories found for \"${_searchCtrl.text}\"",
+                            style: TextStyle(color: Colors.grey[600]),
+                          )
+                        ),
+                      );
+                    }
+
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
@@ -706,8 +737,8 @@ Future<void> _loadData() async {
                             DataColumn(label: Text("STATUS", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                             DataColumn(label: Text("ACTION", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                           ],
-                          rows: List<DataRow>.generate(_serviceCategories.length, (index) {
-                            final item = _serviceCategories[index];
+                          rows: List<DataRow>.generate(filteredList.length, (index) {
+                            final item = filteredList[index];
                             return DataRow(
                               cells: [
                                 DataCell(Text("${index + 1}")),

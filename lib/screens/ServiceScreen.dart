@@ -22,10 +22,13 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
   // Data
   List<ServiceModel> _services = [];
   List<CategoryModel> _categories = [];
+  List<ServiceCategoryModel> _subcategories = [];
   final Map<String, String> _serviceCategoryMap = {}; 
 
   bool _isLoading = true;
-  String? _selectedFilterCategoryId; 
+  bool _loadingSubcats = false;
+  String? _selectedFilterCategoryId;
+  String? _selectedFilterSubcategoryId;
   
   late TabController _tabController;
   final TextEditingController _searchCtrl = TextEditingController();
@@ -88,7 +91,9 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
           _categories = cats;
           _services = allServices;
           _serviceCategoryMap.addAll(tempMap);
-          _selectedFilterCategoryId = null; 
+          _selectedFilterCategoryId = null;
+          _selectedFilterSubcategoryId = null;
+          _subcategories = [];
           _isLoading = false;
         });
       }
@@ -98,27 +103,85 @@ class _ServiceScreenState extends State<ServiceScreen> with SingleTickerProvider
     }
   }
 
-  Future<void> _loadCategoryServices(String categoryId) async {
+  // Called when user picks a Category in the filter bar
+  Future<void> _onCategoryFilterChanged(String? catId) async {
+    _searchCtrl.clear();
+    if (catId == null) {
+      // "All Categories" selected — reset everything
+      _loadAllData();
+      return;
+    }
+    setState(() {
+      _selectedFilterCategoryId = catId;
+      _selectedFilterSubcategoryId = null;
+      _subcategories = [];
+      _loadingSubcats = true;
+    });
+
+    // Load services for this category immediately
+    _loadServicesForFilter();
+
+    try {
+      final subs = await _api.getServiceCategories(catId);
+      if (mounted) {
+        setState(() {
+          _subcategories = subs;
+          _loadingSubcats = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingSubcats = false);
+    }
+  }
+
+  // Called when user picks a Subcategory in the filter bar
+  Future<void> _onSubcategoryFilterChanged(String? subId) async {
+    _searchCtrl.clear();
+    setState(() {
+      _selectedFilterSubcategoryId = subId;
+    });
+    if (subId != null) {
+      await _loadServicesForFilter();
+    } else {
+      // "All Subcategories" — load all services for the selected category
+      await _loadServicesForFilter();
+    }
+  }
+
+  // Fetch services for current category and filter client-side by subcategory
+  Future<void> _loadServicesForFilter() async {
+    if (_selectedFilterCategoryId == null) return;
     setState(() => _isLoading = true);
     try {
-      final svcs = await _api.getServices(categoryId: categoryId);
-      String catName = _categories.firstWhere((c) => c.id == categoryId).name;
+      final svcs = await _api.getServices(categoryId: _selectedFilterCategoryId);
+      final catName = _categories.firstWhere((c) => c.id == _selectedFilterCategoryId).name;
       for (var s in svcs) {
         _serviceCategoryMap[s.id] = catName;
       }
-
+      // Client-side filter by subcategory if one is selected
+      final filtered = _selectedFilterSubcategoryId != null
+          ? svcs.where((s) => s.serviceCategoryId == _selectedFilterSubcategoryId).toList()
+          : svcs;
       if (mounted) {
         setState(() {
-          _services = svcs;
-          _selectedFilterCategoryId = categoryId;
+          _services = filtered;
           _isLoading = false;
         });
       }
     } catch (e) {
-      print("Error loading category services: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  // Reload while preserving the current filter selections
+  Future<void> _reloadWithCurrentFilter() async {
+    if (_selectedFilterCategoryId == null) {
+      await _loadAllData();
+    } else {
+      await _loadServicesForFilter();
+    }
+  }
+
 
  
 Future<void> _handleToggleStatus(ServiceModel service, bool newValue) async {
@@ -139,7 +202,7 @@ Future<void> _handleToggleStatus(ServiceModel service, bool newValue) async {
       );
 
       if (success) {
-        await _loadAllData(); // Refresh list to reflect state
+        await _reloadWithCurrentFilter(); // Refresh list while keeping filter
         if (mounted) {
           CustomCenterDialog.show(
             context,
@@ -356,7 +419,7 @@ CustomCenterDialog.show(
 );
 
 Future.delayed(const Duration(milliseconds: 300), () async {
-  await _loadAllData();
+  await _reloadWithCurrentFilter();
 });
                           } else {
                             CustomCenterDialog.show(context, title: "Error", message: "Failed to update service", type: DialogType.error);
@@ -478,9 +541,9 @@ InputDecoration _popupInputDecoration(String hint) {
               child: Row(
                 children: [
                   Icon(Icons.filter_list_alt, color: _primaryOrange, size: 22), 
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 12),
                   
-                  // ENHANCED DROPDOWN
+                  // --- CATEGORY DROPDOWN ---
                   Expanded(
                     child: Container(
                       height: 40, 
@@ -500,6 +563,7 @@ InputDecoration _popupInputDecoration(String hint) {
                           style: const TextStyle(color: Colors.black87, fontSize: 14),
                           dropdownColor: Colors.white,
                           borderRadius: BorderRadius.circular(8),
+                          hint: const Text("All Categories", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
                           items: [
                             DropdownMenuItem<String?>(
                               value: null,
@@ -525,25 +589,86 @@ InputDecoration _popupInputDecoration(String hint) {
                               );
                             }),
                           ],
-                          onChanged: (val) {
-                            // Clear search when switching categories for better UX
-                            _searchCtrl.clear();
-                            if (val == null) {
-                              _loadAllData(); 
-                            } else {
-                              _loadCategoryServices(val); 
-                            }
-                          },
+                          onChanged: _onCategoryFilterChanged,
                         ),
                       ),
                     ),
                   ),
+
+                  const SizedBox(width: 12),
+
+                  // --- SUBCATEGORY DROPDOWN ---
+                  Expanded(
+                    child: _loadingSubcats
+                      ? Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: LinearProgressIndicator(color: _primaryOrange, backgroundColor: Colors.grey[200]),
+                        )
+                      : Container(
+                          height: 40, 
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _selectedFilterCategoryId == null ? Colors.grey[100] : Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _selectedFilterSubcategoryId != null ? _primaryOrange.withOpacity(0.5) : Colors.grey[300]!
+                            )
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String?>(
+                              value: _selectedFilterSubcategoryId,
+                              icon: Icon(Icons.keyboard_arrow_down, 
+                                color: _selectedFilterCategoryId == null ? Colors.grey[400]! : _primaryOrange), 
+                              isExpanded: true, 
+                              style: const TextStyle(color: Colors.black87, fontSize: 14),
+                              dropdownColor: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              hint: Text(
+                                _selectedFilterCategoryId == null 
+                                    ? "Select category first" 
+                                    : "Select Subcategory",
+                                style: TextStyle(
+                                  color: _selectedFilterCategoryId == null ? Colors.grey[400] : Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                              // Disabled when no category selected
+                              onChanged: _selectedFilterCategoryId == null ? null : _onSubcategoryFilterChanged,
+                              items: _selectedFilterCategoryId == null ? [] : [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text("All Subcategories", style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                                ..._subcategories.map((sub) {
+                                  bool isSelected = _selectedFilterSubcategoryId == sub.id;
+                                  return DropdownMenuItem<String?>(
+                                    value: sub.id,
+                                    child: Text(
+                                      sub.name,
+                                      style: TextStyle(
+                                        color: isSelected ? _primaryOrange : Colors.black87,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
+                  ),
                   
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 12),
 
                   // Search Box
                   Container(
-                    width: 300,
+                    width: 260,
                     height: 40,
                     decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.transparent)),
                     child: TextField(
@@ -584,7 +709,13 @@ InputDecoration _popupInputDecoration(String hint) {
                       child: Center(
                         child: Column(
                           children: [
-                            Icon(Icons.search_off, size: 40, color: Colors.grey[400]),
+                            Icon(
+                              _selectedFilterCategoryId != null && _selectedFilterSubcategoryId == null
+                                  ? Icons.filter_list
+                                  : Icons.search_off,
+                              size: 40, 
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 10),
                             Text(
                               _searchCtrl.text.isEmpty ? "No services found." : "No results for \"${_searchCtrl.text}\"",
