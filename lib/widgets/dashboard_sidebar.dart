@@ -324,6 +324,15 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                   ),
                 ),
 
+                // --- MANAGE SERVICE TIME SECTION ---
+                NavTile(
+                  icon: Icons.access_time_outlined,
+                  label: 'Manage Service Time',
+                  collapsed: collapsed,
+                  isActive: _isActive('service/timing'),
+                  onTap: () => widget.onNav?.call('service/timing'),
+                ),
+
                 // --- SERVICE SECTION ---
                 NavTile(
                   icon: Icons.cleaning_services_outlined,

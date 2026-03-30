@@ -1503,4 +1503,58 @@ Future<Response> updateWithdrawStatus(String id, String status) async {
     rethrow;
   }
 }
+
+// ---------------------------------------------------------------------------
+// SERVICE TIMING
+// ---------------------------------------------------------------------------
+
+Future<List<ServiceTimingModel>> getServiceTimings() async {
+  try {
+    final response = await _dio.get('/admin/getServiceTiming');
+    if (response.data['result'] is List) {
+      return (response.data['result'] as List)
+          .map((e) => ServiceTimingModel.fromJson(e))
+          .toList();
+    }
+    return [];
+  } catch (e) {
+    print("❌ getServiceTimings Error: $e");
+    return [];
+  }
+}
+
+Future<bool> addServiceTiming(String categoryId, String startTime, String endTime) async {
+  try {
+    final response = await _dio.post(
+      '/admin/addServiceTiming',
+      data: {
+        "categoryId": categoryId,
+        "startTime": startTime,
+        "endTime": endTime,
+      },
+    );
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    print("❌ addServiceTiming Error: $e");
+    return false;
+  }
+}
+
+Future<bool> updateServiceTiming(String serviceTimingId, String startTime, String endTime) async {
+  try {
+    final response = await _dio.patch(
+      '/admin/updateServiceTiming',
+      data: {
+        "serviceTimingId": serviceTimingId,
+        "startTime": startTime,
+        "endTime": endTime,
+      },
+    );
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    print("❌ updateServiceTiming Error: $e");
+    return false;
+  }
+}
+
 }

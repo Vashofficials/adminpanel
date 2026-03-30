@@ -17,6 +17,7 @@ import 'ongoing_booking_screen.dart';
 import 'CategoryScreen.dart';
 import 'ServiceCategoryScreen.dart';
 import 'ServiceScreen.dart'; 
+import 'service_timing_management_screen.dart'; // <--- NEW SCREEN
 import 'login_screen.dart';
 import 'canceled_booking_screen.dart';
 import 'completed_booking_screen.dart';
@@ -144,6 +145,10 @@ onViewDetails: (booking) => _viewBookingDetails(booking),        );
             }
           },
         );
+
+      // --- SERVICE TIMINGS ---
+      case 'service/timing':
+        return const ServiceTimingManagementScreen();
 
       // --- CUSTOMER SECTION ---
       case 'customer/list':

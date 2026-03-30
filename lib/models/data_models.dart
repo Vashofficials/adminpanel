@@ -102,3 +102,26 @@ class ServiceModel {
     );
   }
 }
+
+class ServiceTimingModel {
+  final String serviceTimingId;
+  final String categoryId;
+  final String startTime;
+  final String endTime;
+
+  ServiceTimingModel({
+    required this.serviceTimingId,
+    required this.categoryId,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  factory ServiceTimingModel.fromJson(Map<String, dynamic> json) {
+    return ServiceTimingModel(
+      serviceTimingId: json['serviceTimingId']?.toString() ?? json['id']?.toString() ?? '',
+      categoryId: json['categoryId']?.toString() ?? '',
+      startTime: json['startTime'] ?? json['start_time'] ?? '',
+      endTime: json['endTime'] ?? json['end_time'] ?? '',
+    );
+  }
+}
