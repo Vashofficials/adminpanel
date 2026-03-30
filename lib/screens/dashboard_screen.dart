@@ -48,6 +48,7 @@ import 'buffer_config_screen.dart';
 import 'holiday_management_screen.dart'; // <--- IMPORT THE NEW SCREEN
 import 'MasterSetupScreen.dart'; // <--- IMPORT THE NEW SCREEN
 import 'withdraw_request_screen.dart'; // <--- ADD WITHDRAW REQUEST SCREEN
+import 'referral_management_screen.dart'; // <--- ADD REFERRAL MANAGEMENT SCREEN
 import '../models/booking_models.dart';
 import '../controllers/provider_controller.dart';
 
@@ -321,6 +322,14 @@ onEditCustomer: (customer) {
 
   case 'master/setup':
     return const MasterSetupScreen();
+
+  // --- REFERRAL MANAGEMENT ---
+  case 'referral/pending':
+    return PendingRewardsScreen(onNav: _handleNavigation);
+  case 'referral/paid':
+    return PaidCommissionsScreen(onNav: _handleNavigation);
+  case 'referral/issued':
+    return IssuedCouponsScreen(onNav: _handleNavigation);
 
     
   

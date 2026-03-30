@@ -39,6 +39,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   // --- NEW: Separate States for Promotion Sub-sections ---
   bool _discountsOpen = false;
   bool _couponsOpen = false;
+  bool _referralsOpen = false;
 
   bool _isActive(String key) {
     final r = widget.currentRoute ?? '';
@@ -472,6 +473,60 @@ NavTile(
                         isChild: true,
                         isActive: _isActive('customer/list'),
                         onTap: () => widget.onNav?.call('customer/list'),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ============================================================
+                // REFERRAL MANAGEMENT SECTION
+                // ============================================================
+                SectionHeader('REFERRAL MANAGEMENT', hidden: collapsed),
+
+                NavTile(
+                  icon: Icons.card_giftcard_outlined,
+                  label: 'Referral Management',
+                  collapsed: collapsed,
+                  isActive: _isActive('referral/'),
+                  trailing: collapsed
+                      ? null
+                      : Icon(
+                          _referralsOpen ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_right_rounded,
+                          size: 20,
+                          color: const Color(0xFF9CA3AF),
+                        ),
+                  onTap: () => setState(() => _referralsOpen = !_referralsOpen),
+                ),
+
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 200),
+                  crossFadeState: _referralsOpen && !collapsed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Column(
+                    children: [
+                      NavTile(
+                        icon: Icons.pending_actions_outlined,
+                        label: 'Pending Rewards',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('referral/pending'),
+                        onTap: () => widget.onNav?.call('referral/pending'),
+                      ),
+                      NavTile(
+                        icon: Icons.payments_outlined,
+                        label: 'Paid Commissions',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('referral/paid'),
+                        onTap: () => widget.onNav?.call('referral/paid'),
+                      ),
+                      NavTile(
+                        icon: Icons.local_offer_outlined,
+                        label: 'Issued Coupons',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('referral/issued'),
+                        onTap: () => widget.onNav?.call('referral/issued'),
                       ),
                     ],
                   ),
