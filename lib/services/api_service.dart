@@ -1510,7 +1510,7 @@ Future<Response> updateWithdrawStatus(String id, String status) async {
 
 Future<List<ServiceTimingModel>> getServiceTimings() async {
   try {
-    final response = await _dio.get('/admin/getServiceTiming');
+    final response = await _dio.get('/admin/getAllServiceTiming');
     if (response.data['result'] is List) {
       return (response.data['result'] as List)
           .map((e) => ServiceTimingModel.fromJson(e))

@@ -118,8 +118,8 @@ class ServiceTimingModel {
 
   factory ServiceTimingModel.fromJson(Map<String, dynamic> json) {
     return ServiceTimingModel(
-      serviceTimingId: json['serviceTimingId']?.toString() ?? json['id']?.toString() ?? '',
-      categoryId: json['categoryId']?.toString() ?? '',
+      serviceTimingId: json['id']?.toString() ?? json['serviceTimingId']?.toString() ?? '',
+      categoryId: json['categoryId']?.toString() ?? (json['category'] != null ? json['category']['id']?.toString() : '') ?? '',
       startTime: json['startTime'] ?? json['start_time'] ?? '',
       endTime: json['endTime'] ?? json['end_time'] ?? '',
     );
