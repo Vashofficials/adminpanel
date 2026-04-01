@@ -45,4 +45,14 @@ class ProviderRepository {
       return false;
     }
   } */
+
+  // 3. GET SERVICE. PROVIDER SERVICE MAP
+  Future<dynamic> getServiceProviderServiceMap(String spId) async {
+    try {
+      return await _api.getServiceProviderServiceMap(spId);
+    } catch (e) {
+      print("Get Provider Service Map Error: $e");
+      return [];
+    }
+  }
 }

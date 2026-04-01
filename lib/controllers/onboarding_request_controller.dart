@@ -27,6 +27,9 @@ class OnboardingRequestModel {
 class OnboardingRequestController extends GetxController {
   var selectedTab = "All".obs;
   var requestList = <OnboardingRequestModel>[].obs;
+  var allCount = 0.obs;
+  var pendingCount = 0.obs;
+  var approvedCount = 0.obs;
   final ProviderController _providerController = Get.find<ProviderController>();
   var approvedIds = <String>{}.obs;
 
@@ -39,9 +42,10 @@ class OnboardingRequestController extends GetxController {
   }
 
   void fetchRequests() {
-    final unverified = _providerController.allProviders.where((p) => !p.isAadharVerified).toList();
+    // Only show in Onboarding if imageUrl is null or empty
+    final onboardingProviders = _providerController.allProviders.where((p) => p.imageUrl == null || p.imageUrl!.isEmpty).toList();
     
-    var filtered = unverified.map((p) => OnboardingRequestModel(
+    var allReq = onboardingProviders.map((p) => OnboardingRequestModel(
       id: p.id,
       name: p.fullName,
       phone: p.mobileNo,
@@ -52,14 +56,18 @@ class OnboardingRequestController extends GetxController {
       documents: p.aadharNo.isNotEmpty ? ["Aadhar Card"] : [],
     )).toList();
 
+    allCount.value = allReq.length;
+    pendingCount.value = allReq.where((req) => req.status == "Pending").length;
+    approvedCount.value = allReq.where((req) => req.status == "Approved").length;
+
     // Filter based on selected tab
     if (selectedTab.value == "Pending") {
-      filtered = filtered.where((req) => req.status == "Pending").toList();
+      allReq = allReq.where((req) => req.status == "Pending").toList();
     } else if (selectedTab.value == "Approved") {
-      filtered = filtered.where((req) => req.status == "Approved").toList();
+      allReq = allReq.where((req) => req.status == "Approved").toList();
     }
 
-    requestList.value = filtered;
+    requestList.value = allReq;
   }
 
   void setTab(String tab) {

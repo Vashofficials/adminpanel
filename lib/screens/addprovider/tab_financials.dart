@@ -252,18 +252,18 @@ class TabFinancials extends GetView<AddProviderController> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: CustomTextField(label: "Account Holder", controller: controller.accHolderCtrl, enabled: !controller.isViewOnly.value)),
+            Expanded(child: CustomTextField(label: "Account Holder *", controller: controller.accHolderCtrl, enabled: !controller.isViewOnly.value)),
             const SizedBox(width: 16),
-            Expanded(child: CustomTextField(label: "Account Number", controller: controller.accNumberCtrl, enabled: !controller.isViewOnly.value)),
+            Expanded(child: CustomTextField(label: "Account Number *", controller: controller.accNumberCtrl, enabled: !controller.isViewOnly.value)),
           ],
         ),
 
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: CustomTextField(label: "IFSC Code", controller: controller.ifscCtrl, enabled: !controller.isViewOnly.value)),
+            Expanded(child: CustomTextField(label: "IFSC Code *", controller: controller.ifscCtrl, enabled: !controller.isViewOnly.value)),
             const SizedBox(width: 16),
-            Expanded(child: CustomTextField(label: "UPI ID", controller: controller.upiCtrl, enabled: !controller.isViewOnly.value)),
+            Expanded(child: CustomTextField(label: "UPI ID (Optional)", controller: controller.upiCtrl, enabled: !controller.isViewOnly.value)),
           ],
         ),
 
@@ -297,10 +297,10 @@ class TabFinancials extends GetView<AddProviderController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              CustomTextField(label: "PAN Number", controller: controller.panNumberCtrl, enabled: !controller.isViewOnly.value),
+              CustomTextField(label: "PAN Number *", controller: controller.panNumberCtrl, enabled: !controller.isViewOnly.value),
               const SizedBox(height: 16),
               if (!controller.isViewOnly.value) ...[
-                const CustomLabel("Upload PAN Image"),
+                const CustomLabel("Upload PAN Image *"),
                 const SizedBox(height: 8),
                 FileUploadBox(
                   compact: true,

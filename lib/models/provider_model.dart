@@ -94,8 +94,7 @@ class ProviderModel {
   }
 
   String get onboardingStatus {
-    if (isAadharVerified) return "Approved";
-    if (aadharNo.isEmpty) return "Pending Docs";
+    if (isAadharVerified || aadharNo.isNotEmpty) return "Approved";
     return "Pending";
   }
 }

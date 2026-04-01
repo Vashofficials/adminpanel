@@ -52,16 +52,37 @@ class ProviderListScreen extends StatelessWidget {
                     )
                   ),
                   const SizedBox(width: 16),
+                  // Expanded(
+                  //   child: _buildFilterField(
+                  //     label: "JOIN DATE", value: "Select date range", icon: Icons.calendar_today_outlined
+                  //   )
+                  // ),
+                  // const SizedBox(width: 16),
                   Expanded(
-                    child: _buildFilterField(
-                      label: "JOIN DATE", value: "Select date range", icon: Icons.calendar_today_outlined
-                    )
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildFilterField(
-                      label: "SERVICE TYPE", value: "All Services", icon: Icons.keyboard_arrow_down
-                    )
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("SEARCH PROVIDER", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 0.5)),
+                        const SizedBox(height: 6),
+                        Container(
+                          height: 42,
+                          child: TextField(
+                            onChanged: (val) {
+                               controller.searchText.value = val;
+                            },
+                            decoration: InputDecoration(
+                              hintText: "Search name or number",
+                              hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                              prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade200)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
@@ -112,6 +133,7 @@ class ProviderListScreen extends StatelessWidget {
                             columns: const [
                               DataColumn(label: Text("SL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("PROVIDER NAME", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
+                              DataColumn(label: Text("CATEGORY MAPPED", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("CONTACT DETAILS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("LOCATION & ADDRESS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("STATUS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
@@ -162,6 +184,18 @@ class ProviderListScreen extends StatelessWidget {
                                     ],
                                   ),
                                 )),
+
+                                // Category Mapped
+                                DataCell(Obx(() {
+                                  final cat = controller.providerCategoriesMap[provider.id];
+                                  if (cat == null) {
+                                    return const SizedBox(
+                                      width: 16, height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: primaryOrange)
+                                    );
+                                  }
+                                  return Text(cat, style: const TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 12));
+                                })),
 
                                 // Contact
                                 DataCell(Column(

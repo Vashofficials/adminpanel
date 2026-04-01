@@ -51,13 +51,13 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                     border: Border.all(color: borderGrey),
                   ),
                   padding: const EdgeInsets.all(4),
-                  child: Row(
+                  child: Obx(() => Row(
                     children: [
-                      _buildTab("All", 0, true),
-                      _buildTab("Pending", 0, false),
-                      _buildTab("Approved", 0, false),
+                      _buildTab("All", controller.allCount.value, true),
+                      _buildTab("Pending", controller.pendingCount.value, false),
+                      _buildTab("Approved", controller.approvedCount.value, false),
                     ],
-                  ),
+                  )),
                 )
               ],
             ),
@@ -73,6 +73,7 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  Expanded(flex: 1, child: Text("SL", style: _headerStyle())),
                   Expanded(flex: 3, child: Text("Provider Details", style: _headerStyle())),
                   Expanded(flex: 2, child: Text("Request Info", style: _headerStyle())),
                   Expanded(flex: 2, child: Text("Status", style: _headerStyle())),
@@ -101,6 +102,9 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
+                      // 0. SL
+                      Expanded(flex: 1, child: Text("${index + 1}", style: TextStyle(fontWeight: FontWeight.bold, color: textGrey))),
+
                       // 1. Details
                       Expanded(flex: 3, child: Row(
                         children: [

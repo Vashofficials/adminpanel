@@ -11,6 +11,7 @@ class ProviderController extends GetxController {
   var isLoading = true.obs;
   var allProviders = <ProviderModel>[].obs; // Original Data
   var providerList = <ProviderModel>[].obs; // Displayed Data (Filtered)
+  var providerCategoriesMap = <String, String>{}.obs; // Add categories map
 
   // Filters
   var searchText = ''.obs;
@@ -38,6 +39,11 @@ class ProviderController extends GetxController {
       final fetched = await _repo.getAllProviders();
       allProviders.assignAll(fetched);
       _applyFilters();
+      
+      // Async fetch mapped categories without blocking UI
+      for (var p in fetched) {
+        _fetchCategoryForProvider(p.id);
+      }
     } catch (e) {
       debugPrint("Fetch providers failed: $e");
     } finally {
@@ -45,17 +51,33 @@ class ProviderController extends GetxController {
     }
   }
 
+  Future<void> _fetchCategoryForProvider(String id) async {
+    if (providerCategoriesMap.containsKey(id)) return;
+    try {
+      final services = await _repo.getServiceProviderServiceMap(id);
+      if (services != null && services.isNotEmpty) {
+        // Collect unique categories
+        final categories = services.map((s) => s.category).toSet().toList();
+        providerCategoriesMap[id] = categories.join(", ");
+      } else {
+        providerCategoriesMap[id] = "N/A";
+      }
+    } catch (e) {
+      providerCategoriesMap[id] = "N/A";
+    }
+  }
+
   void _applyFilters() {
     List<ProviderModel> temp = List.from(allProviders);
 
-    // Filter: Only show verified providers in the main list
-    temp = temp.where((p) => p.isAadharVerified).toList();
+    // Only show providers that have an imageUrl in the dashboard list
+    temp = temp.where((p) => p.imageUrl != null && p.imageUrl!.isNotEmpty).toList();
 
     // Filter by tab
     if (selectedTab.value == 'Active') {
-      temp = temp.where((p) => p.isAadharVerified).toList(); // Redundant but consistent
+      temp = temp.where((p) => p.isAadharVerified || p.aadharNo.isNotEmpty).toList(); 
     } else if (selectedTab.value == 'Inactive') {
-      temp = temp.where((p) => !p.isAadharVerified).toList();
+      temp = temp.where((p) => !p.isAadharVerified && p.aadharNo.isEmpty).toList();
     }
 
     // Filter by search
