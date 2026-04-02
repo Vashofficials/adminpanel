@@ -29,6 +29,8 @@ class ProviderModel {
   final String aadharNo;
   final bool isAadharVerified;
   final String? imageUrl; // Added imageUrl
+  final double totalRating; // 👈 NEW
+  final int totalReview;    // 👈 NEW
   bool isActive; 
 
   ProviderModel({
@@ -49,6 +51,8 @@ class ProviderModel {
     required this.aadharNo,
     required this.isAadharVerified,
     this.imageUrl,
+    this.totalRating = 0.0,
+    this.totalReview = 0,
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) {
@@ -73,7 +77,8 @@ class ProviderModel {
                        json['isAadharVerified'] == 1 || 
                        json['isAadharVerified']?.toString() == 'true',
       imageUrl: json['imageUrl'] ?? json['profilePic'],
-      
+      totalRating: (json['totalRating'] ?? 0).toDouble(),
+      totalReview: (json['totalReview'] ?? 0).toInt(),
     );
   }
 

@@ -97,7 +97,71 @@ class ProviderListScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // --- CATEGORY FILTER CHIPS ---
+            Obx(() {
+              final categories = controller.availableCategories;
+              if (categories.length <= 1) return const SizedBox.shrink();
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF64748B)),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Filter by Category:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: categories.map((cat) {
+                        final isSelected = controller.selectedCategory.value == cat;
+                        return GestureDetector(
+                          onTap: () => controller.selectedCategory.value = cat,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? primaryOrange : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? primaryOrange : const Color(0xFFE2E8F0),
+                                width: 1.5,
+                              ),
+                              boxShadow: isSelected
+                                ? [BoxShadow(color: primaryOrange.withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 2))]
+                                : [],
+                            ),
+                            child: Text(
+                              cat,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected ? Colors.white : const Color(0xFF374151),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              );
+            }),
 
             // --- MAIN TABLE CARD ---
             Container(
@@ -164,10 +228,18 @@ class ProviderListScreen extends StatelessWidget {
                                       CircleAvatar(
                                         radius: 18,
                                         backgroundColor: _getAvatarColor(index),
-                                        child: Text(
-                                          provider.firstName.isNotEmpty ? provider.firstName[0].toUpperCase() : "?",
-                                          style: TextStyle(color: _getAvatarTextColor(index), fontSize: 12, fontWeight: FontWeight.bold),
-                                        ),
+                                        backgroundImage: (provider.imageUrl != null && provider.imageUrl!.isNotEmpty)
+                                            ? NetworkImage(provider.imageUrl!)
+                                            : null,
+                                        onBackgroundImageError: (provider.imageUrl != null && provider.imageUrl!.isNotEmpty)
+                                            ? (_, __) {} 
+                                            : null,
+                                        child: (provider.imageUrl == null || provider.imageUrl!.isEmpty)
+                                            ? Text(
+                                                provider.firstName.isNotEmpty ? provider.firstName[0].toUpperCase() : "?",
+                                                style: TextStyle(color: _getAvatarTextColor(index), fontSize: 12, fontWeight: FontWeight.bold),
+                                              )
+                                            : null,
                                       ),
                                       const SizedBox(width: 12),
                                       Column(

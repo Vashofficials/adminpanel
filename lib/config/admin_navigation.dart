@@ -49,6 +49,7 @@ class AdminNavigation {
     NavItem(label: 'Master Setup', route: 'master/setup', icon: Icons.settings_suggest_outlined),
     NavItem(label: 'Withdraw Request', route: 'provider/withdraw', icon: Icons.account_balance_wallet_outlined, badge: 5),
     NavItem(label: 'Provider Settlement Action', route: 'report/provider', icon: Icons.badge_outlined),
+    NavItem(label: 'Provider Rating', route: 'provider/rating', icon: Icons.star_rate_outlined),
   ];
 
   // USER SECTION

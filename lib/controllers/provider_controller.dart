@@ -16,6 +16,7 @@ class ProviderController extends GetxController {
   // Filters
   var searchText = ''.obs;
   var selectedTab = 'All'.obs; // "All", "Active", "Inactive"
+  var selectedCategory = 'All'.obs; // Category-wise filter
 
   @override
   void onInit() {
@@ -30,13 +31,14 @@ class ProviderController extends GetxController {
     );
 
     ever(selectedTab, (_) => _applyFilters());
+    ever(selectedCategory, (_) => _applyFilters());
   }
 
-  /// ✅ FIXED: now awaitable
   Future<void> fetchProviders() async {
     try {
       isLoading.value = true;
       final fetched = await _repo.getAllProviders();
+      providerCategoriesMap.clear(); // 👈 Clear cache for real-time updates
       allProviders.assignAll(fetched);
       _applyFilters();
       
@@ -55,15 +57,15 @@ class ProviderController extends GetxController {
     if (providerCategoriesMap.containsKey(id)) return;
     try {
       final services = await _repo.getServiceProviderServiceMap(id);
-      if (services != null && services.isNotEmpty) {
+      if (services != null && (services as List).isNotEmpty) {
         // Collect unique categories
-        final categories = services.map((s) => s.category).toSet().toList();
-        providerCategoriesMap[id] = categories.join(", ");
+        final categories = (services as List).map((s) => s.category.toString()).toSet().toList();
+        providerCategoriesMap[id] = categories.isEmpty ? "No Categories" : categories.join(", ");
       } else {
-        providerCategoriesMap[id] = "N/A";
+        providerCategoriesMap[id] = "No Mapped Services";
       }
     } catch (e) {
-      providerCategoriesMap[id] = "N/A";
+      providerCategoriesMap[id] = "N/A (Error)";
     }
   }
 
@@ -90,7 +92,30 @@ class ProviderController extends GetxController {
       }).toList();
     }
 
+    // Filter by category
+    if (selectedCategory.value != 'All') {
+      final cat = selectedCategory.value.toLowerCase();
+      temp = temp.where((p) {
+        final mapped = providerCategoriesMap[p.id] ?? '';
+        return mapped.toLowerCase().contains(cat);
+      }).toList();
+    }
+
     providerList.assignAll(temp);
+  }
+
+  /// Returns unique list of categories from already-fetched providerCategoriesMap
+  List<String> get availableCategories {
+    final cats = <String>{};
+    for (final val in providerCategoriesMap.values) {
+      if (val != 'N/A') {
+        for (final c in val.split(',')) {
+          final trimmed = c.trim();
+          if (trimmed.isNotEmpty) cats.add(trimmed);
+        }
+      }
+    }
+    return ['All', ...cats.toList()..sort()];
   }
 
  Future<bool> updateProviderStatus(String id, bool apiValue) async {

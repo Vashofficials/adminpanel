@@ -1595,6 +1595,17 @@ Future<bool> updateServiceTiming(String serviceTimingId, String startTime, Strin
     return false;
   }
 }
+Future<Response> getServiceProviderRating(String serviceProviderId) async {
+  try {
+    return await _dio.get(
+      '/admin/getServiceProviderRating',
+      queryParameters: {'serviceProviderId': serviceProviderId},
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
+
 Future<Response> addWithdrawRequest(Map<String, dynamic> data) async {
   try {
     // Replace with your actual base URL logic if not already handled in Dio interceptors
