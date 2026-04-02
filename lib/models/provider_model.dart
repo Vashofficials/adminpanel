@@ -103,3 +103,29 @@ class ProviderModel {
     return "Pending";
   }
 }
+
+class ProviderBookingPayment {
+  final String providerId;
+  final String providerName;
+  final int totalBookings;
+  final double totalPayment;
+  final double totalSettled;
+
+  ProviderBookingPayment({
+    required this.providerId,
+    required this.providerName,
+    required this.totalBookings,
+    required this.totalPayment,
+    required this.totalSettled,
+  });
+
+  factory ProviderBookingPayment.fromJson(Map<String, dynamic> json) {
+    return ProviderBookingPayment(
+      providerId: json['providerId'] ?? '',
+      providerName: json['providerName'] ?? 'Unknown',
+      totalBookings: (json['totalBookings'] ?? 0).toInt(),
+      totalPayment: (json['totalPayment'] ?? 0).toDouble(),
+      totalSettled: (json['totalSettled'] ?? 0).toDouble(),
+    );
+  }
+}

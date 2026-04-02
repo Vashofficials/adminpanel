@@ -1,11 +1,15 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import '../controllers/transaction_report_controller.dart';
 
 class TransactionReportScreen extends StatelessWidget {
   const TransactionReportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(TransactionReportController());
+
     // Main Background Color
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9), // Slate-100
@@ -40,6 +44,8 @@ class _HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<TransactionReportController>();
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -57,7 +63,7 @@ class _HeaderSection extends StatelessWidget {
               ),
               SizedBox(height: 6),
               Text(
-                'Manage financial movements and view Lucknow region insights.',
+                'Manage financial movements and view provider earning insights.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
@@ -94,9 +100,9 @@ class _HeaderSection extends StatelessWidget {
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'TOTAL TRANSACTIONS',
+                children: [
+                  const Text(
+                    'Total Provider Earning',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -104,15 +110,15 @@ class _HeaderSection extends StatelessWidget {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    '352',
-                    style: TextStyle(
+                  const SizedBox(height: 2),
+                  Obx(() => Text(
+                    '₹${NumberFormat('#,##,###.##').format(controller.totalProviderEarning)}',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0F172A),
                     ),
-                  ),
+                  )),
                 ],
               ),
             ],
@@ -125,9 +131,6 @@ class _HeaderSection extends StatelessWidget {
 
 
 
-// -----------------------------------------------------------------------------
-// 3. FILTERS SECTION
-// -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // 3. FILTERS SECTION (UPDATED)
 // -----------------------------------------------------------------------------
@@ -159,91 +162,97 @@ class _FiltersSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Responsive grid for inputs
-              final width = constraints.maxWidth;
-              final isSmall = width < 800;
+          Obx(() {
+            final controller = Get.find<TransactionReportController>();
+            final isSmall = MediaQuery.of(context).size.width < 800;
 
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.end, // Helps alignment
-                children: [
-                  _FilterInput(
-                      label: 'Start Date',
-                      hint: 'mm/dd/yyyy',
-                      width: isSmall ? width : 180,
-                      icon: Icons.calendar_today_outlined),
-                  _FilterInput(
-                      label: 'End Date',
-                      hint: 'mm/dd/yyyy',
-                      width: isSmall ? width : 180,
-                      icon: Icons.calendar_today_outlined),
-                  _FilterInput(
-                      label: 'Sort By',
-                      hint: 'Newest First',
-                      width: isSmall ? width : 200,
-                      isDropdown: true),
-                  _FilterInput(
-                      label: 'Choose First',
-                      hint: '10 Records',
-                      width: isSmall ? width : 150,
-                      isDropdown: true),
-                  
-                  // --- FIXED BUTTON SECTION ---
-                  SizedBox(
-                    width: isSmall ? width : 140,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Invisible Label to match the height of other labels
-                        const Text(
-                          '', 
-                          style: TextStyle(
-                              fontSize: 12, 
-                              fontWeight: FontWeight.w600
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              children: [
+                _FilterInput(
+                  label: 'Start Date',
+                  hint: DateFormat('MM/dd/yyyy').format(controller.fromDate.value),
+                  width: isSmall ? double.infinity : 180,
+                  icon: Icons.calendar_today_outlined,
+                  onTap: () => _selectDate(context, controller.fromDate),
+                ),
+                _FilterInput(
+                  label: 'End Date',
+                  hint: DateFormat('MM/dd/yyyy').format(controller.toDate.value),
+                  width: isSmall ? double.infinity : 180,
+                  icon: Icons.calendar_today_outlined,
+                  onTap: () => _selectDate(context, controller.toDate),
+                ),
+                
+                // --- APPLY FILTER BUTTON ---
+                SizedBox(
+                  width: isSmall ? double.infinity : 140,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => controller.fetchReport(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF97316),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
                           ),
+                          child: controller.isLoading.value 
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Apply Filter',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                         ),
-                        // 2. Exact same spacing as _FilterInput
-                        const SizedBox(height: 6),
-                        // 3. Button with exact same height as Input fields (46)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 46, 
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF97316),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                              elevation: 0,
-                            ),
-                            child: const Text('Apply Filter',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  // ----------------------------
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );
   }
+
+  Future<void> _selectDate(BuildContext context, Rx<DateTime> date) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: date.value,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF97316),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF0F172A),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      date.value = picked;
+    }
+  }
 }
+
 class _FilterInput extends StatelessWidget {
   final String label;
   final String hint;
   final double width;
   final IconData? icon;
   final bool isDropdown;
+  final VoidCallback? onTap;
 
   const _FilterInput({
     required this.label,
@@ -251,45 +260,50 @@ class _FilterInput extends StatelessWidget {
     required this.width,
     this.icon,
     this.isDropdown = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B))),
-          const SizedBox(height: 6),
-          Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-              borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: width,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B))),
+            const SizedBox(height: 6),
+            Container(
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(hint,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
+                  Icon(
+                    isDropdown
+                        ? Icons.keyboard_arrow_down_rounded
+                        : (icon ?? Icons.calendar_month),
+                    size: 18,
+                    color: const Color(0xFF94A3B8),
+                  )
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(hint,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
-                Icon(
-                  isDropdown
-                      ? Icons.keyboard_arrow_down_rounded
-                      : (icon ?? Icons.calendar_month),
-                  size: 18,
-                  color: const Color(0xFF94A3B8),
-                )
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -329,39 +343,50 @@ class _DataTableSection extends StatelessWidget {
                         const Icon(Icons.search,
                             size: 20, color: Color(0xFF94A3B8)),
                         const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text('Search by Provider Name...',
-                              style: TextStyle(color: Color(0xFF94A3B8))),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.all(2),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 0),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF97316),
-                            borderRadius: BorderRadius.circular(6),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (v) => Get.find<TransactionReportController>().searchText.value = v,
+                            decoration: const InputDecoration(
+                              hintText: 'Search by Provider Name...',
+                              hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
                           ),
-                          child: const Text('Search',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
+                        ),
+                        InkWell(
+                          onTap: () {},
+                          child: Container(
+                            margin: const EdgeInsets.all(2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 0),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF97316),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text('Search',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Download CSV'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0F172A),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                ElevatedButton.icon(
+                  onPressed: () => Get.find<TransactionReportController>().exportToCSV(),
+                  icon: const Icon(Icons.download_rounded, size: 18, color: Colors.white),
+                  label: const Text('Download CSV', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 18),
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
                   ),
                 ),
               ],
@@ -382,33 +407,30 @@ class _DataTableSection extends StatelessWidget {
           ),
 
           // Table Rows
-          const _Tr(
-            sl: '01',
-            providerInfo: 'Ellison Trading',
-            providerSub: 'Account payable',
-            totalEarn: '₹17,909.89',
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const _Tr(
-            sl: '02',
-            providerInfo: 'Ellison Cardenas',
-            providerSub: 'Account receivable',
-            totalEarn: '₹21,839.69',
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const _Tr(
-            sl: '03',
-            providerInfo: 'John Roy',
-            providerSub: 'Account receivable',
-            totalEarn: '₹21,829.69',
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const _Tr(
-            sl: '04',
-            providerInfo: 'Ellison Cardenas',
-            providerSub: '',
-            totalEarn: '₹72,010.15',
-          ),
+          Obx(() {
+            final controller = Get.find<TransactionReportController>();
+            if (controller.isLoading.value) {
+              return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: Color(0xFFF97316))));
+            }
+            if (controller.filteredList.isEmpty) {
+              return const SizedBox(height: 200, child: Center(child: Text("No data found for selected period.")));
+            }
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: controller.filteredList.length,
+              separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              itemBuilder: (context, index) {
+                final item = controller.filteredList[index];
+                return _Tr(
+                  sl: (index + 1).toString().padLeft(2, '0'),
+                  providerInfo: item.providerName,
+                  providerSub: 'ID: ${item.providerId.substring(0, 8)}...',
+                  totalEarn: '₹${NumberFormat('#,##,###.##').format(item.totalPayment)}',
+                );
+              },
+            );
+          }),
 
           // Pagination
           Padding(
@@ -416,22 +438,25 @@ class _DataTableSection extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                RichText(
-                  text: const TextSpan(
-                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                    children: [
-                      TextSpan(text: 'Showing '),
-                      TextSpan(
-                          text: '1 to 4',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                      TextSpan(text: ' of '),
-                      TextSpan(
-                          text: '352',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                      TextSpan(text: ' Entries'),
-                    ],
-                  ),
-                ),
+                Obx(() {
+                  final controller = Get.find<TransactionReportController>();
+                  return RichText(
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                      children: [
+                        const TextSpan(text: 'Showing '),
+                        TextSpan(
+                            text: '1 to ${controller.filteredList.length}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                        const TextSpan(text: ' of '),
+                        TextSpan(
+                            text: '${controller.reportList.length}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                        const TextSpan(text: ' Entries'),
+                      ],
+                    ),
+                  );
+                }),
                 Row(
                   children: [
                     OutlinedButton(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -106,21 +108,63 @@ class _AllTransactionReportScreenState
     }
   }
 
-  // 5. DOWNLOAD FUNCTION
+  // 5. DOWNLOAD FUNCTION (CSV ENABLED)
   void _handleDownload() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
-            Text("Downloaded ${_filteredBookings.length} records successfully!"),
-          ],
+    if (_filteredBookings.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No records found to download")),
+      );
+      return;
+    }
+
+    final StringBuffer csv = StringBuffer();
+    // Headers
+    csv.writeln("SL,Booking ID,City,Pincode,Customer,Phone,Amount,Mode,Status,Date");
+
+    // Rows
+    for (int i = 0; i < _filteredBookings.length; i++) {
+      final b = _filteredBookings[i];
+      final sl = (i + 1).toString();
+      final id = b.bookingRef;
+      final city = b.address?.city ?? "N/A";
+      final pin = b.address?.postCode ?? "N/A";
+      final customer = b.customerName;
+      final phone = b.customerPhone;
+      final amount = b.grandTotalPrice.toStringAsFixed(2);
+      final mode = b.paymentMode;
+      final status = b.status;
+      final date = b.bookingDate;
+
+      csv.writeln("$sl,$id,$city,$pin,$customer,$phone,$amount,$mode,$status,$date");
+    }
+
+    try {
+      final bytes = utf8.encode(csv.toString());
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "all_transactions_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv")
+        ..click();
+      html.Url.revokeObjectUrl(url);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Text("Downloaded ${_filteredBookings.length} records successfully!"),
+            ],
+          ),
+          backgroundColor: const Color(0xFF22C55E),
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: const Color(0xFF22C55E),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Download failed: $e"), backgroundColor: Colors.red),
+      );
+    }
   }
 
   // 6. HELPER: Format Date
