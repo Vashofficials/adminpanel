@@ -47,7 +47,7 @@ class ProviderBankDetails {
 
   factory ProviderBankDetails.fromJson(Map<String, dynamic> json) {
     return ProviderBankDetails(
-      bankId: json['bankId']?.toString(), // Might be null in your result JSON, usually mapped or ID
+      bankId: json['id']?.toString(), // Might be null in your result JSON, usually mapped or ID
       bankName: json['bankName']?.toString(), // Use this for display
       accountHolderName: json['accountHolderName']?.toString() ?? '',
       accountNo: json['accountNo']?.toString() ?? '',

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../controllers/withdraw_controller.dart';
+import '../controllers/banking_controller.dart';
+import 'package:get/get.dart';
+import '../models/bank_model.dart';
+import '../widgets/custom_center_dialog.dart';
 
 // --- THEME COLORS ---
 const _bg = Color(0xFFF1F5F9); // Slate-100
@@ -19,7 +24,8 @@ class ProviderReportScreen extends StatefulWidget {
 
 class _ProviderReportScreenState extends State<ProviderReportScreen> {
   final ApiService _api = ApiService();
-  
+  final WithdrawController controller = Get.put(WithdrawController());
+  final BankingController bankingController = Get.put(BankingController());
   // Filter State
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 365));
   DateTime _endDate = DateTime.now();
@@ -52,7 +58,24 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
       });
     }
   }
+void _onSettleClick(Map<String, dynamic> row) async {
+    final String pId = row['providerId'] ?? '';
 
+    // 1. Fetch fresh bank details using your BankingController logic
+    await bankingController.fetchProviderBankDetails(pId);
+
+    // 2. Check if data was actually found
+    if (bankingController.providerBankDetails.value != null) {
+      _showSettleModal(row, bankingController.providerBankDetails.value!);
+    } else {
+      CustomCenterDialog.show(
+        context,
+        title: "No Bank Details",
+        message: "This provider hasn't added their bank information yet.",
+        type: DialogType.error,
+      );
+    }
+  }
   // Helper for Date Picking
   Future<void> _pickDate(bool isStart) async {
     final DateTime? picked = await showDatePicker(
@@ -368,6 +391,7 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
   }
 
   Widget _buildRow(String sl, String name, String id, String bookings, String earning, String settlement) {
+    final Map<String, dynamic> currentRowData = _reportData.firstWhere((element) => element['providerId'] == id);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
@@ -399,11 +423,183 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
           Expanded(flex: 2, child: Text(bookings, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark))),
           Expanded(flex: 2, child: Text(earning, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark))),
           Expanded(flex: 2, child: Text(settlement, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF10B981)))),
-          const SizedBox(width: 60, child: Align(alignment: Alignment.centerRight, child: Icon(Icons.remove_red_eye, color: _muted, size: 20))),
-        ],
+SizedBox(
+            width: 60, 
+            child: Align(
+              alignment: Alignment.centerRight, 
+              child: IconButton(
+                icon: const Icon(Icons.payments_outlined, color: _orange, size: 20),
+               onPressed: () => _onSettleClick(currentRowData), // Call the modal here
+              )
+            )
+          ),        ],
       ),
     );
   }
+void _showSettleModal(Map<String, dynamic> request, ProviderBankDetails bank) {
+  final TextEditingController noteController = TextEditingController();
+
+  // Calculate default pending balance
+  double earn = (request['totalPayment'] ?? 0.0).toDouble();
+  double settled = (request['totalSettled'] ?? 0.0).toDouble();
+  double pendingBalance = earn - settled;
+
+  // Controller for custom amount, pre-filled with pending balance
+  final TextEditingController amountController =
+      TextEditingController(text: pendingBalance.toStringAsFixed(2));
+
+  Get.dialog(
+    Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 550,
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                // Use Get.back() for consistency with Get.dialog
+                icon: const Icon(Icons.close),
+                onPressed: () => Get.back(),
+              ),
+            ),
+            const CircleAvatar(
+              radius: 30,
+              backgroundColor: Color(0xFFDCFCE7),
+              child: Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 40),
+            ),
+            const SizedBox(height: 16),
+            const Text("Settled this request?",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _buildModalCard("Provider Information", [
+                  Text(request['providerName'] ?? 'Unknown',
+                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                  Text(request['mobileNo'] ?? 'N/A', style: const TextStyle(fontSize: 12)),
+                  const Text("Lucknow", style: TextStyle(fontSize: 12)),
+                ]),
+                const SizedBox(width: 12),
+                _buildModalCard("Withdraw Bank details", [
+                  Text(bank.bankName ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text("A/C: ${bank.accountNo}", style: const TextStyle(fontSize: 11)),
+                  Text("IFSC: ${bank.ifscCode}", style: const TextStyle(fontSize: 11)),
+                  if (bank.upiId != null && bank.upiId!.isNotEmpty)
+                    Text("UPI: ${bank.upiId}", style: const TextStyle(fontSize: 11)),
+                ]),
+              ],
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: "Settlement Amount (₹)",
+                hintText: "Enter amount",
+                prefixIcon: const Icon(Icons.currency_rupee, size: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: "Note (Admin Comment)",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF6366F1)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFC7D2FE)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Get.back(),
+                    child: const Text("Cancel"),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      String? finalBankId = bank.bankId;
+
+                      if (finalBankId == null || finalBankId.isEmpty) {
+                        CustomCenterDialog.show(
+                          Get.context!,
+                          title: "Error",
+                          message: "Bank ID is missing from provider profile",
+                          type: DialogType.error,
+                        );
+                        return;
+                      }
+
+                      double finalAmount = double.tryParse(amountController.text) ?? 0.0;
+
+                      if (finalAmount <= 0) {
+                        CustomCenterDialog.show(
+                          Get.context!,
+                          title: "Invalid Amount",
+                          message: "Please enter an amount greater than 0",
+                          type: DialogType.required,
+                        );
+                        return;
+                      }
+
+                      // Call settlement (Controller handles closing this modal on success)
+                      await controller.settleWithdrawRequest(
+                        providerId: request['providerId'] ?? '',
+                        providerBankId: finalBankId,
+                        amount: finalAmount,
+                        comment: noteController.text.trim(),
+                      );
+
+                      // Refresh data table
+                      _fetchReportData();
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+                    child: const Text("Yes", style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+// Helper for modal cards
+Widget _buildModalCard(String title, List<Widget> children) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    ),
+  );
+}
 }
 
 // --- HELPER WIDGETS ---

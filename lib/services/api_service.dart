@@ -1575,5 +1575,17 @@ Future<bool> updateServiceTiming(String serviceTimingId, String startTime, Strin
     return false;
   }
 }
+Future<Response> addWithdrawRequest(Map<String, dynamic> data) async {
+  try {
+    // Replace with your actual base URL logic if not already handled in Dio interceptors
+    final response = await _dio.post(
+      '/admin/addWithdrawRequest', 
+      data: data,
+    );
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
 
 }
