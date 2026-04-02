@@ -32,7 +32,7 @@ class _AllTransactionReportScreenState
 
   // Pagination
   int _currentPage = 0;
-  int _pageSize = 10;
+  int _pageSize = 100;
   int _totalPages = 1;
   int _totalElements = 0;
 
@@ -481,22 +481,22 @@ class _AllTransactionReportScreenState
 
                                                 // Service Discount
                                                 DataCell(Text(
-                                                    "₹${data.totalDiscountAmount}",
+                                                    "₹${data.totalDiscountAmount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Coupon Discount
                                                 DataCell(Text(
-                                                    "₹${data.totalCouponDiscountAmount}",
+                                                    "₹${data.totalCouponDiscountAmount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Tax (GST)
                                                 DataCell(Text(
-                                                    "₹${data.totalTaxAmount}",
+                                                    "₹${data.totalTaxAmount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Amount
                                                 DataCell(Text(
-                                                    "₹${data.totalAmount}",
+                                                    "₹${data.grandTotalPrice.toStringAsFixed(2)}",
                                                     style: _cellStyle(
                                                         bold: true))),
 

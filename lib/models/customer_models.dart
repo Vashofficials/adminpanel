@@ -129,4 +129,28 @@ class ProviderRating {
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
     );
   }
-}
+}
+
+class ServiceProviderRating {
+  final String customerName;
+  final String? customerImage;
+  final String comment;
+  final double rating;
+
+  ServiceProviderRating({
+    required this.customerName,
+    this.customerImage,
+    required this.comment,
+    required this.rating,
+  });
+
+  factory ServiceProviderRating.fromJson(Map<String, dynamic> json) {
+    return ServiceProviderRating(
+      customerName: json['customerName'] ?? 'Unknown Customer',
+      customerImage: json['customerImage'],
+      comment: json['comment'] ?? '',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+

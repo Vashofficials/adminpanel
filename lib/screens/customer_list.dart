@@ -365,15 +365,24 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                             const SizedBox(width: 12),
                             ElevatedButton(
                               onPressed: _applyFilter,
-                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                              child: const Text('Search', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kPrimaryOrange, 
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18), 
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                elevation: 0,
+                              ),
+                              child: const Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                             ),
                             const Spacer(),
                             OutlinedButton.icon(
                               onPressed: _handleDownload,
-                              icon: const Icon(Icons.download, size: 18, color: kTextDark),
-                              label: const Text('Download', style: TextStyle(color: kTextDark)),
-                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                              icon: const Icon(Icons.download, size: 18, color: kPrimaryOrange),
+                              label: const Text('Download', style: TextStyle(color: kPrimaryOrange, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: kPrimaryOrange),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), 
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
                             ),
                           ],
                         )

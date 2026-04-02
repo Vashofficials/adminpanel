@@ -223,7 +223,30 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     try {
       final dt = DateTime.parse(isoDate);
       return DateFormat('dd-MMM-yyyy hh:mm a').format(dt);
-    } catch (e) { return isoDate; }
+    } catch (e) {
+      return isoDate;
+    }
+  }
+
+  // New Helper: Combined Schedule Format
+  String _formatSchedule(String dateIso, String timeStr) {
+    if (dateIso.isEmpty || dateIso == 'N/A') return "N/A";
+    try {
+      final dt = DateTime.parse(dateIso);
+      final datePart = DateFormat('dd-MMM-yyyy').format(dt);
+      
+      // timeStr is usually "HH:mm"
+      String finalTime = timeStr;
+      try {
+          final timeParts = timeStr.split(':');
+          final tempDate = DateTime(2022, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
+          finalTime = DateFormat('hh:mm a').format(tempDate);
+      } catch (e) { /* use raw timeStr */ }
+
+      return "$datePart $finalTime";
+    } catch (e) {
+      return dateIso;
+    }
   }
 
   @override
@@ -376,7 +399,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             isLast: false,
           ),
           _buildTimelineItem(
-            title: isCanceled ? "Canceled" : "Accepted / Ongoing",
+            title: isCanceled ? "Canceled" : "InProgress / Ongoing",
             subtitle: isCanceled 
                 ? (booking.cancelReason.isNotEmpty ? "Reason: ${booking.cancelReason}" : "Booking was canceled") 
                 : "Provider Assigned",
@@ -482,7 +505,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   const SizedBox(height: 8),
                   Text("OTP: ${booking.bookingPin}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
-                  Text("Schedule: ${_formatDate(booking.bookingDate)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text("Schedule: ${_formatSchedule(booking.bookingDate, booking.bookingTime)}", style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
               )
             ],
@@ -634,7 +657,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
               TextField(
                 enabled: false,
                 decoration: InputDecoration(
-                  hintText: _formatDate(booking.bookingDate),
+                  hintText: _formatSchedule(booking.bookingDate, booking.bookingTime),
                   border: const OutlineInputBorder(),
                   suffixIcon: const Icon(Icons.calendar_today, size: 18),
                 ),

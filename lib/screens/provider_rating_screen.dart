@@ -8,7 +8,7 @@ class ProviderRatingScreen extends StatelessWidget {
 
   final ProviderRatingController controller = Get.put(ProviderRatingController());
 
-  // --- Design System Colors ---
+  // --- Design System Colors (Matching HolidayManagementScreen) ---
   final Color primaryOrange = const Color(0xFFF97316);
   final Color textDark = const Color(0xFF1E293B);
   final Color textGrey = const Color(0xFF64748B);
@@ -20,7 +20,7 @@ class ProviderRatingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Provider Rating",
+        title: Text("Provider Ratings",
             style: TextStyle(color: textDark, fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -36,10 +36,10 @@ class ProviderRatingScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Service Provider Ratings & Reviews",
+            Text("Provider Performance & Feedback",
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: textDark)),
             const SizedBox(height: 8),
-            Text("View real-time customer feedback and ratings for your service providers.",
+            Text("Monitor real-time customer ratings and detailed reviews for specifically selected providers.",
                 style: TextStyle(color: textGrey, fontSize: 14)),
             const SizedBox(height: 32),
 
@@ -60,21 +60,13 @@ class ProviderRatingScreen extends StatelessWidget {
                 );
               }
 
-              // 3. Check if there are results
-              if (controller.ratingList.isEmpty) {
-                return _buildNoRatingsState();
+              // 3. Check if list is empty
+              if (controller.ratingsList.isEmpty) {
+                return _buildNoDataState();
               }
 
-              // 4. Display Ratings Card
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: controller.ratingList.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final rating = controller.ratingList[index];
-                  return _buildRatingCard(rating);
-                },
+              return Column(
+                children: controller.ratingsList.map((rating) => _buildRatingCard(rating)).toList(),
               );
             }),
           ],
@@ -85,14 +77,62 @@ class ProviderRatingScreen extends StatelessWidget {
 
   // --- UI COMPONENTS ---
 
+  Widget _buildEmptyState() {
+    return Container(
+      height: 400,
+      width: double.infinity,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+          color: bgLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderGrey)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.star_outline_rounded, size: 64, color: primaryOrange.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text("No Provider Selected",
+              style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text("Select a provider above to view their performance ratings and customer reviews.",
+              style: TextStyle(color: textGrey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoDataState() {
+    return Container(
+      height: 400,
+      width: double.infinity,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+          color: bgLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderGrey)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.feedback_outlined, size: 64, color: textGrey.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text("No Ratings Yet",
+              style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text("This provider hasn't received any customer ratings or reviews yet.",
+              style: TextStyle(color: textGrey)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSelectionBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: borderGrey),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15)],
       ),
       child: Row(
         children: [
@@ -132,7 +172,7 @@ class ProviderRatingScreen extends StatelessWidget {
                       Text(
                         selectedProvider != null
                             ? "${selectedProvider.fullName} (${selectedProvider.mobileNo})"
-                            : "Choose a service provider...",
+                            : "Choose a service provider to view ratings...",
                         style: TextStyle(color: selectedProvider != null ? textDark : textGrey),
                       ),
                       const Spacer(),
@@ -143,50 +183,22 @@ class ProviderRatingScreen extends StatelessWidget {
               );
             }),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      height: 400,
-      width: double.infinity,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-          color: bgLight,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderGrey)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.star_half_rounded, size: 64, color: primaryOrange.withOpacity(0.5)),
-          const SizedBox(height: 16),
-          Text("No Provider Selected",
-              style: TextStyle(color: textDark, fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text("Select a provider to view their customer reviews and ratings.",
-              style: TextStyle(color: textGrey)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoRatingsState() {
-    return Container(
-      height: 300,
-      width: double.infinity,
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.reviews_outlined, size: 48, color: textGrey.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          Text("No Ratings Yet",
-              style: TextStyle(color: textGrey, fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text("This provider hasn’t received any customer ratings yet.",
-              style: TextStyle(color: textGrey, fontSize: 13)),
+          const SizedBox(width: 16),
+          ElevatedButton(
+            onPressed: () {
+                if(controller.selectedProviderId.value != null){
+                   controller.fetchProviderRatings(controller.selectedProviderId.value!);
+                }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryOrange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              fixedSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text("Refresh List"),
+          )
         ],
       ),
     );
@@ -194,61 +206,57 @@ class ProviderRatingScreen extends StatelessWidget {
 
   Widget _buildRatingCard(dynamic rating) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderGrey),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: primaryOrange.withOpacity(0.1),
-                backgroundImage: (rating['customerImage'] != null && rating['customerImage'].isNotEmpty)
-                    ? NetworkImage(rating['customerImage'])
-                    : null,
-                child: (rating['customerName'] != null && 
-                       (rating['customerImage'] == null || rating['customerImage'].isEmpty))
-                    ? Text(rating['customerName'][0].toUpperCase(), 
-                        style: TextStyle(color: primaryOrange, fontWeight: FontWeight.bold))
-                    : null,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Customer Image
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: bgLight,
+            backgroundImage: rating.customerImage != null ? NetworkImage(rating.customerImage) : null,
+            child: rating.customerImage == null ? Icon(Icons.person, color: textGrey) : null,
+          ),
+          const SizedBox(width: 20),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(rating['customerName'] ?? "Anonymous",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textDark)),
-                    const SizedBox(height: 4),
-                    _buildStarRating(rating['rating'] ?? 0),
+                    Text(rating.customerName,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textDark)),
+                    _buildStars(rating.rating),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            rating['comment'] ?? "No comment provided.",
-            style: TextStyle(fontSize: 14, color: textDark, height: 1.5),
+                const SizedBox(height: 12),
+                Text(
+                  rating.comment,
+                  style: TextStyle(color: textGrey, fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStarRating(int rating) {
+  Widget _buildStars(double rating) {
     return Row(
       children: List.generate(5, (index) {
         return Icon(
           index < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-          color: index < rating ? Colors.amber : textGrey.withOpacity(0.3),
-          size: 18,
+          color: const Color(0xFFFFB800),
+          size: 20,
         );
       }),
     );

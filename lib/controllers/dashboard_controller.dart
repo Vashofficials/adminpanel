@@ -56,14 +56,15 @@ class DashboardController extends GetxController {
         totalRevenue.value = rev;
       }
 
-      // 2. Fetch Active Services count
+      // 2. Fetch Active Services count (Filter for isActive == true)
       final services = await _api.getServices();
-      activeServices.value = services.length;
+      activeServices.value = services.where((s) => s.isActive).length;
 
-      // 3. Fetch Total Customers count
-      final customerData = await _api.getAllCustomers(page: 0, size: 500);
-      if (customerData != null && customerData['result'] is List) {
-        totalCustomers.value = (customerData['result'] as List).length;
+      // 3. Fetch Total Customers count (Use totalElements from paginated metadata)
+      final customerData = await _api.getAllCustomers(page: 0, size: 10);
+      if (customerData != null && customerData['result'] != null) {
+        final resp = CustomerResponse.fromJson(customerData);
+        totalCustomers.value = resp.totalElements;
       }
 
       // 4. Fetch Top Providers (Sorted by rating)

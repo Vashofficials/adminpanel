@@ -406,6 +406,14 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                         onTap: () => widget.onNav?.call('provider/list'),
                       ),
                       NavTile(
+                        icon: Icons.star_rate_rounded,
+                        label: 'Provider Rating',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('provider/rating'),
+                        onTap: () => widget.onNav?.call('provider/rating'),
+                      ),
+                      NavTile(
                         icon: Icons.person_add_alt,
                         label: 'Add Provider',
                         collapsed: collapsed,

@@ -170,7 +170,7 @@ double get grandTotalPrice {
   }
 
   double get totalDiscountAmount {
-    return 0.0; // Placeholder until integrated with real API data
+    return totalServiceDiscount;
   }
 
   /*double get totalCouponDiscountAmount {
@@ -178,7 +178,7 @@ double get grandTotalPrice {
   }
 */
   double get totalTaxAmount {
-    return 0.0; // Placeholder until integrated with real API data
+    return gstAmount; 
   }
 
   String get mainServiceName {

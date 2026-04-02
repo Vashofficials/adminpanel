@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'dart:html' as html;
+import 'dart:convert';
 import '../controllers/withdraw_controller.dart';
 import '../controllers/banking_controller.dart';
 import 'package:get/get.dart';
@@ -26,9 +28,10 @@ class _ProviderReportScreenState extends State<ProviderReportScreen> {
   final ApiService _api = ApiService();
   final WithdrawController controller = Get.put(WithdrawController());
   final BankingController bankingController = Get.put(BankingController());
-  // Filter State
+  final TextEditingController _searchController = TextEditingController();
+  // Filter State (Start Date = Today - 1 Year, End Date = Tomorrow)
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 365));
-  DateTime _endDate = DateTime.now();
+  DateTime _endDate = DateTime.now().add(const Duration(days: 1));
   bool _isLoading = true;
   
   // Report Data
@@ -133,11 +136,15 @@ void _onSettleClick(Map<String, dynamic> row) async {
               _buildHeader(),
               const SizedBox(height: 24),
 
-              // 2. Filters
+              // 2. KPI Section
+              _buildKPISection(),
+              const SizedBox(height: 24),
+
+              // 3. Filters
               _buildFilters(),
               const SizedBox(height: 24),
 
-              // 3. Provider List Table
+              // 4. Provider List Table
               _buildProviderTable(),
               const SizedBox(height: 40),
             ],
@@ -157,7 +164,7 @@ void _onSettleClick(Map<String, dynamic> row) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              'Provider Settlement Action',
+              'Provider Earn Report',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -166,23 +173,121 @@ void _onSettleClick(Map<String, dynamic> row) async {
             ),
             SizedBox(height: 6),
             Text(
-              'Manage and view provider reports for Lucknow region.',
+              'Manage financial movements and view Lucknow region insights.',
               style: TextStyle(fontSize: 14, color: _muted),
             ),
           ],
         ),
-        OutlinedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.download_rounded, size: 18),
-          label: const Text('Export CSV'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _textDark,
-            side: const BorderSide(color: _border),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          ),
-        ),
       ],
+    );
+  }
+
+  // --- NEW KPI SECTION ---
+  Widget _buildKPISection() {
+    double totalEarn = 0;
+    for (var row in _reportData) {
+      totalEarn += (row['totalPayment'] ?? 0.0);
+    }
+
+    return Container(
+      width: double.infinity,
+      alignment: Alignment.centerRight,
+      child: Container(
+        width: 300,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _panelBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _orangeLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.account_balance_wallet_outlined, color: _orange, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TOTAL PROVIDER EARNING',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _muted, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₹${totalEarn.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _textDark),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- NEW DOWNLOAD LOGIC ---
+  void _handleDownload() {
+    if (_reportData.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No data to download'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final StringBuffer csv = StringBuffer();
+    csv.writeln("SL,Provider Name,Total Earnings");
+
+    for (int i = 0; i < _reportData.length; i++) {
+        final row = _reportData[i];
+        final name = (row['providerName'] ?? 'Unknown').replaceAll(',', '');
+        final earn = (row['totalPayment'] ?? 0.0).toStringAsFixed(2);
+        csv.writeln("${i + 1},$name,$earn");
+    }
+
+    try {
+        // Since we already have dart:html import logic in other files, 
+        // I will dynamically handle the download to avoid static import issues if file is shared.
+        // Actually Customer List already uses it. I'll add the import if it's missing.
+        _triggerFileDownload(csv.toString());
+    } catch (e) {
+        print("Download Error: $e");
+    }
+  }
+
+  void _triggerFileDownload(String content) {
+    final bytes = utf8.encode(content);
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute("download", "provider_earn_report.csv")
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: const [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Text("Report downloaded successfully!"),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -296,13 +401,61 @@ void _onSettleClick(Map<String, dynamic> row) async {
       ),
       child: Column(
         children: [
-          // Toolbar
+          // SEARCH BAR & DOWNLOAD ROW
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Provider List', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: _bg, // Use light grey bg from screenshot
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, size: 20, color: _muted),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (val) => setState(() {}),
+                            decoration: const InputDecoration(
+                              hintText: 'Search by Provider Name...',
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(fontSize: 14, color: _muted),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () => setState(() {}),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    fixedSize: const Size(120, 48),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Search', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _handleDownload,
+                  icon: const Icon(Icons.download, size: 18, color: Colors.white),
+                  label: const Text('Download CSV', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    fixedSize: const Size(180, 48),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -316,10 +469,7 @@ void _onSettleClick(Map<String, dynamic> row) async {
               children: const [
                 SizedBox(width: 40, child: _Th('SL')),
                 Expanded(flex: 3, child: _Th('PROVIDER INFO')),
-                Expanded(flex: 2, child: _Th('TOTAL\nBOOKINGS', align: TextAlign.center)),
-                Expanded(flex: 2, child: _Th('TOTAL\nEARN', align: TextAlign.center)),
-                Expanded(flex: 2, child: _Th('TOTAL\nSETTLED', align: TextAlign.center)),
-                SizedBox(width: 60, child: _Th('ACTION', align: TextAlign.right)),
+                Expanded(flex: 2, child: _Th('TOTAL EARN', align: TextAlign.right)),
               ],
             ),
           ),
@@ -336,24 +486,25 @@ void _onSettleClick(Map<String, dynamic> row) async {
               child: Center(child: Text("No records found", style: TextStyle(color: _muted))),
             )
           else
-            ..._reportData.asMap().entries.map((entry) {
-              int idx = entry.key;
-              Map<String, dynamic> row = entry.value;
-              String providerName = row['providerName'] ?? 'Unknown';
-              String providerId = row['providerId'] ?? '';
-              
-              String sl = (idx + 1).toString().padLeft(2, '0');
-              String bookings = (row['totalBookings'] ?? 0).toString();
-              String earn = '₹${(row['totalPayment'] ?? 0.0).toStringAsFixed(2)}';
-              String settled = '₹${(row['totalSettled'] ?? 0.0).toStringAsFixed(2)}';
-              return Column(
-                children: [
-                  _buildRow(sl, providerName, providerId, bookings, earn, settled),
-                  if (idx < _reportData.length - 1)
-                     const Divider(height: 1, color: _border),
-                ],
-              );
-            }).toList(),
+            ...[
+              for (var entry in _reportData.asMap().entries.where((e) {
+                final query = _searchController.text.toLowerCase();
+                if (query.isEmpty) return true;
+                final name = (e.value['providerName'] ?? '').toString().toLowerCase();
+                return name.contains(query);
+              }).toList()) 
+                Column(
+                  children: [
+                    _buildRow(
+                      (entry.key + 1).toString().padLeft(2, '0'),
+                      entry.value['providerName'] ?? 'Unknown',
+                      entry.value['providerId'] ?? '',
+                      '₹${(entry.value['totalPayment'] ?? 0.0).toStringAsFixed(2)}',
+                    ),
+                    const Divider(height: 1, color: _border),
+                  ],
+                ),
+            ],
 
           // Pagination
           Padding(
@@ -390,13 +541,12 @@ void _onSettleClick(Map<String, dynamic> row) async {
     );
   }
 
-  Widget _buildRow(String sl, String name, String id, String bookings, String earning, String settlement) {
-    final Map<String, dynamic> currentRowData = _reportData.firstWhere((element) => element['providerId'] == id);
+  Widget _buildRow(String sl, String name, String id, String earning) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         children: [
-          SizedBox(width: 40, child: Text(sl, style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark))),
+          SizedBox(width: 40, child: Text(sl, style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark, fontSize: 13))),
           Expanded(
             flex: 3,
             child: Row(
@@ -420,19 +570,8 @@ void _onSettleClick(Map<String, dynamic> row) async {
               ],
             ),
           ),
-          Expanded(flex: 2, child: Text(bookings, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: _textDark))),
-          Expanded(flex: 2, child: Text(earning, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark))),
-          Expanded(flex: 2, child: Text(settlement, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF10B981)))),
-SizedBox(
-            width: 60, 
-            child: Align(
-              alignment: Alignment.centerRight, 
-              child: IconButton(
-                icon: const Icon(Icons.payments_outlined, color: _orange, size: 20),
-               onPressed: () => _onSettleClick(currentRowData), // Call the modal here
-              )
-            )
-          ),        ],
+          Expanded(flex: 2, child: Text(earning, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.bold, color: _textDark, fontSize: 14))),
+        ],
       ),
     );
   }

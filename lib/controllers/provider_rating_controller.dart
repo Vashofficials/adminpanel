@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/provider_controller.dart';
+import '../models/customer_models.dart';
 import '../services/api_service.dart';
 
 class ProviderRatingController extends GetxController {
@@ -10,11 +11,12 @@ class ProviderRatingController extends GetxController {
   // --- STATE ---
   var selectedProviderId = RxnString();
   var isLoadingRatings = false.obs;
-  var ratingList = <dynamic>[].obs; // Stores results from /admin/getServiceProviderRating
+  var ratingsList = <ServiceProviderRating>[].obs;
 
   @override
   void onInit() {
     super.onInit();
+    // Ensure ProviderController is available for the dropdown list
     providerController = Get.isRegistered<ProviderController>()
         ? Get.find<ProviderController>()
         : Get.put(ProviderController());
@@ -32,12 +34,12 @@ class ProviderRatingController extends GetxController {
       final response = await _api.getServiceProviderRating(providerId);
 
       if (response.statusCode == 200) {
-        // response.data['result'] is a list of ratings
-        ratingList.assignAll(response.data['result'] ?? []);
+        final List<dynamic> result = response.data['result'] ?? [];
+        ratingsList.assignAll(result.map((json) => ServiceProviderRating.fromJson(json)).toList());
       }
     } catch (e) {
       debugPrint("❌ Provider Rating Fetch Error: $e");
-      ratingList.clear();
+      ratingsList.clear();
     } finally {
       isLoadingRatings.value = false;
     }
@@ -50,7 +52,7 @@ class ProviderRatingController extends GetxController {
     if (val != null) {
       fetchProviderRatings(val);
     } else {
-      ratingList.clear();
+      ratingsList.clear();
     }
   }
 }

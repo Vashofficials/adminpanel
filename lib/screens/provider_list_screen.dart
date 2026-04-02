@@ -197,7 +197,6 @@ class ProviderListScreen extends StatelessWidget {
                             columns: const [
                               DataColumn(label: Text("SL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("PROVIDER NAME", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
-                              DataColumn(label: Text("CATEGORY MAPPED", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("CONTACT DETAILS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("LOCATION & ADDRESS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("STATUS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
@@ -256,18 +255,6 @@ class ProviderListScreen extends StatelessWidget {
                                     ],
                                   ),
                                 )),
-
-                                // Category Mapped
-                                DataCell(Obx(() {
-                                  final cat = controller.providerCategoriesMap[provider.id];
-                                  if (cat == null) {
-                                    return const SizedBox(
-                                      width: 16, height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: primaryOrange)
-                                    );
-                                  }
-                                  return Text(cat, style: const TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 12));
-                                })),
 
                                 // Contact
                                 DataCell(Column(
