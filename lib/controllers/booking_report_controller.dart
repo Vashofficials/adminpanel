@@ -16,7 +16,7 @@ class BookingReportController extends GetxController {
   Future<void> fetchReport() async {
     isLoading.value = true;
     try {
-      var data = await ApiService().getBookingReport(selectedYear.value);
+      var data = await ApiService().getBookingReport(selectedYear.value.toString());    
       if (data != null) {
         reportData.value = data.result;
       }
