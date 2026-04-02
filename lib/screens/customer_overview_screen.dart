@@ -191,16 +191,38 @@ class _OverviewTab extends StatefulWidget {
 }
 
 class _OverviewTabState extends State<_OverviewTab> {
-  // Assuming you have an ApiService instance. Replace with your actual service.
   final ApiService _api = ApiService();
+  final BookingRepository _bookingRepo = BookingRepository();
   
-List<RefundBank> _banks = [];
+  List<RefundBank> _banks = [];
   bool _isBankLoading = true;
+
+  List<BookingModel> _bookings = [];
+  bool _isBookingsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchBankDetails();
+    _fetchBookings();
+  }
+
+  Future<void> _fetchBookings() async {
+    if (!mounted) return;
+    setState(() => _isBookingsLoading = true);
+    try {
+      final fetchedBookings = await _bookingRepo.fetchCustomerBookings(widget.customer.id);
+      if (mounted) {
+         setState(() {
+            _bookings = fetchedBookings;
+            _isBookingsLoading = false;
+         });
+      }
+    } catch (e) {
+      if (mounted) {
+         setState(() => _isBookingsLoading = false);
+      }
+    }
   }
 
 Future<void> _fetchBankDetails() async {
@@ -229,8 +251,20 @@ final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.cust
 }
   @override
   Widget build(BuildContext context) {
-    final bookingsCount = widget.customer.bookings.toString();
-    const totalAmount = "\u20B90.00";
+    int totalBookingsCount = widget.customer.bookings; 
+    if(!_isBookingsLoading) {
+      totalBookingsCount = _bookings.length;
+    }
+    
+    double grandTotalAmount = 0.0;
+    if(!_isBookingsLoading) {
+      for (var b in _bookings) {
+        grandTotalAmount += b.grandTotalPrice; 
+      }
+    }
+
+    final bookingsCountStr = totalBookingsCount.toString();
+    final totalAmount = "\u20B9${grandTotalAmount.toStringAsFixed(2)}";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +275,7 @@ final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.cust
           children: [
             Expanded(
               child: _buildStatCard(
-                value: bookingsCount,
+                value: bookingsCountStr,
                 label: "Total Booking Placed",
                 valueColor: kPrimaryOrange,
                 bgColor: const Color(0xFFFFF7ED),
@@ -259,7 +293,7 @@ final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.cust
             const SizedBox(width: 20),
             Expanded(
               flex: 1,
-              child: _buildOverviewChart(bookingsCount),
+              child: _buildOverviewChart(bookingsCountStr),
             ),
           ],
         ),
@@ -347,40 +381,71 @@ final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.cust
   }
 
   Widget _buildPersonalDetailsCard() {
+    String displayAddress = widget.customer.location;
+    if (_bookings.isNotEmpty) {
+      final BookingModel? firstWithAddress = _bookings.firstWhere(
+        (b) => b.address != null, 
+        orElse: () => _bookings.first,
+        // using orElse returning first is not null safe if _bookings could have empty items, but handled below
+      );
+      if (firstWithAddress != null && firstWithAddress.address != null) {
+        displayAddress = firstWithAddress.address!.fullFormattedAddress;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kBorderColor),
-      ),
-      child: Row(
-        children: [
-          _buildAvatar(),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.customer.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextDark)),
-                const SizedBox(height: 8),
-                _buildInfoRow(Icons.phone_android, widget.customer.phone.isNotEmpty ? widget.customer.phone : "No Phone"),
-                const SizedBox(height: 4),
-                _buildInfoRow(Icons.email_outlined, widget.customer.email.isNotEmpty ? widget.customer.email : "No Email"),
-                const SizedBox(height: 4),
-                _buildInfoRow(Icons.location_on_outlined, widget.customer.location),
-              ],
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: widget.onEdit,
-            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-            label: const Text("Edit", style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kPrimaryOrange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           )
+        ]
+      ),
+      child: Stack(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAvatar(),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.customer.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kTextDark)),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildInfoRow(Icons.phone_android, "Phone", widget.customer.phone.isNotEmpty ? widget.customer.phone : "No Phone")),
+                        Expanded(child: _buildInfoRow(Icons.email_outlined, "Email", widget.customer.email.isNotEmpty ? widget.customer.email : "N/A")),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow(Icons.location_on_outlined, "Address", displayAddress),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          /* Positioned(
+            right: 0,
+            top: 0,
+            child: ElevatedButton.icon(
+              onPressed: widget.onEdit,
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              label: const Text("Edit", style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryOrange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+            ),
+          ), */
         ],
       ),
     );
@@ -494,12 +559,22 @@ final List<RefundBank> realBanks = await _api.getCustomerRefundBanks(widget.cust
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String label, String text) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: kTextLight),
+        Icon(icon, size: 18, color: kTextLight),
         const SizedBox(width: 8),
-        Text(text, style: const TextStyle(fontSize: 13, color: kTextDark, fontWeight: FontWeight.w500)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: kTextLight)),
+              const SizedBox(height: 2),
+              Text(text, style: const TextStyle(fontSize: 14, color: kTextDark, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        )
       ],
     );
   }
@@ -588,14 +663,14 @@ class _BookingsTabState extends State<_BookingsTab> {
                 // Recalculate statusColor, displayDate etc here as per previous code...
                 final String displayDate = item.bookingDate.length >= 10 ? item.bookingDate.substring(0, 10) : item.bookingDate;
                 final String serviceName = item.services.isNotEmpty ? item.services.first.serviceName : "Unknown";
-                final String providerName = item.provider != null ? "${item.provider!.firstName} ${item.provider!.lastName}" : "Unassigned";
+                final String providerName = item.provider != null ? "${item.provider!.firstName} ${item.provider!.lastName}\n${item.provider!.mobile}" : "Unassigned";
 
                 return _buildRow(
                   "#${item.bookingRef}", 
                   serviceName,
                   displayDate,
                   providerName,
-                  "\u20B9${item.totalAmount.toStringAsFixed(2)}",
+                  "\u20B9${item.grandTotalPrice.toStringAsFixed(2)}",
                   item.status,
                   Colors.blue, // Pass calculated color
                   Icons.info, // Pass calculated icon
@@ -686,7 +761,7 @@ class _ReviewsTab extends StatefulWidget {
 
 class _ReviewsTabState extends State<_ReviewsTab> {
   final ApiService _api = ApiService();
-  List<BookingReview> _reviews = [];
+  List<ProviderRating> _reviews = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
@@ -699,8 +774,8 @@ class _ReviewsTabState extends State<_ReviewsTab> {
   Future<void> _fetchReviews() async {
     setState(() => _isLoading = true);
     try {
-      // API call to /admin/getBookingRatingByCustomer
-      final response = await _api.getBookingRatings(widget.customerId);
+      // API call to /admin/getProviderRatingByCustomer
+      final response = await _api.getProviderRatingByCustomer(widget.customerId);
       if (mounted) {
         setState(() {
           _reviews = response;
@@ -726,7 +801,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search by Booking ID...',
+                    hintText: 'Search by Provider Name...',
                     prefixIcon: const Icon(Icons.search, color: kTextLight),
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: kBorderColor)),
@@ -766,10 +841,9 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               itemBuilder: (context, index) {
                 final item = _reviews[index];
                 return _buildReviewRow(
-                  item.bookingId, 
-                  item.bookingDate.split('T')[0], // Simple date format
+                  item.providerName, 
                   item.rating, 
-                  item.review
+                  item.comment
                 );
               },
             ),
@@ -792,14 +866,13 @@ class _ReviewsTabState extends State<_ReviewsTab> {
     );
   }
 
-  Widget _buildReviewRow(String id, String date, double rating, String review) {
+  Widget _buildReviewRow(String providerName, double rating, String review) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(flex: 2, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-          Expanded(flex: 2, child: Text(date, style: const TextStyle(fontSize: 13))),
+          Expanded(flex: 3, child: Text(providerName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
           Expanded(flex: 2, child: Row(
             children: [
               ...List.generate(5, (index) => Icon(
@@ -811,7 +884,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
               Text("$rating", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
             ],
           )),
-          Expanded(flex: 4, child: Text(review, style: const TextStyle(fontSize: 13, color: kTextLight, height: 1.4))),
+          Expanded(flex: 5, child: Text(review, style: const TextStyle(fontSize: 13, color: kTextLight, height: 1.4))),
         ],
       ),
     );
@@ -826,10 +899,9 @@ class _ReviewTableHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: const [
-          Expanded(flex: 2, child: Text("BOOKING ID", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-          Expanded(flex: 2, child: Text("BOOKING DATE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
+          Expanded(flex: 3, child: Text("PROVIDER NAME", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
           Expanded(flex: 2, child: Text("RATINGS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
-          Expanded(flex: 4, child: Text("REVIEWS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
+          Expanded(flex: 5, child: Text("REVIEWS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextLight))),
         ],
       ),
     );

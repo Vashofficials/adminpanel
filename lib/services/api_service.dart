@@ -1460,6 +1460,24 @@ Future<List<BookingReview>> getBookingRatings(String customerId) async {
     return [];
   }
 }
+
+Future<List<ProviderRating>> getProviderRatingByCustomer(String customerId) async {
+  try {
+    final response = await _dio.get(
+      '/admin/getProviderRatingByCustomer',
+      queryParameters: {'customerId': customerId},
+    );
+    
+    if (response.statusCode == 200) {
+      final List data = response.data['result'] ?? [];
+      return data.map((json) => ProviderRating.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("❌ Error fetching provider ratings: $e");
+    return [];
+  }
+}
 // Inside your ApiService class
 Future<Response> deleteServiceProvider(String providerId, bool isActive) async {
   try {

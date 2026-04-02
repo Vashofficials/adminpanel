@@ -110,3 +110,23 @@ class CustomerResponse {
     );
   }
 }
+
+class ProviderRating {
+  final String providerName;
+  final String comment;
+  final double rating;
+
+  ProviderRating({
+    required this.providerName,
+    required this.comment,
+    required this.rating,
+  });
+
+  factory ProviderRating.fromJson(Map<String, dynamic> json) {
+    return ProviderRating(
+      providerName: json['providerName'] ?? 'Unknown',
+      comment: json['comment'] ?? 'No comment provided.',
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}

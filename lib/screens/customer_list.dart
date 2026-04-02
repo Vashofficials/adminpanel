@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:html' as html;
+import 'dart:convert';
 
 // --- IMPORTANT: This import provides the 'Customer' class ---
 import '../repositories/customer_repository.dart';
@@ -53,13 +55,12 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   // --- Filter State Variables ---
   String _selectedTab = 'All';
-  DateTime? _startDate;
-  DateTime? _endDate;
-  String _sortBy = 'Latest';
+  String _sortBy = 'Bookings High to Low';
   String _selectedArea = 'All Areas';
+  final TextEditingController _searchController = TextEditingController();
 
   // --- Constants for Dropdowns ---
-  final List<String> _sortOptions = ['Latest', 'Oldest', 'Bookings High', 'Bookings Low'];
+  final List<String> _sortOptions = ['Bookings High to Low', 'Bookings Low to High'];
   final List<String> _areaOptions = ['All Areas', 'Gomti Nagar', 'Hazratganj', 'Aliganj', 'Indira Nagar'];
 
   @override
@@ -127,45 +128,109 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context, bool isStart) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2026),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: kPrimaryOrange,
-              onPrimary: Colors.white,
-              onSurface: kTextDark,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startDate = picked;
-        } else {
-          _endDate = picked;
-        }
-      });
-    }
-  }
-
   void _applyFilter() {
     setState(() {
       _currentPage = 0; // UPDATED: Reset to 0
     });
-    _fetchData();
+    // For large scale, you might trigger _fetchData() if backend supported it
+    // Right now, updating state will trigger a rebuild and _filteredCustomers will handle it natively.
+  }
+
+  // --- Client Side Filtering ---
+  List<Customer> get _filteredCustomers {
+    List<Customer> temp = List.from(_customers);
+
+    // 1. Tab Status
+    if (_selectedTab == 'Active') {
+      temp = temp.where((c) => c.isActive).toList();
+    } else if (_selectedTab == 'Inactive') {
+      temp = temp.where((c) => !c.isActive).toList();
+    }
+
+    // 2. Search Box (Name or Number)
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      temp = temp.where((c) => 
+        c.name.toLowerCase().contains(query) || 
+        c.phone.contains(query)
+      ).toList();
+    }
+
+    // 3. Area (Zone)
+    if (_selectedArea != 'All Areas') {
+      temp = temp.where((c) => c.location.toLowerCase().contains(_selectedArea.toLowerCase())).toList();
+    }
+
+    // 4. Sort By
+    if (_sortBy == 'Bookings High to Low') {
+      temp.sort((a, b) => b.bookings.compareTo(a.bookings));
+    } else if (_sortBy == 'Bookings Low to High') {
+      temp.sort((a, b) => a.bookings.compareTo(b.bookings));
+    }
+    return temp;
+  }
+
+  // --- DOWNLOAD CSV ---
+  void _handleDownload() {
+    final displayData = _filteredCustomers;
+    if (displayData.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No data to download'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final StringBuffer csv = StringBuffer();
+    // Headers
+    csv.writeln("SL,Customer Name,Phone,Email,Referral Code,Joined Date,Location,Status");
+
+    // Rows
+    for (int i = 0; i < displayData.length; i++) {
+        final c = displayData[i];
+        final name = c.name.replaceAll(',', '');
+        final phone = c.phone.replaceAll(',', '');
+        final email = c.email.replaceAll(',', '');
+        final ref = (c.referralCode ?? 'N/A').replaceAll(',', '');
+        final joined = c.joinedDate.replaceAll(',', '');
+        final loc = c.location.replaceAll(',', '');
+        final status = c.isActive ? 'Active' : 'Inactive';
+        
+        csv.writeln("${i + 1},$name,$phone,$email,$ref,$joined,$loc,$status");
+    }
+
+    // Export using dart:html
+    final bytes = utf8.encode(csv.toString());
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute("download", "customer_list.csv")
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Text("Downloaded ${displayData.length} records successfully!"),
+          ],
+        ),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final displayCustomers = _filteredCustomers;
     return Scaffold(
       backgroundColor: kBgColor,
       body: SingleChildScrollView(
@@ -202,7 +267,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Expanded(
+                      /* Expanded(
                         child: _buildDatePickerField(
                           label: 'Start Date', 
                           selectedDate: _startDate, 
@@ -217,7 +282,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           onTap: () => _selectDate(context, false)
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 16), */
                       Expanded(
                         child: _buildDropdownField(
                           label: 'Sort By',
@@ -300,15 +365,16 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: TextEditingController(), // Consider managing this if you need search text state
+                                controller: _searchController,
                                 decoration: InputDecoration(
-                                  hintText: 'Search by name, email or phone...',
+                                  hintText: 'Search by name or number both...',
                                   prefixIcon: const Icon(Icons.search, color: kTextLight),
                                   filled: true,
                                   fillColor: kBgColor,
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                                 ),
+                                onChanged: (value) => setState((){}),
                                 onSubmitted: (value) => _applyFilter(), 
                               ),
                             ),
@@ -320,7 +386,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                             ),
                             const Spacer(),
                             OutlinedButton.icon(
-                              onPressed: () {},
+                              onPressed: _handleDownload,
                               icon: const Icon(Icons.download, size: 18, color: kTextDark),
                               label: const Text('Download', style: TextStyle(color: kTextDark)),
                               style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
@@ -360,7 +426,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         padding: const EdgeInsets.all(40.0),
                         child: Center(child: Text("Error: $_errorMessage", style: const TextStyle(color: Colors.red))),
                       )
-                  else if (_customers.isEmpty)
+                  else if (displayCustomers.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(40.0),
                         child: Center(child: Text("No customers found")),
@@ -369,10 +435,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _customers.length,
+                      itemCount: displayCustomers.length,
                       separatorBuilder: (ctx, i) => const Divider(height: 1, color: kBorderColor),
                       itemBuilder: (context, index) {
-                        final customer = _customers[index];
+                        final customer = displayCustomers[index];
                         // UPDATED: SL Calculation for 0-based page
                         final serialNumber = ((_currentPage) * _pageSize) + index + 1;
                         
@@ -452,11 +518,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                               ),
                               Expanded(
                                 flex: 1,
-                                child: Switch(
-                                  value: customer.isActive,
-                                  activeColor: Colors.white,
-                                  activeTrackColor: kPrimaryOrange,
-                                 onChanged: (bool newValue) {
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Switch(
+                                        value: customer.isActive,
+                                        activeColor: Colors.white,
+                                        activeTrackColor: kPrimaryOrange,
+                                        onChanged: (bool newValue) {
   CustomCenterDialog.show(
     context,
     title: "Confirm Status Change",
@@ -501,6 +573,18 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     },
   );
 }
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        customer.isActive ? "Active" : "Inactive",
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: customer.isActive ? kPrimaryOrange : Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               Expanded(
@@ -542,8 +626,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          // UPDATED TEXT LOGIC for 0-based
-                          'Showing ${(_currentPage * _pageSize) + 1} to ${(_currentPage * _pageSize) + _customers.length} of $_totalElements entries', 
+                          'Showing ${(_currentPage * _pageSize) + 1} to ${(_currentPage * _pageSize) + displayCustomers.length} of $_totalElements entries', 
                           style: const TextStyle(color: kTextLight, fontSize: 13)
                         ),
                         Row(
