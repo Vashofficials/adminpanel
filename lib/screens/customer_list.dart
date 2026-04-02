@@ -249,8 +249,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             ),
             const SizedBox(height: 24),
 
-            // --- Filter Card ---
-            Container(
+            // --- Filter Card --- (Commented out)
+            /* Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
               child: Column(
@@ -267,22 +267,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      /* Expanded(
-                        child: _buildDatePickerField(
-                          label: 'Start Date', 
-                          selectedDate: _startDate, 
-                          onTap: () => _selectDate(context, true)
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildDatePickerField(
-                          label: 'End Date', 
-                          selectedDate: _endDate, 
-                          onTap: () => _selectDate(context, false)
-                        ),
-                      ),
-                      const SizedBox(width: 16), */
                       Expanded(
                         child: _buildDropdownField(
                           label: 'Sort By',
@@ -320,7 +304,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 24), */
 
             // --- Table Section ---
             Container(
@@ -574,7 +558,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   );
 }
                                       ),
-                                      const SizedBox(height: 4),
+                                      /* const SizedBox(height: 4),
                                       Text(
                                         customer.isActive ? "Active" : "Inactive",
                                         style: TextStyle(
@@ -582,7 +566,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                           fontWeight: FontWeight.bold,
                                           color: customer.isActive ? kPrimaryOrange : Colors.redAccent,
                                         ),
-                                      ),
+                                      ), */
                                     ],
                                   ),
                                 ),
@@ -591,7 +575,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                 flex: 1,
                                 child: Row(
                                   children: [
-                                    _ActionButton(
+                                    /* _ActionButton(
                                       icon: Icons.edit_outlined, 
                                       color: kPrimaryOrange,
                                       onTap: () {
@@ -600,7 +584,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                         }
                                       },
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 8), */
                                     _ActionButton(
                                       icon: Icons.visibility_outlined, 
                                       color: kTextLight, 

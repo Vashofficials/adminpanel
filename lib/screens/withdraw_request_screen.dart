@@ -15,6 +15,7 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final WithdrawController controller = Get.put(WithdrawController());
+  DateTime _selectedDate = DateTime.now(); // Default to today
 
   @override
   void initState() {
@@ -71,14 +72,32 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
         }
 
         List<dynamic> filteredRequests = controller.withdrawList.where((req) {
+          // --- Tab filter ---
           final status = req['status']?.toString().toUpperCase();
+          bool passesTab;
           switch (_tabController.index) {
-            case 1: return status == 'PENDING';
-            case 2: return status == 'SUCCESS' || status == 'APPROVED';
-            case 3: return status == 'DENIED';
-            case 4: return status == 'SETTLED';
-            default: return true;
+            case 1: passesTab = status == 'PENDING'; break;
+            case 2: passesTab = status == 'SUCCESS' || status == 'APPROVED'; break;
+            case 3: passesTab = status == 'DENIED'; break;
+            case 4: passesTab = status == 'SETTLED'; break;
+            default: passesTab = true;
           }
+
+          // --- Date filter ---
+          bool passesDate = false;
+          final rawDate = req['requestDate']?.toString();
+          if (rawDate != null) {
+            try {
+              final parsed = DateTime.parse(rawDate);
+              passesDate = parsed.year == _selectedDate.year &&
+                           parsed.month == _selectedDate.month &&
+                           parsed.day == _selectedDate.day;
+            } catch (_) {
+              passesDate = false;
+            }
+          }
+
+          return passesTab && passesDate;
         }).toList();
 
         // --- UPDATED: Wrap with ScrollConfiguration and add ClampingScrollPhysics ---
@@ -235,57 +254,136 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
 
   Widget _buildToolbar() {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // --- Date Filter Row ---
           Row(
             children: [
-              Container(
-                width: 280,
-                height: 48,
-                decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(24)),
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by provider',
-                    hintStyle:
-                        TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                    prefixIcon:
-                        Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+              const Icon(Icons.calendar_today_rounded, size: 16, color: Color(0xFF64748B)),
+              const SizedBox(width: 8),
+              const Text(
+                'Filter by Date:',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              ),
+              const SizedBox(width: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime(2030),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: const ColorScheme.light(
+                            primary: Color(0xFFF97316),
+                            onPrimary: Colors.white,
+                            surface: Colors.white,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    setState(() => _selectedDate = picked);
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFF97316).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${_selectedDate.day.toString().padLeft(2, '0')}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.year}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFFF97316),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFFF97316), size: 20),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF97316),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24)),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 16)),
-                child: const Text('Search',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              // Today shortcut button
+              TextButton(
+                onPressed: () => setState(() => _selectedDate = DateTime.now()),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFF97316),
+                  backgroundColor: const Color(0xFFF97316).withOpacity(0.08),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                child: const Text('Today', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
               ),
             ],
           ),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download'),
-            style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF0F172A),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
+          const SizedBox(height: 16),
+          // --- Search + Download Row ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 280,
+                    height: 48,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(24)),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search by provider',
+                        hintStyle:
+                            TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                        prefixIcon:
+                            Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF97316),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 16)),
+                    child: const Text('Search',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Download'),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0F172A),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
+              ),
+            ],
           ),
         ],
       ),
