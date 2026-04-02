@@ -610,7 +610,7 @@ NavTile(
                   ),
                 ),
 
-                NavTile(
+/*                NavTile(
                   icon: Icons.analytics_outlined,
                   label: 'Analytics',
                   collapsed: collapsed,
@@ -641,7 +641,7 @@ NavTile(
                       ),
                     ],
                   ),
-                ),
+                ), */
 
                 // ============================================================
                 // NEW: PROMOTION MANAGEMENT (RESTRUCTURED)

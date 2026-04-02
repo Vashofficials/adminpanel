@@ -94,7 +94,8 @@ class _AllTransactionReportScreenState
     if (keyword.isEmpty) return _bookings;
     return _bookings.where((item) {
       return item.bookingRef.toLowerCase().contains(keyword) ||
-          item.customerName.toLowerCase().contains(keyword);
+          item.customerName.toLowerCase().contains(keyword) ||
+          item.customerPhone.toLowerCase().contains(keyword);
     }).toList();
   }
 
@@ -324,7 +325,7 @@ class _AllTransactionReportScreenState
                             controller: _searchController,
                             onChanged: (_) => _runFilter(),
                             decoration: InputDecoration(
-                              hintText: 'Search ID, Name...',
+                              hintText: 'Search ID, Name, Number...',
                               hintStyle: GoogleFonts.inter(
                                   fontSize: 14,
                                   color: const Color(0xFF94A3B8)),
