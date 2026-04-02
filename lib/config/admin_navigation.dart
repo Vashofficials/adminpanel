@@ -48,6 +48,7 @@ class AdminNavigation {
     NavItem(label: 'Holidays', route: 'provider/holidays', icon: Icons.calendar_today_outlined),
     NavItem(label: 'Master Setup', route: 'master/setup', icon: Icons.settings_suggest_outlined),
     NavItem(label: 'Withdraw Request', route: 'provider/withdraw', icon: Icons.account_balance_wallet_outlined, badge: 5),
+    NavItem(label: 'Provider Settlement Action', route: 'report/provider', icon: Icons.badge_outlined),
   ];
 
   // USER SECTION
@@ -60,7 +61,6 @@ class AdminNavigation {
     NavItem(label: 'Provider Earn Report', route: 'report/transaction', icon: Icons.receipt_long),
     NavItem(label: 'All Transaction Report', route: 'report/all-transactions', icon: Icons.summarize_outlined),
     NavItem(label: 'Booking Analysis', route: 'report/booking', icon: Icons.event_note),
-    NavItem(label: 'Provider Settlement Report', route: 'report/provider', icon: Icons.badge_outlined),
     NavItem(label: 'Keyword Search', route: 'analytics/keyword', icon: Icons.search_rounded),
   ];
 

@@ -21,6 +21,8 @@ import '../models/slider_banner_model.dart';
 import '../models/coupon_model.dart';
 import '../models/customer_refundbank.dart';
 import '../models/booking_report_model.dart';
+import '../models/customer_models.dart';
+
 
 class ApiService {
   // NO trailing slash

@@ -380,7 +380,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                   icon: Icons.handyman_outlined,
                   label: 'Providers', 
                   collapsed: collapsed,
-                  isActive: _isActive('provider/'), 
+                  isActive: _isActive('provider/') || _isActive('report/provider'), 
                   trailing: collapsed
                       ? null
                       : Icon(
@@ -446,6 +446,14 @@ NavTile(
   isChild: true,
   isActive: _isActive('provider/withdraw'),
   onTap: () => widget.onNav?.call('provider/withdraw'),
+),
+NavTile(
+  icon: Icons.badge_outlined,
+  label: 'Provider Settlement Action',
+  collapsed: collapsed,
+  isChild: true,
+  isActive: _isActive('report/provider'),
+  onTap: () => widget.onNav?.call('report/provider'),
 ),
                     ],
                   ),
@@ -589,14 +597,6 @@ NavTile(
                         isChild: true,
                         isActive: _isActive('report/booking'),
                         onTap: () => widget.onNav?.call('report/booking'),
-                      ),
-                      NavTile(
-                        icon: Icons.badge_outlined,
-                        label: 'Provider Settlement Report',
-                        collapsed: collapsed,
-                        isChild: true,
-                        isActive: _isActive('report/provider'),
-                        onTap: () => widget.onNav?.call('report/provider'),
                       ),
                     ],
                   ),
