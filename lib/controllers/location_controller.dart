@@ -107,6 +107,10 @@ Future<void> fetchServiceProviderMap(String serviceProviderId) async {
     }
   }
 
+  // Caching for accurate search
+  final Map<String, List<LatLng>> _searchCache = {};
+  static const String _mapsApiKey = 'AIzaSyAJsorrGKIgn2WoWP22VDCF1Utr8-Y1eqI';
+
   // Dynamic search using Google Maps Geocoding API from index.html
   Future<void> searchAndMoveCamera(String placeName) async {
     if (placeName.isEmpty) return;
@@ -116,21 +120,127 @@ Future<void> fetchServiceProviderMap(String serviceProviderId) async {
       final result = await _callJavaScriptGeocoding(placeName);
       
       if (result != null && result['lat'] != null && result['lng'] != null) {
-        final lat = result['lat'] as double;
-        final lng = result['lng'] as double;
+        final lat = (result['lat'] as num).toDouble();
+        final lng = (result['lng'] as num).toDouble();
         
-        _mapController?.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(lat, lng),
-              zoom: 14,
+        final neLat = result['northeastLat'] != null ? (result['northeastLat'] as num).toDouble() : null;
+        final neLng = result['northeastLng'] != null ? (result['northeastLng'] as num).toDouble() : null;
+        final swLat = result['southwestLat'] != null ? (result['southwestLat'] as num).toDouble() : null;
+        final swLng = result['southwestLng'] != null ? (result['southwestLng'] as num).toDouble() : null;
+        
+        // Auto-fill form fields
+        areaNameCtrl.text = placeName;
+        String? targetLocality;
+        String? targetPostalCode;
+        if (result['city'] != null && result['city'].toString().isNotEmpty) {
+          cityCtrl.text = result['city'];
+          targetLocality = result['city'];
+        }
+        if (result['state'] != null && result['state'].toString().isNotEmpty) {
+          stateCtrl.text = result['state'];
+        }
+        if (result['postalCode'] != null && result['postalCode'].toString().isNotEmpty) {
+          pinCodeCtrl.text = result['postalCode'];
+          targetPostalCode = result['postalCode'];
+        } else {
+          // If query looks like a pincode (6 digits), fill it
+          final RegExp pinRegExp = RegExp(r'^\d{6}$');
+          if (pinRegExp.hasMatch(placeName)) {
+             pinCodeCtrl.text = placeName;
+             targetPostalCode = placeName;
+          }
+        }
+        
+        // Generate refined polygon
+        if (neLat != null && neLng != null && swLat != null && swLng != null) {
+          clearPolygon();
+          Get.snackbar("Processing...", "Generating highly accurate bounds for area.", duration: const Duration(seconds: 1));
+          
+          String cacheKey = '${neLat}_${neLng}_${swLat}_${swLng}_$placeName';
+          List<LatLng> finalPoints = [];
+
+          if (_searchCache.containsKey(cacheKey)) {
+             finalPoints = _searchCache[cacheKey]!;
+          } else {
+             // 1. Grid Subdivision (3x3 grid = 9 points)
+             List<LatLng> gridPoints = [];
+             for (int i = 0; i < 3; i++) {
+                double gLat = swLat + (neLat - swLat) * (i / 2);
+                for (int j = 0; j < 3; j++) {
+                   double gLng = swLng + (neLng - swLng) * (j / 2);
+                   gridPoints.add(LatLng(gLat, gLng));
+                }
+             }
+
+             // 2. Reverse Geocode Filter
+             List<LatLng> validPoints = [];
+             for (LatLng pt in gridPoints) {
+                var rgRes = await _apiService.reverseGeocode(pt.latitude, pt.longitude, _mapsApiKey);
+                if (rgRes != null && rgRes['results'] != null && (rgRes['results'] as List).isNotEmpty) {
+                   bool matchFound = false;
+                   for (var component in rgRes['results'][0]['address_components']) {
+                      List types = component['types'];
+                      if (targetLocality != null && types.contains('locality') && component['long_name'] == targetLocality) {
+                         matchFound = true; break;
+                      }
+                      if (targetPostalCode != null && types.contains('postal_code') && component['long_name'] == targetPostalCode) {
+                         matchFound = true; break;
+                      }
+                   }
+                   if (matchFound) {
+                      validPoints.add(pt);
+                   }
+                }
+             }
+
+             // 3. Convex Hull Generation
+             if (validPoints.length >= 3) {
+                 finalPoints = _getConvexHull(validPoints);
+                 // close it
+                 if(finalPoints.isNotEmpty && finalPoints.first != finalPoints.last) {
+                    finalPoints.add(finalPoints.first);
+                 }
+             } else {
+                 // Fallback to basic rectangle
+                 finalPoints = [
+                    LatLng(swLat, swLng),
+                    LatLng(swLat, neLng),
+                    LatLng(neLat, neLng),
+                    LatLng(neLat, swLng),
+                    LatLng(swLat, swLng)
+                 ];
+             }
+             _searchCache[cacheKey] = finalPoints;
+          }
+
+          // Render
+          for(LatLng p in finalPoints) {
+             addPolygonPoint(p);
+          }
+
+          _mapController?.animateCamera(
+             CameraUpdate.newLatLngBounds(
+                LatLngBounds(
+                   southwest: LatLng(swLat, swLng),
+                   northeast: LatLng(neLat, neLng),
+                ),
+                50.0
+             )
+          );
+        } else {
+          _mapController?.animateCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: LatLng(lat, lng),
+                zoom: 14,
+              ),
             ),
-          ),
-        );
+          );
+        }
         
         Get.snackbar(
           "Location Found",
-          "Moved to $placeName",
+          "Generated accurate polygon and moved to $placeName",
           backgroundColor: Colors.green,
           colorText: Colors.white,
           duration: const Duration(seconds: 2),
@@ -153,28 +263,64 @@ Future<void> fetchServiceProviderMap(String serviceProviderId) async {
     }
   }
 
+  // Convex Hull implementation (Monotone Chain)
+  List<LatLng> _getConvexHull(List<LatLng> points) {
+    if (points.length < 3) return points;
+
+    List<LatLng> sorted = List.from(points);
+    sorted.sort((a, b) {
+      if (a.latitude == b.latitude) return a.longitude.compareTo(b.longitude);
+      return a.latitude.compareTo(b.latitude);
+    });
+
+    double cross(LatLng o, LatLng a, LatLng b) {
+      return (a.latitude - o.latitude) * (b.longitude - o.longitude) -
+             (a.longitude - o.longitude) * (b.latitude - o.latitude);
+    }
+
+    List<LatLng> lower = [];
+    for (LatLng p in sorted) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower.last, p) <= 0) {
+        lower.removeLast();
+      }
+      lower.add(p);
+    }
+
+    List<LatLng> upper = [];
+    for (LatLng p in sorted.reversed) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper.last, p) <= 0) {
+        upper.removeLast();
+      }
+      upper.add(p);
+    }
+
+    upper.removeLast();
+    lower.removeLast();
+    return lower + upper;
+  }
+
  Future<Map<String, dynamic>?> _callJavaScriptGeocoding(String address) async {
     try {
       // Small delay to ensure JS is ready
       await Future.delayed(const Duration(milliseconds: 500));
 
       // 1. Use js_util to access the global scope (window)
-      // Check if the function exists
       if (!js_util.hasProperty(js_util.globalThis, 'geocodeAddress')) {
         print('JS function geocodeAddress not found');
         return null;
       }
 
       // 2. Call the function using js_util.callMethod
-      // This returns a raw JS Promise, not a JsObject wrapper
       final promise = js_util.callMethod(js_util.globalThis, 'geocodeAddress', [address]);
 
       // 3. Convert the raw Promise to a Dart Future
       final result = await js_util.promiseToFuture(promise);
 
-      // 4. Access properties using js_util.getProperty
-      // This is safer than result['lat'] for web compilation
-      if (result != null) {
+      // 4. Parse JSON string
+      if (result != null && result is String) {
+        return jsonDecode(result) as Map<String, dynamic>;
+      } else if (result != null) {
+        // Fallback
         return {
           'lat': js_util.getProperty(result, 'lat'),
           'lng': js_util.getProperty(result, 'lng'),

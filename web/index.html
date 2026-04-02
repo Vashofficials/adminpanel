@@ -32,10 +32,31 @@
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ address: address }, (results, status) => {
           if (status === 'OK' && results[0]) {
-            resolve({
-              lat: results[0].geometry.location.lat(),
-              lng: results[0].geometry.location.lng()
-            });
+            const loc = results[0];
+            let city = "";
+            let state = "";
+            let postalCode = "";
+            if (loc.address_components) {
+              loc.address_components.forEach(comp => {
+                if (comp.types.includes("locality")) city = comp.long_name;
+                if (comp.types.includes("administrative_area_level_1")) state = comp.long_name;
+                if (comp.types.includes("postal_code")) postalCode = comp.long_name;
+              });
+            }
+            const boundsInfo = loc.geometry.viewport;
+            const resultData = {
+              lat: loc.geometry.location.lat(),
+              lng: loc.geometry.location.lng(),
+              northeastLat: boundsInfo ? boundsInfo.getNorthEast().lat() : null,
+              northeastLng: boundsInfo ? boundsInfo.getNorthEast().lng() : null,
+              southwestLat: boundsInfo ? boundsInfo.getSouthWest().lat() : null,
+              southwestLng: boundsInfo ? boundsInfo.getSouthWest().lng() : null,
+              city: city,
+              state: state,
+              postalCode: postalCode,
+              formatted_address: loc.formatted_address
+            };
+            resolve(JSON.stringify(resultData));
           } else {
             reject('Geocoding failed: ' + status);
           }

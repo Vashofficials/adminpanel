@@ -787,6 +787,25 @@ Future<bool> addPersonalDetails(Map<String, dynamic> data) async {
 }
 // Inside ApiService
 
+  Future<Map<String, dynamic>?> reverseGeocode(double lat, double lng, String apiKey) async {
+    try {
+      final response = await Dio().get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        queryParameters: {
+          'latlng': '$lat,$lng',
+          'key': apiKey,
+        },
+      );
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      print('Reverse Geocode Error: $e');
+      return null;
+    }
+  }
+
   Future<List<ServiceProviderLocation>> getServiceProviderLocationMap(String serviceProviderId) async {
     try {
       final response = await _dio.get(
