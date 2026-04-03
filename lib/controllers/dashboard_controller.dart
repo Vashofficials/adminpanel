@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../models/booking_report_model.dart';
 import '../models/provider_model.dart';
 import '../models/customer_models.dart';
+import '../models/data_models.dart'; // ServiceModel
 
 class DashboardController extends GetxController {
   final ApiService _api = ApiService();
@@ -48,17 +49,23 @@ class DashboardController extends GetxController {
         // Chart Data (Completed Months)
         chartData.assignAll(res.completedMonth ?? []);
         
-        // Calculate Total Revenue from Completed Months
-        double rev = 0;
-        for (var month in res.completedMonth ?? []) {
-          rev += (month.cashBooking ?? 0) + (month.onlineBooking ?? 0);
-        }
-        totalRevenue.value = rev;
+        // Per user request: Revenue show total of completed booking
+        totalRevenue.value = (res.completed ?? 0).toDouble();
       }
 
-      // 2. Fetch Active Services count (Filter for isActive == true)
-      final services = await _api.getServices();
-      activeServices.value = services.where((s) => s.isActive).length;
+      // 2. Fetch Active Services count (Aggregating services from all categories)
+      final categories = await _api.getCategories();
+      List<Future<List<ServiceModel>>> serviceFutures = [];
+      for (var cat in categories) {
+        serviceFutures.add(_api.getServices(categoryId: cat.id));
+      }
+      
+      final serviceResults = await Future.wait(serviceFutures);
+      int activeCount = 0;
+      for (var list in serviceResults) {
+        activeCount += list.where((s) => s.isActive).length;
+      }
+      activeServices.value = activeCount;
 
       // 3. Fetch Total Customers count (Use totalElements from paginated metadata)
       final customerData = await _api.getAllCustomers(page: 0, size: 10);

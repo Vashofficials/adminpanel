@@ -85,15 +85,34 @@ class ProviderListScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: controller.fetchProviders,
+                  Obx(() => ElevatedButton(
+                    onPressed: controller.isLoading.value ? null : controller.fetchProviders,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryOrange,
+                      backgroundColor: controller.isLoading.value
+                          ? primaryOrange.withOpacity(0.7)
+                          : primaryOrange,
+                      disabledBackgroundColor: primaryOrange.withOpacity(0.7),
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                     ),
-                    child: const Text("Refresh", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  )
+                    child: controller.isLoading.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text("Refresh", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                  ))
                 ],
               ),
             ),
@@ -168,9 +187,51 @@ class ProviderListScreen extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
               child: Column(
                 children: [
-                  // ... [TABS AND SEARCH CODE REMAINS EXACTLY THE SAME] ...
-                  // (Skipping upper UI code for brevity, logic change is below in DataRow)
-                  
+                  // STATUS FILTER TABS
+                  Obx(() {
+                    final tabs = ['All', 'Active', 'Inactive'];
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
+                      child: Row(
+                        children: tabs.map((tab) {
+                          final isSelected = controller.selectedTab.value == tab;
+                          Color chipColor;
+                          if (tab == 'Active') chipColor = const Color(0xFF22C55E);
+                          else if (tab == 'Inactive') chipColor = const Color(0xFFEF4444);
+                          else chipColor = primaryOrange;
+
+                          return GestureDetector(
+                            onTap: () => controller.selectedTab.value = tab,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? chipColor : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? chipColor : const Color(0xFFE2E8F0),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                tab,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSelected ? Colors.white : textGrey,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  }),
+
                   // DATA TABLE
                   Obx(() {
                     if (controller.isLoading.value) {
@@ -277,25 +338,44 @@ class ProviderListScreen extends StatelessWidget {
                                   ],
                                 )),
 
-                                // Status
-                            // Status DataCell
+                                // Status (status==1 → Active, status==0 → Inactive)
 DataCell(
   Obx(() {
-    // We access the provider through the controller list to ensure reactivity
     final provider = controller.providerList[index];
-    
-    return Transform.scale(
-      scale: 0.8,
-      child: Switch(
-        // 1. Point to the correct status field (Active = true, Inactive = false)
-        value: provider.isActive, 
-        activeColor: Colors.white,
-        activeTrackColor: primaryOrange,
-        inactiveThumbColor: Colors.white,
-        inactiveTrackColor: Colors.grey.shade300,
-        // 2. Call the handler that manages the Confirmation Dialog and flipped API logic
-        onChanged: (bool val) => controller.handleToggleStatus(context, index, val),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: provider.isActive,
+            activeColor: Colors.white,
+            activeTrackColor: const Color(0xFF22C55E),
+            inactiveThumbColor: Colors.white,
+            inactiveTrackColor: Colors.grey.shade300,
+            onChanged: (bool val) => controller.handleToggleStatus(context, index, val),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: provider.isActive
+                ? const Color(0xFFDCFCE7)
+                : const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            provider.isActive ? 'Active' : 'Inactive',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: provider.isActive
+                  ? const Color(0xFF166534)
+                  : const Color(0xFF991B1B),
+            ),
+          ),
+        ),
+      ],
     );
   }),
 ),

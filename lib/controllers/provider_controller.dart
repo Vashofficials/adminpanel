@@ -38,14 +38,16 @@ class ProviderController extends GetxController {
     try {
       isLoading.value = true;
       final fetched = await _repo.getAllProviders();
-      providerCategoriesMap.clear(); // 👈 Clear cache for real-time updates
+      providerCategoriesMap.clear(); // Clear cache so Refresh always gets fresh data
       allProviders.assignAll(fetched);
       _applyFilters();
-      
-      // Async fetch mapped categories without blocking UI
-      for (var p in fetched) {
-        _fetchCategoryForProvider(p.id);
-      }
+
+      // Await ALL category fetches before hiding the loading spinner
+      // so Refresh button stays active until real-time data is fully loaded
+      await Future.wait(fetched.map((p) => _fetchCategoryForProvider(p.id)));
+
+      // Re-apply filters in case category data changed (e.g. selectedCategory filter)
+      _applyFilters();
     } catch (e) {
       debugPrint("Fetch providers failed: $e");
     } finally {
@@ -72,15 +74,14 @@ class ProviderController extends GetxController {
   void _applyFilters() {
     List<ProviderModel> temp = List.from(allProviders);
 
-    // Only show providers that have an imageUrl in the dashboard list
-    temp = temp.where((p) => p.imageUrl != null && p.imageUrl!.isNotEmpty).toList();
-
-    // Filter by tab
+    // Task1: status == 1 → isActive == true  → shown in Active tab (and All tab)
+    // Task2: status == 0 → isActive == false → shown in Inactive tab (and All tab)
     if (selectedTab.value == 'Active') {
-      temp = temp.where((p) => p.isAadharVerified || p.aadharNo.isNotEmpty).toList(); 
+      temp = temp.where((p) => p.isActive).toList();
     } else if (selectedTab.value == 'Inactive') {
-      temp = temp.where((p) => !p.isAadharVerified && p.aadharNo.isEmpty).toList();
+      temp = temp.where((p) => !p.isActive).toList();
     }
+    // 'All' → no status filter, show every provider
 
     // Filter by search
     if (searchText.value.isNotEmpty) {
