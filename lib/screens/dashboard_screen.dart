@@ -54,6 +54,7 @@ import 'referral_management_screen.dart'; // <--- ADD REFERRAL MANAGEMENT SCREEN
 import '../models/booking_models.dart';
 import '../controllers/provider_controller.dart';
 import '../controllers/dashboard_controller.dart';
+import 'refund_management_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -340,6 +341,8 @@ onEditCustomer: (customer) {
     return PaidCommissionsScreen(onNav: _handleNavigation);
   case 'referral/issued':
     return IssuedCouponsScreen(onNav: _handleNavigation);
+  case 'customer/refund':
+  return const RefundRequestScreen();  
 
     
   

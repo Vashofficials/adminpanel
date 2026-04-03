@@ -28,35 +28,50 @@ class WithdrawController extends GetxController {
     }
   }
 
- Future<void> updateStatus(String id, String status) async {
+ Future<void> updateStatus(
+    String id, 
+    String status, {
+    String? transactionId, 
+    String? comment,
+    String? settlementDate
+  }) async {
     try {
-      var response = await _apiService.updateWithdrawStatus(id, status);
+      isLoading(true);
+      // Ensure your ApiService.updateWithdrawStatus is updated to accept these
+      var response = await _apiService.updateWithdrawStatus(
+        id, 
+        status, 
+        transactionId: transactionId, 
+        settlementDate: settlementDate,
+        comment: comment,
+      );
       
       if (response.statusCode == 200) {
-        await fetchRequests(); // Refresh the list from the server
+        await fetchRequests(); 
         
-        // Show Success Popup
         if (Get.context != null) {
           CustomCenterDialog.show(
             Get.context!,
             title: "Success",
-            message: "Withdraw status updated successfully!",
+            message: "Status updated successfully!",
             type: DialogType.success,
           );
         }
       }
     } catch (e) {
-      // Show Error Popup matching your requested static text
       if (Get.context != null) {
         CustomCenterDialog.show(
           Get.context!,
           title: "Error",
-          message: "Failed to update service",
+          message: "Failed to update: ${e.toString()}",
           type: DialogType.error,
         );
       }
+    } finally {
+      isLoading(false);
     }
   }
+
  Future<void> settleWithdrawRequest({
   required String providerId,
   required String? providerBankId,

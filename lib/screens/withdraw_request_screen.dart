@@ -595,29 +595,36 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
 
   // Updated Modal to match static UI but populated with dynamic Data
   // Updated Modal to include dynamic status chips
-  void _showSettleModal(Map<String, dynamic> request) {
-    final String providerName = request['providerName'] ?? 'Unknown';
-    final String mobile = request['mobileNo'] ?? 'N/A';
-    final String email = request['email'] ?? 'N/A';
-    final String bankName = request['bankName'] ?? 'Unknown Bank';
-    final String accountNo = request['accountNo'] ?? 'N/A';
-    final String upiId = request['upiId'] ?? 'N/A';
+void _showSettleModal(Map<String, dynamic> request) {
+  final String providerName = request['providerName'] ?? 'Unknown';
+  final String mobile = request['mobileNo'] ?? 'N/A';
+  final String email = request['email'] ?? 'N/A';
+  final String bankName = request['bankName'] ?? 'Unknown Bank';
+  final String accountNo = request['accountNo'] ?? 'N/A';
+  final String upiId = request['upiId'] ?? 'N/A';
 
-    // Default selection when the modal opens
-    String selectedStatus = 'Settled'; 
-    final List<String> statusOptions = ['Pending', 'Approved', 'Denied', 'Settled'];
+  // Controllers for text fields
+  final TextEditingController transactionController = TextEditingController();
+  final TextEditingController noteController = TextEditingController();
+  final TextEditingController dateController = TextEditingController(
+    text: DateTime.now().toString().split(' ')[0], // Default to today
+  );
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        // StatefulBuilder allows us to call setState just for this dialog
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Container(
-                width: 550,
-                padding: const EdgeInsets.all(24.0),
+  String selectedStatus = 'Settled'; 
+  final List<String> statusOptions = ['Pending', 'Approved', 'Denied', 'Settled'];
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Container(
+              width: 550,
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+              padding: const EdgeInsets.all(24.0),
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -628,265 +635,203 @@ class _WithdrawRequestScreenState extends State<WithdrawRequestScreen>
                         onTap: () => Navigator.of(context).pop(),
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF3F4F6),
-                            shape: BoxShape.circle,
-                          ),
+                          decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
                           child: const Icon(Icons.close, size: 18, color: Color(0xFF6B7280)),
                         ),
                       ),
                     ),
 
                     // Icon Header
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.blue.withOpacity(0.1), width: 4),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const CircularProgressIndicator(
-                            value: 1.0,
-                            strokeWidth: 4,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEAB308)),
-                          ),
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF22C55E),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.check, color: Colors.white, size: 20),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildDialogHeaderIcon(),
                     const SizedBox(height: 16),
-
-                    const Text(
-                      'Update Request Status', // Updated title
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
+                    const Text('Update Request Status', 
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                     const SizedBox(height: 24),
 
-                    // Info Cards Row
+                    // Info Cards Row (Provider & Bank)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Provider Information Card
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Provider Information',
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 14),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  providerName,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB), fontSize: 14),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.phone_iphone_rounded, size: 16, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 8),
-                                    Text(mobile, style: const TextStyle(color: Color(0xFF475569), fontSize: 13)),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.email_outlined, size: 16, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(email, style: const TextStyle(color: Color(0xFF475569), fontSize: 13)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _buildInfoCard('Provider Information', providerName, mobile, email, isBlue: true)),
                         const SizedBox(width: 16),
-
-                        // Withdraw Method Card
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Withdraw Bank details',
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 14),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  bankName,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B), fontSize: 13),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.credit_card, size: 14, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 4),
-                                    Text('A/C: $accountNo', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.qr_code, size: 14, color: Color(0xFF64748B)),
-                                    const SizedBox(width: 4),
-                                    Text('UPI: $upiId', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _buildBankInfoCard(bankName, accountNo, upiId)),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // --- NEW: Status Selection Chips ---
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Select Action Status',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 14),
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12.0,
-                            runSpacing: 12.0,
-                            children: statusOptions.map((status) {
-                              final bool isSelected = selectedStatus == status;
-                              return ChoiceChip(
-                                label: Text(status),
-                                selected: isSelected,
-                                onSelected: (bool selected) {
-                                  if (selected) {
-                                    // Update state ONLY inside the dialog
-                                    setDialogState(() => selectedStatus = status);
-                                  }
-                                },
-                                selectedColor: const Color(0xFFF97316).withOpacity(0.1),
-                                checkmarkColor: const Color(0xFFF97316),
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isSelected ? const Color(0xFFF97316) : const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? const Color(0xFFF97316) : const Color(0xFF64748B),
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                    // Bank Transaction ID Field (Required)
+                    _buildFieldLabel('Bank Transaction ID *'),
+                    TextField(
+                      controller: transactionController,
+                      decoration: _buildInputDecoration('Enter Reference / UTR Number'),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Settlement Date Field (Required)
+                    _buildFieldLabel('Settlement Date *'),
+                    TextField(
+                      controller: dateController,
+                      readOnly: true,
+                      onTap: () async {
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => dateController.text = picked.toString().split(' ')[0]);
+                        }
+                      },
+                      decoration: _buildInputDecoration('YYYY-MM-DD').copyWith(
+                        suffixIcon: const Icon(Icons.calendar_today, size: 18),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // Note TextField
+                    // Status Selection
+                    _buildFieldLabel('Select Action Status'),
+                    Wrap(
+                      spacing: 12.0,
+                      children: statusOptions.map((status) {
+                        final bool isSelected = selectedStatus == status;
+                        return ChoiceChip(
+                          label: Text(status),
+                          selected: isSelected,
+                          onSelected: (val) => setDialogState(() => selectedStatus = status),
+                          selectedColor: const Color(0xFFF97316).withOpacity(0.1),
+                          checkmarkColor: const Color(0xFFF97316),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Admin Note
+                    _buildFieldLabel('Admin Note'),
                     TextField(
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Admin Note (Required)',
-                        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                        ),
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
+                      controller: noteController,
+                      maxLines: 3,
+                      decoration: _buildInputDecoration('Add remarks...'),
                     ),
                     const SizedBox(height: 32),
 
-                    // Buttons
+                    // Action Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFFF3F4F6),
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF1F2937), fontWeight: FontWeight.w600)),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF1F2937))),
                         ),
                         const SizedBox(width: 16),
-                   ElevatedButton(
-  onPressed: () {
-    // 1. Close the Settle Modal
-    Navigator.of(context).pop();
-    
-    // 2. Format the status for the API
-    String apiStatus = selectedStatus;
-    if (apiStatus == 'Settled') {
-      apiStatus = 'SUCCESS'; 
-    } else {
-      apiStatus = apiStatus.toUpperCase();
+                        ElevatedButton(
+                          onPressed: () {
+                            if (transactionController.text.isEmpty || dateController.text.isEmpty) {
+                             CustomCenterDialog.show(
+        context, // or Get.context!
+        title: "Required Fields",
+        message: "Bank Transaction ID and Settlement Date are mandatory to settle this request.",
+        type: DialogType.error,
+      );
+      return;
     }
-
-    // 3. Just call the controller! It handles the loading, refreshing, and popups now.
-    controller.updateStatus(request['id'], apiStatus);
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFFF97316),
-    elevation: 0,
-    padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-  ),
-  child: const Text('Update Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-),
+                            Navigator.of(context).pop();
+                            String apiStatus = selectedStatus == 'Settled' ? 'SUCCESS' : selectedStatus.toUpperCase();
+                            controller.updateStatus(
+                              request['id'], 
+                              apiStatus,
+                              transactionId: transactionController.text.trim(),
+                              settlementDate: dateController.text.trim(),
+                              comment: noteController.text.trim(),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF97316),
+                            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Update Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+// --- UI Helpers to ensure clean structure ---
+
+Widget _buildFieldLabel(String label) {
+  return Align(
+    alignment: Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 14)),
+    ),
+  );
+}
+
+InputDecoration _buildInputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+    contentPadding: const EdgeInsets.all(16),
+  );
+}
+
+Widget _buildInfoCard(String title, String name, String mob, String email, {bool isBlue = false}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 8),
+        Text(name, style: TextStyle(fontWeight: FontWeight.bold, color: isBlue ? Colors.blue : Colors.black)),
+        Text(mob, style: const TextStyle(fontSize: 12)),
+        Text(email, style: const TextStyle(fontSize: 11, color: Colors.orange)),
+      ],
+    ),
+  );
+}
+
+Widget _buildBankInfoCard(String bank, String acc, String upi) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Bank Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 8),
+        Text(bank, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text('A/C: $acc', style: const TextStyle(fontSize: 12)),
+        Text('UPI: $upi', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
+    ),
+  );
+}
+
+Widget _buildDialogHeaderIcon() {
+  return Container(
+    width: 60, height: 60,
+    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.blue.withOpacity(0.1), width: 4)),
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        const CircularProgressIndicator(value: 1.0, strokeWidth: 4, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEAB308))),
+        Container(width: 30, height: 30, decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle), child: const Icon(Icons.check, color: Colors.white, size: 20)),
+      ],
+    ),
+  );
+}
 }
 
 class _Th extends StatelessWidget {

@@ -1529,13 +1529,22 @@ Future<Response> getWithdrawRequests() async {
   }
 }
 
-Future<Response> updateWithdrawStatus(String id, String status) async {
+Future<Response> updateWithdrawStatus(
+  String id, 
+  String status, {
+  String? transactionId, 
+  String? comment,
+  String? settlementDate,
+}) async {
   try {
     return await _dio.patch(
       '/admin/updateWithdrawStatus',
       queryParameters: {
         "withdrawId": id,
         "status": status,
+        "bankTransactionId": transactionId,
+        "comment": comment,
+        "settlementDate": settlementDate,
       },
     );
   } catch (e) {

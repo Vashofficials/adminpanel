@@ -484,8 +484,9 @@ NavTile(
                         ),
                   onTap: () => setState(() => _customersOpen = !_customersOpen),
                 ),
+               
 
-                AnimatedCrossFade(
+              AnimatedCrossFade(
                   duration: const Duration(milliseconds: 200),
                   crossFadeState: _customersOpen && !collapsed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
                   firstChild: const SizedBox.shrink(),
@@ -499,6 +500,15 @@ NavTile(
                         isActive: _isActive('customer/list'),
                         onTap: () => widget.onNav?.call('customer/list'),
                       ),
+                     NavTile(
+  icon: Icons.account_balance_wallet_outlined,
+  label: 'Refund Requests',
+ // badge: 5, // Example badge for pending requests
+  collapsed: collapsed,
+  isChild: true,
+  isActive: _isActive('customer/refund'),
+  onTap: () => widget.onNav?.call('customer/refund'),
+),  
                     ],
                   ),
                 ),
