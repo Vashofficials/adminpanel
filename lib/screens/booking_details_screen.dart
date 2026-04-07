@@ -218,15 +218,15 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   // Helper: Date Format
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty || isoDate == 'N/A') return "N/A";
-    try {
-      final dt = DateTime.parse(isoDate);
-      return DateFormat('dd-MMM-yyyy hh:mm a').format(dt);
-    } catch (e) {
-      return isoDate;
-    }
+String _formatDate(String isoDate) {
+  if (isoDate.isEmpty) return "N/A";
+  try {
+    final dt = DateTime.parse(isoDate).toLocal();
+    return DateFormat('dd MMM yyyy').format(dt);
+  } catch (e) {
+    return isoDate.split('T')[0];
   }
+}
 
   // New Helper: Combined Schedule Format
   String _formatSchedule(String dateIso, String timeStr) {

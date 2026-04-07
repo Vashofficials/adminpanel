@@ -179,14 +179,14 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
 
   // Helper: Format Date
   String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return "N/A";
-    try {
-      final dt = DateTime.parse(isoDate);
-      return DateFormat('dd MMM yyyy').format(dt);
-    } catch (e) {
-      return isoDate.split('T')[0];
-    }
+  if (isoDate.isEmpty) return "N/A";
+  try {
+    final dt = DateTime.parse(isoDate).toLocal();
+    return DateFormat('dd MMM yyyy').format(dt);
+  } catch (e) {
+    return isoDate.split('T')[0];
   }
+}
 
 @override
   Widget build(BuildContext context) {

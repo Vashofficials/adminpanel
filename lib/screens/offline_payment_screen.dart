@@ -134,16 +134,15 @@ class _OfflinePaymentScreenState extends State<OfflinePaymentScreen> {
   }
 
   // 6. HELPER: Format Date
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return "N/A";
-    try {
-      final dt = DateTime.parse(isoDate);
-      return DateFormat('dd MMM yyyy').format(dt);
-    } catch (e) {
-      return isoDate.split('T')[0];
-    }
+String _formatDate(String isoDate) {
+  if (isoDate.isEmpty) return "N/A";
+  try {
+    final dt = DateTime.parse(isoDate).toLocal(); // ✅ FIX
+    return DateFormat('dd MMM yyyy').format(dt);
+  } catch (e) {
+    return isoDate.split('T')[0];
   }
-
+}
   @override
   Widget build(BuildContext context) {
     // Sanity check for pagination display
