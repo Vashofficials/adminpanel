@@ -179,14 +179,35 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
 
   // Helper: Format Date
   String _formatDate(String isoDate) {
-  if (isoDate.isEmpty) return "N/A";
-  try {
-    final dt = DateTime.parse(isoDate).toLocal();
-    return DateFormat('dd MMM yyyy').format(dt);
-  } catch (e) {
-    return isoDate.split('T')[0];
+    if (isoDate.isEmpty) return "N/A";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('dd MMM yyyy').format(dt);
+    } catch (e) {
+      return isoDate.split('T')[0];
+    }
   }
-}
+
+  String _formatTimeStr(String timeStr) {
+    if (timeStr.isEmpty) return "";
+    try {
+      final timeParts = timeStr.split(':');
+      final tempDate = DateTime(2022, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
+      return DateFormat('hh:mm a').format(tempDate);
+    } catch (e) {
+      return timeStr;
+    }
+  }
+
+  String _extractLocalTime(String isoDate) {
+    if (isoDate.isEmpty) return "";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('hh:mm a').format(dt);
+    } catch (e) {
+      return "";
+    }
+  }
 
 @override
   Widget build(BuildContext context) {
@@ -398,7 +419,7 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
                                                   style:
                                                       _cellStyle(bold: true)),
                                               Text(
-                                                  "Created: ${_formatDate(data.creationTime)}",
+                                                  "Created: ${_formatDate(data.creationTime)} ${_extractLocalTime(data.creationTime)}",
                                                   style: _subStyle()),
                                             ],
                                           )),
@@ -433,7 +454,7 @@ DataCell(
                                                   _formatDate(data.bookingDate),
                                                   style:
                                                       _cellStyle(bold: true)),
-                                              Text(data.bookingTime,
+                                              Text(_formatTimeStr(data.bookingTime),
                                                   style: _subStyle()),
                                             ],
                                           )),

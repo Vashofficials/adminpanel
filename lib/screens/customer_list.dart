@@ -635,33 +635,57 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                             const SizedBox(width: 8),
                             
                             // Dynamic Page Number Strip
-                            Container(
-                              height: 32,
-                              alignment: Alignment.center,
-                              child: ListView.separated(
-                                shrinkWrap: true,
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _totalPages,
-                                separatorBuilder: (_,__) => const SizedBox(width: 4),
-                                itemBuilder: (context, index) {
-                                  final isSelected = index == _currentPage;
-                                  return InkWell(
-                                    onTap: () => _onPageChanged(index),
-                                    child: Container(
-                                      width: 32, 
-                                      height: 32,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? kPrimaryOrange : Colors.transparent, 
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: isSelected ? null : Border.all(color: kBorderColor)
+                            Builder(
+                              builder: (context) {
+                                List<dynamic> pages = [];
+                                if (_totalPages <= 7) {
+                                  for (int i = 0; i < _totalPages; i++) pages.add(i);
+                                } else {
+                                  if (_currentPage <= 3) {
+                                    pages.addAll([0, 1, 2, 3, 4, '...', _totalPages - 1]);
+                                  } else if (_currentPage >= _totalPages - 4) {
+                                    pages.addAll([0, '...', _totalPages - 5, _totalPages - 4, _totalPages - 3, _totalPages - 2, _totalPages - 1]);
+                                  } else {
+                                    pages.addAll([0, '...', _currentPage - 1, _currentPage, _currentPage + 1, '...', _totalPages - 1]);
+                                  }
+                                }
+
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: pages.map((item) {
+                                    if (item == '...') {
+                                      return Container(
+                                        width: 32,
+                                        height: 32,
+                                        alignment: Alignment.center,
+                                        margin: const EdgeInsets.only(right: 4),
+                                        child: const Text('...', style: TextStyle(color: kTextLight)),
+                                      );
+                                    }
+                                    
+                                    final int pageIndex = item as int;
+                                    final bool isSelected = pageIndex == _currentPage;
+                                    
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 4.0),
+                                      child: InkWell(
+                                        onTap: () => _onPageChanged(pageIndex),
+                                        child: Container(
+                                          width: 32, 
+                                          height: 32,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? kPrimaryOrange : Colors.transparent, 
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: isSelected ? null : Border.all(color: kBorderColor)
+                                          ),
+                                          child: Text('${pageIndex + 1}', style: TextStyle(color: isSelected ? Colors.white : kTextDark)),
+                                        ),
                                       ),
-                                      // Show 1-based index to user (index + 1)
-                                      child: Text('${index + 1}', style: TextStyle(color: isSelected ? Colors.white : kTextDark)),
-                                    ),
-                                  );
-                                },
-                              ),
+                                    );
+                                  }).toList(),
+                                );
+                              },
                             ),
 
                             const SizedBox(width: 8),

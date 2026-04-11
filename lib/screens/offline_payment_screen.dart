@@ -134,15 +134,36 @@ class _OfflinePaymentScreenState extends State<OfflinePaymentScreen> {
   }
 
   // 6. HELPER: Format Date
-String _formatDate(String isoDate) {
-  if (isoDate.isEmpty) return "N/A";
-  try {
-    final dt = DateTime.parse(isoDate).toLocal(); // ✅ FIX
-    return DateFormat('dd MMM yyyy').format(dt);
-  } catch (e) {
-    return isoDate.split('T')[0];
+  String _formatDate(String isoDate) {
+    if (isoDate.isEmpty) return "N/A";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal(); // ✅ FIX
+      return DateFormat('dd MMM yyyy').format(dt);
+    } catch (e) {
+      return isoDate.split('T')[0];
+    }
   }
-}
+
+  String _formatTimeStr(String timeStr) {
+    if (timeStr.isEmpty) return "";
+    try {
+      final timeParts = timeStr.split(':');
+      final tempDate = DateTime(2022, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
+      return DateFormat('hh:mm a').format(tempDate);
+    } catch (e) {
+      return timeStr;
+    }
+  }
+
+  String _extractLocalTime(String isoDate) {
+    if (isoDate.isEmpty) return "";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('hh:mm a').format(dt);
+    } catch (e) {
+      return "";
+    }
+  }
   @override
   Widget build(BuildContext context) {
     // Sanity check for pagination display
@@ -475,7 +496,7 @@ DataCell(
                                                         _formatDate(
                                                             data.bookingDate),
                                                         style: _cellStyle()),
-                                                    Text(data.bookingTime,
+                                                    Text(_formatTimeStr(data.bookingTime),
                                                         style: _subStyle()),
                                                   ],
                                                 )),
@@ -492,12 +513,7 @@ DataCell(
                                                             .creationTime),
                                                         style: _cellStyle()),
                                                     Text(
-                                                        data.creationTime
-                                                                .contains('T')
-                                                            ? data.creationTime
-                                                                .split('T')[1]
-                                                                .substring(0, 5)
-                                                            : "",
+                                                        _extractLocalTime(data.creationTime),
                                                         style: _subStyle()),
                                                   ],
                                                 )),

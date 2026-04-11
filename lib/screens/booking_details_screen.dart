@@ -218,15 +218,25 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   // Helper: Date Format
-String _formatDate(String isoDate) {
-  if (isoDate.isEmpty) return "N/A";
-  try {
-    final dt = DateTime.parse(isoDate).toLocal();
-    return DateFormat('dd MMM yyyy').format(dt);
-  } catch (e) {
-    return isoDate.split('T')[0];
+  String _formatDate(String isoDate) {
+    if (isoDate.isEmpty) return "N/A";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('dd MMM yyyy').format(dt);
+    } catch (e) {
+      return isoDate.split('T')[0];
+    }
   }
-}
+
+  String _formatDateTime(String isoDate) {
+    if (isoDate.isEmpty) return "N/A";
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
+    } catch (e) {
+      return isoDate.split('T')[0];
+    }
+  }
 
   // New Helper: Combined Schedule Format
   String _formatSchedule(String dateIso, String timeStr) {
@@ -284,7 +294,7 @@ String _formatDate(String isoDate) {
                       ],
                     ),
                     const SizedBox(height: 5),
-                    Text("Booking Placed : ${_formatDate(booking.creationTime)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text("Booking Placed : ${_formatDateTime(booking.creationTime)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
                 ),
                ElevatedButton.icon(
@@ -394,7 +404,7 @@ String _formatDate(String isoDate) {
         children: [
           _buildTimelineItem(
             title: "Booking Placed",
-            subtitle: "By ${booking.customerName}\n${_formatDate(booking.creationTime)}",
+            subtitle: "By ${booking.customerName}\n${_formatDateTime(booking.creationTime)}",
             isActive: true,
             isLast: false,
           ),
