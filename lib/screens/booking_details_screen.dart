@@ -120,11 +120,19 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     2: pw.Alignment.centerRight,
                   },
                   headers: ['Service Description', 'Qty', 'Price (INR)'],
-                  data: booking.services.map((s) => [
-                    s.serviceName,
-                    '1',
-                    s.price.toStringAsFixed(2),
-                  ]).toList(),
+                  data: booking.services.map((s) {
+                    String qty = '1';
+                    if (booking.services.length == 1 && s.serviceName == "Jet Based AC service") {
+                      if (s.serviceDuration > 0 && booking.totalDuration > 0) {
+                        qty = (booking.totalDuration ~/ s.serviceDuration).toString();
+                      }
+                    }
+                    return [
+                      s.serviceName,
+                      qty,
+                      s.price.toStringAsFixed(2),
+                    ];
+                  }).toList(),
                 ),
                 pw.Divider(thickness: 0.5),
 
@@ -242,7 +250,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String _formatSchedule(String dateIso, String timeStr) {
     if (dateIso.isEmpty || dateIso == 'N/A') return "N/A";
     try {
-      final dt = DateTime.parse(dateIso);
+      final dt = DateTime.parse(dateIso).toLocal();
       final datePart = DateFormat('dd-MMM-yyyy').format(dt);
       
       // timeStr is usually "HH:mm"
@@ -534,13 +542,21 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
               if (booking.services.isEmpty)
                  const Padding(padding: EdgeInsets.all(8.0), child: Text("No services listed")),
               
-              ...booking.services.map((s) => _buildSummaryRow(
-                s.serviceName, 
-                "Original Price", 
-                "₹${s.price.toStringAsFixed(2)}", 
-                "1", 
-                "₹${s.price.toStringAsFixed(2)}"
-              )),
+              ...booking.services.map((s) {
+                String qty = '1';
+                if (booking.services.length == 1 && s.serviceName == "Jet Based AC service") {
+                  if (s.serviceDuration > 0 && booking.totalDuration > 0) {
+                    qty = (booking.totalDuration ~/ s.serviceDuration).toString();
+                  }
+                }
+                return _buildSummaryRow(
+                  s.serviceName, 
+                  "Original Price", 
+                  "₹${s.price.toStringAsFixed(2)}", 
+                  qty, 
+                  "₹${s.price.toStringAsFixed(2)}"
+                );
+              }),
               
               const SizedBox(height: 16),
               const Divider(),

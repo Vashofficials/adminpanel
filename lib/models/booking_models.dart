@@ -63,6 +63,7 @@ class BookingModel {
   final double platformFee;
   final double gstAmount;
   final double gstPercentage;
+  final int totalDuration;
 
   BookingModel({
     required this.id,
@@ -86,6 +87,7 @@ class BookingModel {
     required this.platformFee,
     required this.gstAmount,
     required this.gstPercentage,
+    this.totalDuration = 0,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -130,6 +132,7 @@ class BookingModel {
       platformFee: (amountData['plateFormFee'] as num?)?.toDouble() ?? 0.0,
       gstAmount: (amountData['gstAmount'] as num?)?.toDouble() ?? 0.0,
       gstPercentage: (amountData['gstPercentage'] as num?)?.toDouble() ?? 0.0,
+      totalDuration: (json['totalDuration'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -287,12 +290,14 @@ class BookingService {
   final double price;
   final double discountPrice; // Price after service-specific discount
   final double discountPercentage;
+  final int serviceDuration;
 
   BookingService({
     required this.id,
     required this.serviceName,
     required this.price,
-    required this.discountPrice, required this.discountPercentage
+    required this.discountPrice, required this.discountPercentage,
+    this.serviceDuration = 0,
   });
 
   factory BookingService.fromJson(Map<String, dynamic> json) {
@@ -302,6 +307,7 @@ class BookingService {
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       discountPrice: (json['discountPrice'] as num?)?.toDouble() ?? 0.0,
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
+      serviceDuration: (json['serviceDuration'] as num?)?.toInt() ?? 0,
     );
   }
 }
