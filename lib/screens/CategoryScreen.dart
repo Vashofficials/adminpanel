@@ -738,7 +738,7 @@ _buildImageUploadArea(
                           columns: [
                             DataColumn(label: Text("SL", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                             DataColumn(label: Text("CATEGORY NAME", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
-                            DataColumn(label: Text("SUB CATEGORY COUNT", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
+                          //  DataColumn(label: Text("SUB CATEGORY COUNT", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                             DataColumn(label: Text("BANNER", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))), // 👈 ADD THIS
                             DataColumn(label: Text("CATEGORY ICON", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                             DataColumn(label: Text("STATUS", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
@@ -750,13 +750,7 @@ _buildImageUploadArea(
                               cells: [
                                 DataCell(Text("${index + 1}")),
                                 DataCell(Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(color: const Color(0xFFE0E7FF), borderRadius: BorderRadius.circular(12)),
-                                    child: const Text("12", style: TextStyle(color: Color(0xFF4338CA), fontWeight: FontWeight.bold, fontSize: 12)),
-                                  )
-                                ),
+                               
                                DataCell(
   GestureDetector(
     onTap: () => ImagePreviewDialog.show(context, url: cat.bannerLink, title: "Banner View"),

@@ -121,7 +121,7 @@ class _AddDiscountScreenState extends State<AddDiscountScreen> {
     items.addAll(_services.map((s) => SelectionItem(
       id: s.id, 
       title: s.name,
-      subtitle: "Price: \$${s.price}",
+      subtitle: "Price: \₹${s.price}",
       icon: Icons.design_services_outlined
     )));
 
