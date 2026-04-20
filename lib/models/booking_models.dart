@@ -137,44 +137,32 @@ class BookingModel {
   }
 
   // --- Getters for UI Compatibility ---
-  double get totalServicePrice => services.fold(0.0, (sum, item) => sum + item.price);
+/// 1. Original total price
+double get originalPrice =>
+    services.fold(0.0, (sum, item) => sum + item.price);
 
-/// Total discount (Original Price - Discount Price) across all services
-double get totalServiceDiscount => services.fold(0.0, (sum, item) => sum + (item.price - item.discountPrice));
+/// 2. Total discount (service + coupon already combined)
+double get totalDiscount =>
+    services.fold(0.0, (sum, item) => sum + item.discountPrice);
 
-/// Logic: Total Price - Total Discount Price (represents the coupon/offer value)
-double get couponDiscountValue => totalServicePrice - services.fold(0.0, (sum, item) => sum + item.discountPrice);
+/// 3. Final price before GST
+double get priceAfterDiscount =>
+    originalPrice - totalDiscount;
 
-/// Grand Total Calculation: (Service Total - Coupon Discount) + GST
-/// Platform Fee is NOT added here as per your requirement.
-double get grandTotalPrice {
-  double afterDiscount = totalServicePrice - couponDiscountValue;
-  return afterDiscount + gstAmount;
-}
-  /// Sum of original prices before any discount
+/// 4. Grand Total (FINAL BILL)
+double get grandTotalPrice =>
+    priceAfterDiscount + gstAmount;
 
-
-  /// Discount from global coupon if applicable
-  double get totalCouponDiscountAmount {
-    if (coupon == null || coupon!.discountPercentage == null) return 0.0;
-    double priceAfterServiceDiscount = totalServicePrice - totalServiceDiscount;
-    return priceAfterServiceDiscount * (coupon!.discountPercentage! / 100);
-  }
-
-  /// Total discount (Service Level + Coupon Level)
-  double get totalDiscountPrice => totalServiceDiscount + totalCouponDiscountAmount;
-
-  /// Final amount: (Price - Discount) + Tax + Platform Fee
-  double get totalFinalPrice => (totalServicePrice - totalDiscountPrice) + gstAmount + platformFee;
-
-  double get totalAmount {
-    if (services.isEmpty) return 0.0;
-    return services.fold(0.0, (sum, item) => sum + item.price);
-  }
-
-  double get totalDiscountAmount {
-    return totalServiceDiscount;
-  }
+/// 5. Coupon (UI only — NEVER use in calculation)
+double get couponDiscountValue =>
+    coupon?.amount ?? 0.0;
+double get serviceDiscount {
+  return services.fold(0.0, (sum, item) {
+    double serviceLevelDiscount =
+        (item.price * item.discountPercentage) / 100;
+    return sum + serviceLevelDiscount;
+  });
+}    
 
   /*double get totalCouponDiscountAmount {
     return 0.0; // Placeholder until integrated with real API data
@@ -315,14 +303,16 @@ class CouponModel {
   final String? couponCode;
   final double? discountPercentage;
   final String? couponType;
+  final double amount; // <--- ADD THIS FIELD
 
-  CouponModel({this.couponCode, this.discountPercentage, this.couponType});
+  CouponModel({this.couponCode, this.discountPercentage, this.couponType,this.amount = 0.0, });
 
   factory CouponModel.fromJson(Map<String, dynamic> json) {
     return CouponModel(
       couponCode: json['couponCode']?.toString(),
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
       couponType: json['couponType']?.toString(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

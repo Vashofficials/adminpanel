@@ -526,12 +526,12 @@ class _AllTransactionReportScreenState
 
                                                 // Service Discount
                                                 DataCell(Text(
-                                                    "₹${data.totalDiscountAmount.toStringAsFixed(2)}",
+  "-₹${data.totalDiscount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Coupon Discount
                                                 DataCell(Text(
-                                                    "₹${data.totalCouponDiscountAmount.toStringAsFixed(2)}",
+  "-₹${data.totalDiscount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Tax (GST)

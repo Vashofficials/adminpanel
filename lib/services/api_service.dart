@@ -1628,4 +1628,33 @@ Future<Response> addWithdrawRequest(Map<String, dynamic> data) async {
   }
 }
 
+Future<Response> getAllRefundRequests() async {
+  try {
+    return await _dio.get('/admin/getAllRefundRequest');
+  } catch (e) {
+    rethrow;
+  }
+}
+
+Future<Response> updateRefundStatus(
+  String id, {
+  String? remark,
+  String? transactionNo,
+  String? refundedDate,
+}) async {
+  try {
+    return await _dio.patch(
+      '/admin/updateRefundPaymentStatus',
+      // Using queryParameters instead of data body
+      queryParameters: {
+        "requestId": id,
+        "remark": remark ?? "",
+        "transactionNo": transactionNo ?? "",
+        "refundedDate": refundedDate ?? DateTime.now().toIso8601String(),
+      },
+    );
+  } catch (e) {
+    rethrow;
+  }
+}
 }

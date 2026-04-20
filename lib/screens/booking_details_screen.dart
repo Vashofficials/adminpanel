@@ -143,13 +143,20 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.SizedBox(height: 10),
-                      _pdfPriceRow("Service Subtotal:", "INR ${booking.totalServicePrice.toStringAsFixed(2)}"),
-                      if (booking.couponDiscountValue > 0)
-                        _pdfPriceRow(
-                          "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}:", 
-                          "- INR ${booking.couponDiscountValue.toStringAsFixed(2)}",
-                          color: PdfColors.green,
-                        ),
+_pdfPriceRow("Service Subtotal:", "INR ${booking.originalPrice.toStringAsFixed(2)}"),
+                      if (booking.serviceDiscount > 0)
+  _pdfPriceRow(
+    "Service Discount:",
+    "- INR ${booking.serviceDiscount.toStringAsFixed(2)}",
+    color: PdfColors.green,
+  ),
+
+if (booking.couponDiscountValue > 0)
+  _pdfPriceRow(
+    "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}:",
+    "- INR ${booking.couponDiscountValue.toStringAsFixed(2)}",
+    color: PdfColors.green,
+  ),
                       _pdfPriceRow("GST (${booking.gstPercentage}%):", "+ INR ${booking.gstAmount.toStringAsFixed(2)}"),
                       pw.SizedBox(height: 10),
                       pw.Container(
@@ -563,15 +570,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
               const SizedBox(height: 8),
 
               // Breakdown Section
-              _buildTotalRow("Service Total", "₹${booking.totalServicePrice.toStringAsFixed(2)}"),
-              
-              // Coupon Discount (Original Price - Discount Price)
-              if (booking.couponDiscountValue > 0)
-                _buildTotalRow(
-                  "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}", 
-                  "- ₹${booking.couponDiscountValue.toStringAsFixed(2)}", 
-                  color: Colors.green
-                ),
+_buildTotalRow("Service Total", "₹${booking.originalPrice.toStringAsFixed(2)}"),
+
+             // 1. Service Discount (NEW)
+if (booking.serviceDiscount > 0)
+  _buildTotalRow(
+    "Service Discount",
+    "- ₹${booking.serviceDiscount.toStringAsFixed(2)}",
+    color: Colors.green,
+  ),
+
+// 2. Coupon Discount (UI ONLY)
+if (booking.couponDiscountValue > 0)
+  _buildTotalRow(
+    "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}",
+    "- ₹${booking.couponDiscountValue.toStringAsFixed(2)}",
+    color: Colors.green,
+  ),
               
               _buildTotalRow("GST (${booking.gstPercentage}%)", "+ ₹${booking.gstAmount.toStringAsFixed(2)}"),
               

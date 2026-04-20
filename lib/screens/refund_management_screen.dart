@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
-
+import '../controllers/refund_controller.dart';
+import '../widgets/custom_center_dialog.dart';
 // Assuming you will create a RefundController similar to your WithdrawController
 // For now, I'll use a local mock list to show the UI in action.
 class RefundRequestScreen extends StatefulWidget {
@@ -15,38 +16,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
-  // Replace with: final RefundController controller = Get.put(RefundController());
-  final RxBool isLoading = false.obs;
-  final RxList<dynamic> refundList = [
-    {
-      "id": "REF-UUID-12345",
-      "bookingId": "BK-9901",
-      "customerName": "Himanshu Shukla",
-      "email": "himanshu@example.com",
-      "mobileNo": "+91 9876543210",
-      "bankName": "HDFC Bank",
-      "accountNo": "XXXXXX4521",
-      "upiId": "himanshu@okaxis",
-      "amount": "1,500.00",
-      "requestDate": "2026-04-03T10:00:00",
-      "status": "PENDING",
-      "comment": ""
-    },
-    {
-      "id": "REF-UUID-67890",
-      "bookingId": "BK-8822",
-      "customerName": "Chunmun",
-      "email": "chunmun@example.com",
-      "mobileNo": "+91 9988776655",
-      "bankName": "ICICI Bank",
-      "accountNo": "XXXXXX9900",
-      "upiId": "chunmun@upi",
-      "amount": "2,450.00",
-      "requestDate": "2026-03-22T14:20:00",
-      "status": "INITIATED",
-      "comment": "Processing with Gateway"
-    }
-  ].obs;
+  // 1. USE THE REAL CONTROLLER
+  final RefundController controller = Get.put(RefundController());
 
   @override
   void initState() {
@@ -94,11 +65,13 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       body: Obx(() {
-        if (isLoading.value) {
+        // 2. USE CONTROLLER LOADING STATE
+        if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)));
         }
 
-        List<dynamic> filteredRequests = refundList.where((req) {
+        // 3. FILTER FROM CONTROLLER LIST
+        List<dynamic> filteredRequests = controller.refundList.where((req) {
           final status = req['status']?.toString().toUpperCase();
           switch (_tabController.index) {
             case 1: return status == 'PENDING';
@@ -119,7 +92,7 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(refundList.length),
+                _buildHeader(controller.refundList.length),
                 const SizedBox(height: 24),
                 _buildTableContainer(filteredRequests),
               ],
@@ -130,11 +103,10 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
     );
   }
 
-  Widget _buildHeader(int totalCount) {
+ Widget _buildHeader(int totalCount) {
     return Row(
       children: [
-        const Text('Customer Refunds',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+        const Text('Customer Refunds', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -143,7 +115,8 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
         ),
         const Spacer(),
         IconButton(
-          onPressed: () {}, // controller.fetchRefunds(),
+          // 4. ADD REFRESH ACTION
+          onPressed: () => controller.fetchRefunds(),
           icon: const Icon(Icons.refresh_rounded, color: Color(0xFFEF7822)),
           style: IconButton.styleFrom(
             backgroundColor: Colors.white,
@@ -300,183 +273,340 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
     );
   }
 
-  Widget _buildTableRow(dynamic req, int sl) {
-    final statusColor = _getStatusColor(req['status']);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
-      child: Row(
-        children: [
-          SizedBox(width: colSL, child: Text('$sl', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-          SizedBox(
-            width: colRef,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(req['bookingId'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
-                Text(req['id'], style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
-              ],
-            ),
+Widget _buildTableRow(dynamic req, int sl) {
+  // Mapping correct keys from your JSON response
+  final String status = req['status']?.toString() ?? 'PENDING';
+  final String bookingId = req['bookingId']?.toString() ?? 'N/A';
+  final String refundId = req['id']?.toString() ?? 'N/A';
+  
+  // Logic for Full Name: Combining First, Middle, and Last name
+  final String fName = req['customerFirstName']?.toString() ?? '';
+  final String mName = req['customerMiddleName']?.toString() ?? '';
+  final String lName = req['customerLastName']?.toString() ?? '';
+  final String customerName = "$fName $mName $lName".trim().isEmpty 
+      ? "Unknown" 
+      : "$fName $mName $lName".replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  final String email = req['customerEmailId']?.toString() ?? 'No Email';
+  final String mobileNo = req['customerMobile']?.toString() ?? 'No Mobile';
+  final String bankName = req['bankName']?.toString() ?? 'N/A';
+  final String accountNo = req['accountNo']?.toString() ?? 'XXXX';
+  final String amount = req['amount']?.toString() ?? '0';
+  
+  // Note: Your JSON doesn't show a 'comment' field, adding safety
+  final String comment = req['comment']?.toString() ?? '';
+  
+  // Date Formatting
+  final String rawDate = req['requestDate']?.toString() ?? '';
+  final String displayDate = rawDate.contains('T') 
+      ? rawDate.split('T')[0] 
+      : (rawDate.isEmpty ? 'N/A' : rawDate);
+
+  final statusColor = _getStatusColor(status);
+
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+    ),
+    child: Row(
+      children: [
+        // SL No
+        SizedBox(width: colSL, child: Text('$sl', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+        
+        // Ref / Booking ID
+      // Ref / Booking ID
+SizedBox(
+  width: colRef,
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Booking ID
+      Text(
+        bookingId, 
+        style: const TextStyle(
+          fontWeight: FontWeight.bold, 
+          fontSize: 10, // Reduced from 11
+          color: Color(0xFF0F172A),
+        ),
+      ),
+      const SizedBox(height: 2),
+      // Full UUID / Refund ID
+      SelectableText(
+        refundId, 
+        style: const TextStyle(
+          fontSize: 8, // Reduced from 9 to show full UUID
+          color: Color(0xFF94A3B8),
+          fontFamily: 'monospace', // Monospace helps with alignment of IDs
+          letterSpacing: -0.2, // Tighter tracking to fit more characters
+        ),
+      ),
+    ],
+  ),
+),
+        
+        // Customer Info
+        SizedBox(
+          width: colCustomer,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2563EB))),
+              Text(email, style: const TextStyle(color: Color(0xFFF97316), fontSize: 11)),
+              Text(mobileNo, style: const TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+            ],
           ),
-          SizedBox(
-            width: colCustomer,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(req['customerName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2563EB))),
-                Text(req['email'], style: const TextStyle(color: Color(0xFFF97316), fontSize: 11)),
-                Text(req['mobileNo'], style: const TextStyle(color: Color(0xFF64748B), fontSize: 11)),
-              ],
-            ),
+        ),
+        
+        // Refund To (Bank)
+        SizedBox(
+          width: colBank,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(bankName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+              Text('A/C: $accountNo', style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+            ],
           ),
-          SizedBox(
-            width: colBank,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(req['bankName'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                Text('A/C: ${req['accountNo']}', style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
-              ],
-            ),
+        ),
+        
+        // Remarks
+        SizedBox(
+          width: colNote,
+          child: Text(
+            comment.isEmpty ? 'No remarks' : comment, 
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, overflow: TextOverflow.ellipsis), 
+            maxLines: 2,
           ),
-          SizedBox(
-            width: colNote,
-            child: Text(req['comment'].isEmpty ? 'No remarks' : req['comment'], 
-                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, overflow: TextOverflow.ellipsis), maxLines: 2),
-          ),
-          SizedBox(width: colAmount, child: Text("₹${req['amount']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF97316)))),
-          SizedBox(width: colDate, child: Text(req['requestDate'].split('T')[0], style: const TextStyle(color: Color(0xFF64748B), fontSize: 12))),
-          SizedBox(
-            width: colStatus,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                child: Text(req['status'], style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+        ),
+        
+        // Amount
+        SizedBox(width: colAmount, child: Text("₹$amount", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF97316)))),
+        
+        // Request Date
+        SizedBox(width: colDate, child: Text(displayDate, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12))),
+        
+        // Status Badge
+        SizedBox(
+          width: colStatus,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1), 
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                status.toUpperCase(), 
+                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
               ),
             ),
           ),
-          SizedBox(
-            width: colAction,
-            child: Center(
-              child: (req['status'] == 'SUCCESS')
-                  ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
-                  : ElevatedButton(
-                      onPressed: () => _showRefundModal(req),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3B82F6),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
-                      child: const Text('Update', style: TextStyle(color: Colors.white, fontSize: 11))),
-            ),
+        ),
+        
+        // Action
+        SizedBox(
+          width: colAction,
+          child: Center(
+            child: (status.toUpperCase() == 'SUCCESS')
+                ? const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20)
+                : ElevatedButton(
+                    onPressed: () => _showRefundModal(req),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    child: const Text('Update', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+void _showRefundModal(Map<String, dynamic> request) {
+  // Extracting Name info from API keys
+  final String fName = request['customerFirstName']?.toString() ?? '';
+  final String mName = request['customerMiddleName']?.toString() ?? '';
+  final String lName = request['customerLastName']?.toString() ?? '';
+  final String fullName = "$fName $mName $lName".replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  void _showRefundModal(Map<String, dynamic> request) {
-    String selectedStatus = request['status']; 
-    final List<String> statusOptions = ['Pending', 'Initiated', 'Success', 'Denied'];
-    final TextEditingController commentController = TextEditingController(text: request['comment']);
+  // Controllers for text fields
+  final TextEditingController transactionController = TextEditingController();
+  final TextEditingController remarkController = TextEditingController(text: request['comment']?.toString() ?? '');
+  final TextEditingController dateController = TextEditingController(
+    text: DateTime.now().toString().split(' ')[0], // Default to today
+  );
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Container(
-                width: 550,
-                padding: const EdgeInsets.all(24.0),
+  // Status mapping
+  String selectedStatus = request['status']?.toString() ?? 'Initiated';
+  final List<String> statusOptions = ['Pending', 'Initiated', 'Success', 'Denied'];
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Container(
+              width: 550,
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+              padding: const EdgeInsets.all(24.0),
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Top close button
                     Align(
                       alignment: Alignment.topRight,
-                      child: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
+                          child: const Icon(Icons.close, size: 18, color: Color(0xFF6B7280)),
+                        ),
+                      ),
                     ),
-                    const Text('Update Refund Status', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+
+                    // Icon Header (Reusing your UI helper)
+                    _buildDialogHeaderIcon(), 
+                    const SizedBox(height: 16),
+                    const Text('Update Refund Status', 
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                     const SizedBox(height: 24),
-                    
+
+                    // Info Cards Row
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Customer Card
                         Expanded(
                           child: _buildModalInfoCard("Customer Details", [
-                            request['customerName'],
-                            request['mobileNo'],
-                            request['email'],
+                            fullName.isEmpty ? "Unknown" : fullName,
+                            request['customerMobile']?.toString() ?? "No Mobile",
+                            request['customerEmailId']?.toString() ?? "No Email",
                           ], Icons.person_outline),
                         ),
                         const SizedBox(width: 16),
-                        // Bank Card
                         Expanded(
                           child: _buildModalInfoCard("Refund Bank Info", [
-                            request['bankName'],
-                            "A/C: ${request['accountNo']}",
-                            "UPI: ${request['upiId']}",
+                            request['bankName']?.toString()?.toUpperCase() ?? "N/A",
+                            "A/C: ${request['accountNo']?.toString() ?? 'XXXX'}",
+                            "UPI: ${request['upiId']?.toString() ?? 'N/A'}",
                           ], Icons.account_balance_outlined),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // Status Selection
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 10,
-                        children: statusOptions.map((status) {
-                          final bool isSelected = selectedStatus == status;
-                          return ChoiceChip(
-                            label: Text(status),
-                            selected: isSelected,
-                            onSelected: (val) => setDialogState(() => selectedStatus = status),
-                            selectedColor: const Color(0xFFF97316).withOpacity(0.1),
-                            checkmarkColor: const Color(0xFFF97316),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
+                    // Transaction No Field (Required for Success/Initiated)
+                    _buildFieldLabel('Bank Transaction No / UTR *'),
                     TextField(
-                      controller: commentController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'Add processing note or reason for denial...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      controller: transactionController,
+                      decoration: _buildInputDecoration('Enter Reference Number'),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Refund Date Field (Required)
+                    _buildFieldLabel('Refund Date *'),
+                    TextField(
+                      controller: dateController,
+                      readOnly: true,
+                      onTap: () async {
+                        DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2025),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => dateController.text = picked.toString().split(' ')[0]);
+                        }
+                      },
+                      decoration: _buildInputDecoration('YYYY-MM-DD').copyWith(
+                        suffixIcon: const Icon(Icons.calendar_today, size: 18),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
+                    // Status Selection
+                    _buildFieldLabel('Select Refund Status'),
+                    Wrap(
+                      spacing: 10,
+                      children: statusOptions.map((status) {
+                        final bool isSelected = selectedStatus.toLowerCase() == status.toLowerCase();
+                        return ChoiceChip(
+                          label: Text(status),
+                          selected: isSelected,
+                          onSelected: (val) => setDialogState(() => selectedStatus = status),
+                          selectedColor: const Color(0xFFF97316).withOpacity(0.1),
+                          checkmarkColor: const Color(0xFFF97316),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Remark Field
+                    _buildFieldLabel('Admin Remark'),
+                    TextField(
+                      controller: remarkController,
+                      maxLines: 2,
+                      decoration: _buildInputDecoration('Add processing note...'),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Action Buttons
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Discard')),
-                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context), 
+                          child: const Text('Cancel', style: TextStyle(color: Color(0xFF1F2937))),
+                        ),
+                        const SizedBox(width: 16),
                         ElevatedButton(
                           onPressed: () {
-                            // Logic: update list or call API
+                            // Validation: Required fields for payment update
+                            if (transactionController.text.isEmpty || dateController.text.isEmpty) {
+                              CustomCenterDialog.show(
+                                context,
+                                title: "Required Fields",
+                                message: "Please provide Transaction Number and Refund Date.",
+                                type: DialogType.error,
+                              );
+                              return;
+                            }
+                            
                             Navigator.pop(context);
+                            controller.updateRefundStatus(
+                              request['id'], 
+                              remark: remarkController.text.trim(),
+                              transactionNo: transactionController.text.trim(),
+                              refundedDate: dateController.text.trim(),
+                            );
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
-                          child: const Text('Update Refund', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF97316),
+                            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Update Refund', 
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
-
+            ),
+          );
+        },
+      );
+    },
+  );
+}
   Widget _buildModalInfoCard(String title, List<String> lines, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -498,6 +628,75 @@ class _RefundRequestScreenState extends State<RefundRequestScreen>
       ),
     );
   }
+}
+// --- UI Helpers for Modals ---
+
+Widget _buildFieldLabel(String label) {
+  return Align(
+    alignment: Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1E293B),
+          fontSize: 14,
+        ),
+      ),
+    ),
+  );
+}
+
+InputDecoration _buildInputDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.all(16),
+  );
+}
+
+Widget _buildDialogHeaderIcon() {
+  return Container(
+    width: 60,
+    height: 60,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.blue.withOpacity(0.1), width: 4),
+    ),
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        const CircularProgressIndicator(
+          value: 1.0,
+          strokeWidth: 4,
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEAB308)),
+        ),
+        Container(
+          width: 30,
+          height: 30,
+          decoration: const BoxDecoration(
+            color: Color(0xFF22C55E),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check, color: Colors.white, size: 20),
+        ),
+      ],
+    ),
+  );
 }
 
 // Reusing your Table Header widget
