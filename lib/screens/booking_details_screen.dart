@@ -121,15 +121,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   },
                   headers: ['Service Description', 'Qty', 'Price (INR)'],
                   data: booking.services.map((s) {
-                    String qty = '1';
-                    if (booking.services.length == 1 && s.serviceName == "Jet Based AC service") {
-                      if (s.serviceDuration > 0 && booking.totalDuration > 0) {
-                        qty = (booking.totalDuration ~/ s.serviceDuration).toString();
-                      }
-                    }
                     return [
                       s.serviceName,
-                      qty,
+                      s.quantity.toString(),
                       s.price.toStringAsFixed(2),
                     ];
                   }).toList(),
@@ -531,6 +525,11 @@ if (booking.couponDiscountValue > 0)
                   Text("OTP: ${booking.bookingPin}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
                   Text("Schedule: ${_formatSchedule(booking.bookingDate, booking.bookingTime)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+Text(
+  "Total Duration: ${booking.totalDuration} mins",
+  style: const TextStyle(fontWeight: FontWeight.w500),
+),
                 ],
               )
             ],
@@ -550,17 +549,11 @@ if (booking.couponDiscountValue > 0)
                  const Padding(padding: EdgeInsets.all(8.0), child: Text("No services listed")),
               
               ...booking.services.map((s) {
-                String qty = '1';
-                if (booking.services.length == 1 && s.serviceName == "Jet Based AC service") {
-                  if (s.serviceDuration > 0 && booking.totalDuration > 0) {
-                    qty = (booking.totalDuration ~/ s.serviceDuration).toString();
-                  }
-                }
                 return _buildSummaryRow(
                   s.serviceName, 
                   "Original Price", 
                   "₹${s.price.toStringAsFixed(2)}", 
-                  qty, 
+                    s.quantity.toString(), // ✅ real quantity
                   "₹${s.price.toStringAsFixed(2)}"
                 );
               }),
@@ -826,7 +819,7 @@ if (booking.couponDiscountValue > 0)
       child: Row(
         children: const [
           Expanded(flex: 3, child: Text("SERVICE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
-          Expanded(flex: 2, child: Text("PRICE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+          Expanded(flex: 2, child: Text("TOTAL PRICE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
           Expanded(flex: 1, child: Text("QTY", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
           Expanded(flex: 2, child: Text("TOTAL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey), textAlign: TextAlign.end)),
         ],

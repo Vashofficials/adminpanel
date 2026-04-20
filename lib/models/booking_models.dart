@@ -279,6 +279,7 @@ class BookingService {
   final double discountPrice; // Price after service-specific discount
   final double discountPercentage;
   final int serviceDuration;
+  final int quantity;
 
   BookingService({
     required this.id,
@@ -286,6 +287,8 @@ class BookingService {
     required this.price,
     required this.discountPrice, required this.discountPercentage,
     this.serviceDuration = 0,
+    this.quantity = 1, // ✅ ADD THIS
+
   });
 
   factory BookingService.fromJson(Map<String, dynamic> json) {
@@ -296,6 +299,7 @@ class BookingService {
       discountPrice: (json['discountPrice'] as num?)?.toDouble() ?? 0.0,
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
       serviceDuration: (json['serviceDuration'] as num?)?.toInt() ?? 0,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
     );
   }
 }
