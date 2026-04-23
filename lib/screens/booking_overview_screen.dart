@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../controllers/booking_overview_controller.dart';
 import '../models/booking_models.dart';
+import '../services/audio_service.dart';
 
 // =============================================================================
 // BOOKING OVERVIEW SCREEN
@@ -307,19 +308,41 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
                     fontSize: 13, color: const Color(0xFF64748B))),
           ],
         ),
-        ElevatedButton.icon(
-          onPressed: _ctrl.fetchOverviewData,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFEF7822),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            elevation: 0,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
-          label: Text('Refresh',
-              style: GoogleFonts.inter(
-                  color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+        Row(
+          children: [
+            // Stop Notification Button (only visible when sound is playing)
+            Obx(() => AudioService().isPlaying.value
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: ElevatedButton.icon(
+                      onPressed: () => AudioService().stopSound(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.volume_off_rounded, size: 16, color: Colors.white),
+                      label: Text('Stop Notification',
+                          style: GoogleFonts.inter(
+                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  )
+                : const SizedBox.shrink()),
+            ElevatedButton.icon(
+              onPressed: _ctrl.fetchOverviewData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF7822),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
+              label: Text('Refresh',
+                  style: GoogleFonts.inter(
+                      color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+            ),
+          ],
         ),
       ],
     );

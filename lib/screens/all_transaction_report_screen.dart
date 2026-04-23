@@ -1,9 +1,12 @@
-import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:typed_data';
 import 'dart:ui';
+import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart';
+import '../services/audio_service.dart';
 
 // --- IMPORTS ---
 import '../models/booking_models.dart';
@@ -39,6 +42,19 @@ class _AllTransactionReportScreenState
   int _totalElements = 0;
 
   DateTime? _selectedScheduleDate;
+  String? _selectedCategory; // null = "All"
+
+  // Dynamically build unique category list from loaded bookings
+  List<String> get _availableCategories {
+    final categories = <String>{};
+    for (final b in _bookings) {
+      for (final svc in b.services) {
+        if (svc.categoryName.isNotEmpty) categories.add(svc.categoryName);
+      }
+    }
+    final sorted = categories.toList()..sort();
+    return sorted;
+  }
 
   @override
   void initState() {
@@ -93,23 +109,57 @@ class _AllTransactionReportScreenState
 
   List<BookingModel> get _filteredBookings {
     var list = _bookings;
-    
-    // 1. Search Filter
-    final keyword = _searchController.text.toLowerCase();
+
+    // 1. FULL-TEXT Search Filter — searches ALL visible columns
+    final keyword = _searchController.text.toLowerCase().trim();
     if (keyword.isNotEmpty) {
       list = list.where((item) {
-        return item.bookingRef.toLowerCase().contains(keyword) ||
-            item.customerName.toLowerCase().contains(keyword) ||
-            item.customerPhone.toLowerCase().contains(keyword);
+        // Booking ID
+        if (item.bookingRef.toLowerCase().contains(keyword)) return true;
+        // Customer name & phone
+        if (item.customerName.toLowerCase().contains(keyword)) return true;
+        if (item.customerPhone.toLowerCase().contains(keyword)) return true;
+        // Provider name & mobile
+        if (item.provider != null) {
+          final providerName =
+              "${item.provider!.firstName} ${item.provider!.lastName}".toLowerCase();
+          if (providerName.contains(keyword)) return true;
+          if (item.provider!.mobile.toLowerCase().contains(keyword)) return true;
+        }
+        // Service name & category
+        for (final svc in item.services) {
+          if (svc.serviceName.toLowerCase().contains(keyword)) return true;
+          if (svc.categoryName.toLowerCase().contains(keyword)) return true;
+        }
+        // Location (city + pincode)
+        if ((item.address?.city ?? '').toLowerCase().contains(keyword)) return true;
+        if ((item.address?.postCode ?? '').toLowerCase().contains(keyword)) return true;
+        // Payment mode, payment status, booking status
+        if (item.paymentMode.toLowerCase().contains(keyword)) return true;
+        if (item.paymentStatus.toLowerCase().contains(keyword)) return true;
+        if (item.status.toLowerCase().contains(keyword)) return true;
+        // Schedule time (bookingTime e.g. "16:30")
+        if (item.bookingTime.toLowerCase().contains(keyword)) return true;
+        return false;
       }).toList();
     }
 
-    // 2. Schedule Date Filter (Client-side)
+    // 2. Category Filter — match any service's categoryName
+    if (_selectedCategory != null) {
+      list = list.where((item) {
+        return item.services.any(
+          (svc) => svc.categoryName == _selectedCategory,
+        );
+      }).toList();
+    }
+
+    // 3. Schedule Date Filter — compare bookingDate in LOCAL timezone (IST)
     if (_selectedScheduleDate != null) {
       list = list.where((item) {
         if (item.bookingDate.isEmpty) return false;
         try {
-          final dt = DateTime.parse(item.bookingDate);
+          // .toLocal() ensures IST (+05:30) dates are not shifted to the previous day
+          final dt = DateTime.parse(item.bookingDate).toLocal();
           return dt.year == _selectedScheduleDate!.year &&
                  dt.month == _selectedScheduleDate!.month &&
                  dt.day == _selectedScheduleDate!.day;
@@ -132,7 +182,7 @@ class _AllTransactionReportScreenState
     }
   }
 
-  // 5. DOWNLOAD FUNCTION (CSV ENABLED)
+  // 5. DOWNLOAD AS EXCEL — matches all visible UI columns
   void _handleDownload() {
     if (_filteredBookings.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,53 +191,191 @@ class _AllTransactionReportScreenState
       return;
     }
 
-    final StringBuffer csv = StringBuffer();
-    // Headers
-    csv.writeln("SL,Booking ID,City,Pincode,Customer,Phone,Amount,Mode,Status,Date");
-
-    // Rows
-    for (int i = 0; i < _filteredBookings.length; i++) {
-      final b = _filteredBookings[i];
-      final sl = (i + 1).toString();
-      final id = b.bookingRef;
-      final city = b.address?.city ?? "N/A";
-      final pin = b.address?.postCode ?? "N/A";
-      final customer = b.customerName;
-      final phone = b.customerPhone;
-      final amount = b.grandTotalPrice.toStringAsFixed(2);
-      final mode = b.paymentMode;
-      final status = b.status;
-      final date = b.bookingDate;
-
-      csv.writeln("$sl,$id,$city,$pin,$customer,$phone,$amount,$mode,$status,$date");
-    }
-
     try {
-      final bytes = utf8.encode(csv.toString());
-      final blob = html.Blob([bytes]);
+      final excel = xl.Excel.createExcel();
+      final sheet = excel['All Transaction Report'];
+
+      // ── Orange header style ──────────────────────────────────────────────
+      xl.CellStyle headerStyle = xl.CellStyle(
+        bold: true,
+        fontColorHex: xl.ExcelColor.fromHexString('#FFFFFF'),
+        backgroundColorHex: xl.ExcelColor.fromHexString('#EF7822'),
+        horizontalAlign: xl.HorizontalAlign.Center,
+        verticalAlign: xl.VerticalAlign.Center,
+        textWrapping: xl.TextWrapping.WrapText,
+      );
+
+      // ── Column headers (same order as UI table) ──────────────────────────
+      const headers = [
+        'SL',
+        'Booking ID',
+        'Category',
+        'Service Name',
+        'Qty',
+        'Duration (mins)',
+        'Customer Name',
+        'Customer Phone',
+        'Provider Name',
+        'Provider Mobile',
+        'City',
+        'Pincode',
+        'Service Discount (₹)',
+        'Coupon Discount (₹)',
+        'Tax / GST (₹)',
+        'Total Amount (₹)',
+        'Payment Mode',
+        'Payment Status',
+        'Schedule Date',
+        'Schedule Time',
+        'Booking Date',
+        'Booking Time',
+        'Status',
+      ];
+
+      // Write header row
+      for (int col = 0; col < headers.length; col++) {
+        final cell = sheet
+            .cell(xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0));
+        cell.value = xl.TextCellValue(headers[col]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // ── Data rows ────────────────────────────────────────────────────────
+      for (int i = 0; i < _filteredBookings.length; i++) {
+        final b = _filteredBookings[i];
+        final row = i + 1;
+
+        // Service details — first service or blank
+        final svc = b.services.isNotEmpty ? b.services.first : null;
+        final categoryName = svc?.categoryName ?? '';
+        final serviceName  = svc?.serviceName ?? '';
+        final qty          = svc?.quantity ?? 0;
+        final duration     = svc?.serviceDuration ?? 0;
+
+        // Provider
+        final providerName = b.provider != null
+            ? '${b.provider!.firstName} ${b.provider!.lastName}'.trim()
+            : 'Not Assigned';
+        final providerMobile = b.provider?.mobile ?? '-';
+
+        // Schedule date/time
+        final schedDate = _formatScheduleDate(b.bookingDate);
+        final schedTime = b.bookingTime;
+
+        // Booking date/time
+        final bd = _formatBookingDateTime(b.creationTime);
+
+        // Discounts: sum across all services
+        final serviceDiscount = b.services.fold<double>(
+            0, (sum, s) => sum + s.discountPrice);
+        final couponDiscount = b.couponDiscountValue;
+        final tax            = b.gstAmount;
+        final totalAmount    = b.grandTotalPrice;
+
+        final rowData = [
+          xl.IntCellValue(i + 1),                         // SL
+          xl.TextCellValue(b.bookingRef),                 // Booking ID
+          xl.TextCellValue(categoryName),                 // Category
+          xl.TextCellValue(serviceName),                  // Service Name
+          xl.IntCellValue(qty),                           // Qty
+          xl.IntCellValue(duration),                     // Duration
+          xl.TextCellValue(b.customerName),              // Customer Name
+          xl.TextCellValue(b.customerPhone),             // Customer Phone
+          xl.TextCellValue(providerName),                // Provider Name
+          xl.TextCellValue(providerMobile),              // Provider Mobile
+          xl.TextCellValue(b.address?.city ?? ''),       // City
+          xl.TextCellValue(b.address?.postCode ?? ''),   // Pincode
+          xl.DoubleCellValue(serviceDiscount),           // Service Discount
+          xl.DoubleCellValue(couponDiscount),            // Coupon Discount
+          xl.DoubleCellValue(tax),                       // Tax / GST
+          xl.DoubleCellValue(totalAmount),               // Total Amount
+          xl.TextCellValue(b.paymentMode),               // Payment Mode
+          xl.TextCellValue(b.paymentStatus),             // Payment Status
+          xl.TextCellValue(schedDate),                   // Schedule Date
+          xl.TextCellValue(schedTime),                   // Schedule Time
+          xl.TextCellValue(bd.date),                    // Booking Date
+          xl.TextCellValue(bd.time),                    // Booking Time
+          xl.TextCellValue(b.status),                   // Status
+        ];
+
+        for (int col = 0; col < rowData.length; col++) {
+          final cell = sheet.cell(
+              xl.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row));
+          cell.value = rowData[col];
+          // Alternating row background for readability
+          if (i % 2 == 1) {
+            cell.cellStyle =
+                xl.CellStyle(backgroundColorHex: xl.ExcelColor.fromHexString('#FFF7F0'));
+          }
+        }
+      }
+
+      // Auto column widths (approximate)
+      sheet.setColumnWidth(0, 6);   // SL
+      sheet.setColumnWidth(1, 36);  // Booking ID
+      sheet.setColumnWidth(2, 18);  // Category
+      sheet.setColumnWidth(3, 28);  // Service Name
+      sheet.setColumnWidth(4, 6);   // Qty
+      sheet.setColumnWidth(5, 14);  // Duration
+      sheet.setColumnWidth(6, 22);  // Customer Name
+      sheet.setColumnWidth(7, 16);  // Customer Phone
+      sheet.setColumnWidth(8, 22);  // Provider Name
+      sheet.setColumnWidth(9, 16);  // Provider Mobile
+      sheet.setColumnWidth(10, 14); // City
+      sheet.setColumnWidth(11, 10); // Pincode
+      sheet.setColumnWidth(12, 20); // Svc Discount
+      sheet.setColumnWidth(13, 18); // Coupon Discount
+      sheet.setColumnWidth(14, 14); // Tax
+      sheet.setColumnWidth(15, 16); // Total Amount
+      sheet.setColumnWidth(16, 14); // Payment Mode
+      sheet.setColumnWidth(17, 14); // Payment Status
+      sheet.setColumnWidth(18, 14); // Schedule Date
+      sheet.setColumnWidth(19, 12); // Schedule Time
+      sheet.setColumnWidth(20, 14); // Booking Date
+      sheet.setColumnWidth(21, 12); // Booking Time
+      sheet.setColumnWidth(22, 12); // Status
+
+      // Delete default "Sheet1"
+      excel.delete('Sheet1');
+
+      // ── Trigger browser download ─────────────────────────────────────────
+      final Uint8List fileBytes =
+          Uint8List.fromList(excel.save()!);
+      final blob = html.Blob(
+          [fileBytes],
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", "all_transactions_report_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv")
+      final fileName =
+          'all_transactions_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Text("Downloaded ${_filteredBookings.length} records successfully!"),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(
+                    "Excel downloaded: ${_filteredBookings.length} records  ($fileName)"),
+              ],
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: const Color(0xFF22C55E),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Download failed: $e"), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Download failed: $e"),
+              backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -266,25 +454,48 @@ class _AllTransactionReportScreenState
                   color: const Color(0xFF1E293B),
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Text("Total Records: ",
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: const Color(0xFF64748B))),
-                    Text("$_totalElements",
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A))),
-                  ],
-                ),
+              Row(
+                children: [
+                  // Stop Sound Button (Reactive)
+                  Obx(() => AudioService().isPlaying.value
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: ElevatedButton.icon(
+                            onPressed: () => AudioService().stopSound(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF4444),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                            icon: const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white),
+                            label: Text('Stop Sound',
+                                style: GoogleFonts.inter(
+                                    color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                        )
+                      : const SizedBox.shrink()),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Text("Total Records: ",
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: const Color(0xFF64748B))),
+                        Text("$_totalElements",
+                            style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0F172A))),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -519,6 +730,67 @@ class _AllTransactionReportScreenState
                     ],
                   ),
                 ),
+
+                // --- A2. CATEGORY FILTER CHIP ROW ---
+                if (_availableCategories.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.only(
+                        left: 20, right: 20, bottom: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.filter_list_rounded,
+                            size: 18, color: Color(0xFF64748B)),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Filter by Category:",
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                // "All" chip
+                                _CategoryChip(
+                                  label: "All",
+                                  isSelected: _selectedCategory == null,
+                                  onTap: () {
+                                    setState(() => _selectedCategory = null);
+                                    _runFilter();
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                // Dynamic category chips
+                                ..._availableCategories.map((cat) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _CategoryChip(
+                                      label: cat,
+                                      isSelected: _selectedCategory == cat,
+                                      onTap: () {
+                                        setState(() => _selectedCategory =
+                                            _selectedCategory == cat
+                                                ? null
+                                                : cat);
+                                        _runFilter();
+                                      },
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
@@ -1067,6 +1339,63 @@ class _ActionButton extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             borderRadius: BorderRadius.circular(4)),
         child: Icon(icon, size: 18, color: const Color(0xFF2563EB)),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CATEGORY CHIP WIDGET
+// ---------------------------------------------------------------------------
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFFEF7822)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFEF7822)
+                : const Color(0xFFCBD5E1),
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFEF7822).withOpacity(0.20),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight:
+                isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : const Color(0xFF475569),
+          ),
+        ),
       ),
     );
   }

@@ -25,6 +25,8 @@ dependencies:
   dotted_border: ^2.1.0
   pdf: ^3.10.8
   printing: ^5.11.1
+  excel: ^4.0.6
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -37,4 +39,5 @@ flutter:
   assets:
      - assets/logo.svg 
      - assets/bg.jpg
+     - assets/1.mp3
      # Ensure the folder "assets/" actually exists in your project root

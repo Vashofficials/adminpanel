@@ -275,8 +275,9 @@ class ServiceProvider {
 class BookingService {
   final String id;
   final String serviceName;
+  final String categoryName;   // ← from API: categoryName
   final double price;
-  final double discountPrice; // Price after service-specific discount
+  final double discountPrice;
   final double discountPercentage;
   final int serviceDuration;
   final int quantity;
@@ -284,17 +285,19 @@ class BookingService {
   BookingService({
     required this.id,
     required this.serviceName,
+    required this.categoryName,
     required this.price,
-    required this.discountPrice, required this.discountPercentage,
+    required this.discountPrice,
+    required this.discountPercentage,
     this.serviceDuration = 0,
-    this.quantity = 1, // ✅ ADD THIS
-
+    this.quantity = 1,
   });
 
   factory BookingService.fromJson(Map<String, dynamic> json) {
     return BookingService(
       id: json['id']?.toString() ?? '',
       serviceName: json['serviceIName']?.toString() ?? '',
+      categoryName: json['categoryName']?.toString() ?? 'No Mapped Services',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       discountPrice: (json['discountPrice'] as num?)?.toDouble() ?? 0.0,
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,

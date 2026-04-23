@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
+import '../services/audio_service.dart';
+import 'package:flutter/material.dart';
+import 'dart:async';
 
 // =============================================================================
 // DATA CLASSES
@@ -55,19 +58,36 @@ class BookingOverviewController extends GetxController {
 
   // Internal: full fetched list used for computation
   final List<BookingModel> _allFetched = [];
+  final Set<String> _previousBookingIds = {};
+  Timer? _refreshTimer;
 
   @override
   void onInit() {
     super.onInit();
     fetchOverviewData();
+    _startPolling();
+  }
+
+  @override
+  void onClose() {
+    _refreshTimer?.cancel();
+    super.onClose();
+  }
+
+  void _startPolling() {
+    // Poll every 60 seconds for new bookings
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      fetchOverviewData(showLoading: false);
+    });
   }
 
   // ---------------------------------------------------------------------------
   // MAIN FETCH
   // ---------------------------------------------------------------------------
-  Future<void> fetchOverviewData() async {
+  Future<void> fetchOverviewData({bool showLoading = true}) async {
     try {
-      isLoading.value = true;
+      if (showLoading) isLoading.value = true;
       errorMessage.value = '';
 
       // Fetch a large page to compute stats in-memory.
@@ -82,6 +102,7 @@ class BookingOverviewController extends GetxController {
       _computeTrend();
       _computeDonut();
       _computeRecentBookings();
+      _checkNewBookings();
     } catch (e) {
       errorMessage.value = 'Failed to load data. Please refresh.';
       debugPrint('BookingOverviewController Error: $e');
@@ -245,5 +266,45 @@ class BookingOverviewController extends GetxController {
   String percentOf(int part) {
     if (totalBookings.value == 0) return '0%';
     return '${((part / totalBookings.value) * 100).toStringAsFixed(1)}%';
+  }
+
+  // ---------------------------------------------------------------------------
+  // NEW BOOKING DETECTION
+  // ---------------------------------------------------------------------------
+  void _checkNewBookings() {
+    if (_allFetched.isEmpty) return;
+
+    final currentIds = _allFetched.map((b) => b.id).toSet();
+
+    // If we already have a previous state, check for differences
+    if (_previousBookingIds.isNotEmpty) {
+      final newIds = currentIds.difference(_previousBookingIds);
+      if (newIds.isNotEmpty) {
+        // Trigger sound
+        AudioService().playBookingSound();
+
+        // Show UI notification
+        Get.snackbar(
+          'New Order Received!',
+          'You have ${newIds.length} new booking(s).',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: const Color(0xFFFF9800),
+          colorText: Colors.white,
+          icon: const Icon(Icons.notifications_active, color: Colors.white),
+          duration: const Duration(seconds: 15),
+          mainButton: TextButton(
+            onPressed: () {
+              AudioService().stopSound();
+              if (Get.isSnackbarOpen) Get.back();
+            },
+            child: const Text('STOP SOUND', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        );
+      }
+    }
+
+    // Update the set for the next comparison
+    _previousBookingIds.clear();
+    _previousBookingIds.addAll(currentIds);
   }
 }
