@@ -38,6 +38,8 @@ class _AllTransactionReportScreenState
   int _totalPages = 1;
   int _totalElements = 0;
 
+  DateTime? _selectedScheduleDate;
+
   @override
   void initState() {
     super.initState();
@@ -90,13 +92,34 @@ class _AllTransactionReportScreenState
   }
 
   List<BookingModel> get _filteredBookings {
+    var list = _bookings;
+    
+    // 1. Search Filter
     final keyword = _searchController.text.toLowerCase();
-    if (keyword.isEmpty) return _bookings;
-    return _bookings.where((item) {
-      return item.bookingRef.toLowerCase().contains(keyword) ||
-          item.customerName.toLowerCase().contains(keyword) ||
-          item.customerPhone.toLowerCase().contains(keyword);
-    }).toList();
+    if (keyword.isNotEmpty) {
+      list = list.where((item) {
+        return item.bookingRef.toLowerCase().contains(keyword) ||
+            item.customerName.toLowerCase().contains(keyword) ||
+            item.customerPhone.toLowerCase().contains(keyword);
+      }).toList();
+    }
+
+    // 2. Schedule Date Filter (Client-side)
+    if (_selectedScheduleDate != null) {
+      list = list.where((item) {
+        if (item.bookingDate.isEmpty) return false;
+        try {
+          final dt = DateTime.parse(item.bookingDate);
+          return dt.year == _selectedScheduleDate!.year &&
+                 dt.month == _selectedScheduleDate!.month &&
+                 dt.day == _selectedScheduleDate!.day;
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    return list;
   }
 
   // 4. PAGINATION LOGIC
@@ -168,14 +191,31 @@ class _AllTransactionReportScreenState
     }
   }
 
-  // 6. HELPER: Format Date
-  String _formatDate(String isoDate) {
-    if (isoDate.isEmpty) return "N/A";
+  // 6a. HELPER: Format Schedule Date (bookingDate ISO → "dd MMM yyyy")
+  // Combines bookingDate (date part only) + bookingTime (as-is from API)
+  String _formatScheduleDate(String bookingDate) {
+    if (bookingDate.isEmpty) return "-";
     try {
-      final dt = DateTime.parse(isoDate);
+      final dt = DateTime.parse(bookingDate).toLocal();
       return DateFormat('dd MMM yyyy').format(dt);
-    } catch (e) {
-      return isoDate.split('T')[0];
+    } catch (_) {
+      // Fallback: strip time from raw string if parse fails
+      return bookingDate.split('T')[0];
+    }
+  }
+
+  // 6b. HELPER: Format Booking Date parts (creationTime ISO → date + 12h time)
+  // Returns a record with {date: "dd MMM yyyy", time: "hh:mm AM/PM"}
+  ({String date, String time}) _formatBookingDateTime(String creationTime) {
+    if (creationTime.isEmpty) return (date: "-", time: "");
+    try {
+      final dt = DateTime.parse(creationTime).toLocal();
+      return (
+        date: DateFormat('dd MMM yyyy').format(dt),
+        time: DateFormat('hh:mm a').format(dt).toUpperCase(),
+      );
+    } catch (_) {
+      return (date: "-", time: "");
     }
   }
 
@@ -338,7 +378,115 @@ class _AllTransactionReportScreenState
                           ),
                         ),
                       ),
+                      const SizedBox(width: 12),
+
+                      // Filter by Date
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedScheduleDate ?? DateTime.now(),
+                            firstDate: DateTime(2023),
+                            lastDate: DateTime(2030),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedScheduleDate = picked);
+                            _runFilter();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedScheduleDate == null 
+                                  ? 'Filter by Date' 
+                                  : DateFormat('dd MMM yyyy').format(_selectedScheduleDate!),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: _selectedScheduleDate == null ? FontWeight.w400 : FontWeight.w600,
+                                  color: _selectedScheduleDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                                ),
+                              ),
+                              if (_selectedScheduleDate != null) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() => _selectedScheduleDate = null);
+                                    _runFilter();
+                                  },
+                                  child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                )
+                              ] else ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                              ]
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
+                      // Today Button
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _selectedScheduleDate = DateTime.now());
+                          _runFilter();
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          backgroundColor: const Color(0xFFEFF6FF),
+                        ),
+                        child: Text("Today", style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                      ),
+
                       const Spacer(),
+
+                      // Show Rows
+                      Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _pageSize,
+                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                            items: [10, 30, 50, 100].map((int value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text('Show $value',
+                                    style: GoogleFonts.inter(
+                                        fontSize: 14, color: const Color(0xFF334155))),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              if (newValue != null && newValue != _pageSize) {
+                                setState(() {
+                                  _pageSize = newValue;
+                                  _currentPage = 0; // Reset to first page
+                                });
+                                _fetchData();
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
 
                       // Refresh Button
                       IconButton(
@@ -430,10 +578,16 @@ class _AllTransactionReportScreenState
                                                     _Header("BOOKING ID")),
                                             DataColumn(
                                                 label: _Header(
+                                                    "SERVICE DETAILS")),
+                                            DataColumn(
+                                                label: _Header(
                                                     "WHERE SERVICE\nWILL BE PROVIDED")),
                                             DataColumn(
                                                 label: _Header(
                                                     "CUSTOMER INFO")),
+                                            DataColumn(
+                                                label: _Header(
+                                                    "PROVIDER INFO")),
                                             DataColumn(
                                                 label: _Header(
                                                     "SERVICE DISCOUNT")),
@@ -481,6 +635,26 @@ class _AllTransactionReportScreenState
                                                     data.bookingRef,
                                                     style: _cellStyle())),
 
+                                                // Service Details
+                                                DataCell(data.services.isEmpty
+                                                  ? Text("—", style: _subStyle())
+                                                  : Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          data.services.first.serviceName,
+                                                          style: _cellStyle(bold: true),
+                                                          overflow: TextOverflow.ellipsis,
+                                                          maxLines: 2,
+                                                        ),
+                                                        Text(
+                                                          "Qty: ${data.services.first.quantity}  •  ${data.services.first.serviceDuration} mins",
+                                                          style: _subStyle(),
+                                                        ),
+                                                      ],
+                                                    )),
+
                                                 // Location
                                                 DataCell(Column(
                                                   mainAxisAlignment:
@@ -524,14 +698,42 @@ class _AllTransactionReportScreenState
                                                   ],
                                                 )),
 
+                                                // Provider Info
+                                                DataCell(data.provider == null
+                                                  ? Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFF1F5F9),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text("Not Assigned",
+                                                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8))),
+                                                    )
+                                                  : Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          "${data.provider!.firstName} ${data.provider!.lastName}".trim(),
+                                                          style: _cellStyle(bold: true),
+                                                        ),
+                                                        Text(
+                                                          data.provider!.mobile,
+                                                          style: _subStyle(),
+                                                        ),
+                                                      ],
+                                                    )),
+
                                                 // Service Discount
                                                 DataCell(Text(
-  "-₹${data.totalDiscount.toStringAsFixed(2)}",
+  "-₹${data.serviceDiscount.toStringAsFixed(2)}",
                                                     style: _cellStyle())),
 
                                                 // Coupon Discount
                                                 DataCell(Text(
-  "-₹${data.totalDiscount.toStringAsFixed(2)}",
+  data.couponDiscountValue > 0
+      ? "-₹${data.couponDiscountValue.toStringAsFixed(2)}"
+      : "—",
                                                     style: _cellStyle())),
 
                                                 // Tax (GST)
@@ -579,8 +781,9 @@ class _AllTransactionReportScreenState
                                                       horizontal: 10,
                                                       vertical: 4),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                        0xFFFFE2E5),
+                                                    color: data.paymentStatus.toLowerCase() == 'paid'
+                                                        ? const Color(0xFFDCFCE7)
+                                                        : const Color(0xFFFFE2E5),
                                                     borderRadius:
                                                         BorderRadius
                                                             .circular(20),
@@ -593,59 +796,60 @@ class _AllTransactionReportScreenState
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w600,
-                                                              color: const Color(
-                                                                  0xFFEF4444))),
+                                                              color: data.paymentStatus.toLowerCase() == 'paid'
+                                                                  ? const Color(0xFF16A34A)
+                                                                  : const Color(0xFFEF4444))),
                                                 )),
 
-                                                // Schedule Date
-                                                DataCell(Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .start,
-                                                  children: [
-                                                    Text(
-                                                        _formatDate(data
-                                                            .bookingDate),
-                                                        style:
-                                                            _cellStyle()),
-                                                    Text(data.bookingTime,
-                                                        style:
-                                                            _subStyle()),
-                                                  ],
-                                                )),
+                                                 // Schedule Date
+                                                 // -> bookingDate (date only) + bookingTime (as-is)
+                                                 DataCell(Column(
+                                                   mainAxisAlignment:
+                                                       MainAxisAlignment
+                                                           .center,
+                                                   crossAxisAlignment:
+                                                       CrossAxisAlignment
+                                                           .start,
+                                                   children: [
+                                                     Text(
+                                                         _formatScheduleDate(
+                                                             data.bookingDate),
+                                                         style:
+                                                             _cellStyle()),
+                                                     if (data.bookingTime.isNotEmpty)
+                                                       Text(
+                                                           data.bookingTime,
+                                                           style:
+                                                               _subStyle()),
+                                                   ],
+                                                 )),
 
-                                                // Booking Date (Created)
-                                                DataCell(Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .start,
-                                                  children: [
-                                                    Text(
-                                                        _formatDate(data
-                                                            .creationTime),
-                                                        style:
-                                                            _cellStyle()),
-                                                    Text(
-                                                        data.creationTime
-                                                                .contains(
-                                                                    'T')
-                                                            ? data
-                                                                .creationTime
-                                                                .split(
-                                                                    'T')[1]
-                                                                .substring(
-                                                                    0, 5)
-                                                            : "",
-                                                        style:
-                                                            _subStyle()),
-                                                  ],
-                                                )),
+                                                 // Booking Date (When order was placed)
+                                                 // -> creationTime date + 12h time with AM/PM
+                                                 DataCell(Builder(
+                                                   builder: (ctx) {
+                                                     final bdt =
+                                                         _formatBookingDateTime(
+                                                             data.creationTime);
+                                                     return Column(
+                                                       mainAxisAlignment:
+                                                           MainAxisAlignment
+                                                               .center,
+                                                       crossAxisAlignment:
+                                                           CrossAxisAlignment
+                                                               .start,
+                                                       children: [
+                                                         Text(bdt.date,
+                                                             style:
+                                                                 _cellStyle()),
+                                                         if (bdt.time.isNotEmpty)
+                                                           Text(bdt.time,
+                                                               style:
+                                                                   _subStyle()),
+                                                       ],
+                                                     );
+                                                   },
+                                                 )),
 
                                                 // Status Badge
                                                 DataCell(Container(

@@ -55,6 +55,7 @@ import '../models/booking_models.dart';
 import '../controllers/provider_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import 'refund_management_screen.dart';
+import 'booking_overview_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -98,6 +99,17 @@ void _closeBookingDetails() {
       case 'dashboard':
         return const DashboardHome();
       
+      case 'booking/overview':
+        return BookingOverviewScreen(
+          onNav: _handleNavigation,
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+        );
+
+      case 'booking/all':
+        return AllTransactionReportScreen(
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+        );
+
       case 'booking/ongoing':
         return OngoingBookingScreen(
 onViewDetails: (booking) => _viewBookingDetails(booking),        );  

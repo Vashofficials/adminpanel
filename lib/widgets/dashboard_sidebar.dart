@@ -184,15 +184,22 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                   firstChild: const SizedBox.shrink(),
                   secondChild: Column(
                     children: [
-                  /*    NavTile(
-                        icon: Icons.adjust_rounded,
-                        label: 'Customized Requests',
-                        badge: 13,
+                      NavTile(
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Bookings Overview',
                         collapsed: collapsed,
                         isChild: true,
-                        isActive: _isActive('booking/customized'),
-                        onTap: () => widget.onNav?.call('booking/customized'),
-                      ), */
+                        isActive: _isActive('booking/overview'),
+                        onTap: () => widget.onNav?.call('booking/overview'),
+                      ),
+                      NavTile(
+                        icon: Icons.list_alt_rounded,
+                        label: 'All Bookings',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('booking/all'),
+                        onTap: () => widget.onNav?.call('booking/all'),
+                      ),
                       NavTile(
                         icon: Icons.receipt_long_outlined,
                         label: 'Offline Payment',
