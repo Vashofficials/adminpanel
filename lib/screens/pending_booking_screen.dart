@@ -13,17 +13,17 @@ import '../services/audio_service.dart';
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 
-class OngoingBookingScreen extends StatefulWidget {
+class PendingBookingScreen extends StatefulWidget {
   // Navigation Callback
   final Function(BookingModel) onViewDetails;
 
-  const OngoingBookingScreen({super.key, required this.onViewDetails});
+  const PendingBookingScreen({super.key, required this.onViewDetails});
 
   @override
-  State<OngoingBookingScreen> createState() => _OngoingBookingScreenState();
+  State<PendingBookingScreen> createState() => _PendingBookingScreenState();
 }
 
-class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
+class _PendingBookingScreenState extends State<PendingBookingScreen> {
   // 1. STATE VARIABLES
   final BookingRepository _repo = BookingRepository();
   final TextEditingController _searchController = TextEditingController();
@@ -93,16 +93,13 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
 
       if (!mounted) return;
       if (response.content != null) {
-        final ongoingList = response.content
-            .where((b) {
-              final st = b.status.toUpperCase();
-              return st == 'ONGOING' || st == 'IN PROGRESS' || st == 'ACCEPTED' || st == 'PROCESSING';
-            })
+        final pendingList = response.content
+            .where((b) => b.status.toUpperCase() == 'PENDING')
             .toList();
 
         // --- New booking alert detection ---
         if (_knownBookingIds.isNotEmpty) {
-          final newBookings = ongoingList
+          final newBookings = pendingList
               .where((b) => !_knownBookingIds.contains(b.bookingRef))
               .toList();
           if (newBookings.isNotEmpty) {
@@ -110,12 +107,12 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
             _showNewBookingAlert(newBookings.first);
           }
         }
-        final newIds = ongoingList.map((b) => b.bookingRef).toSet();
+        final newIds = pendingList.map((b) => b.bookingRef).toSet();
         _knownBookingIds = newIds;
 
         setState(() {
-          _bookings = ongoingList;
-          _totalElements = ongoingList.length;
+          _bookings = pendingList;
+          _totalElements = pendingList.length;
           _isLoading = false;
         });
       }
@@ -385,7 +382,7 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
 
     try {
       final excel = xl.Excel.createExcel();
-      final sheet = excel['In Progress Bookings'];
+      final sheet = excel['Pending Bookings'];
 
       xl.CellStyle headerStyle = xl.CellStyle(
         bold: true,
@@ -524,7 +521,7 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final fileName =
-          'in_progress_bookings_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
+          'pending_bookings_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.xlsx';
       html.AnchorElement(href: url)
         ..setAttribute('download', fileName)
         ..click();
@@ -611,7 +608,7 @@ class _OngoingBookingScreenState extends State<OngoingBookingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "In Progress Bookings",
+                "Pending Bookings",
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,

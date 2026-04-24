@@ -23,6 +23,7 @@ import 'canceled_booking_screen.dart';
 import 'completed_booking_screen.dart';
 import 'offline_payment_screen.dart';
 import 'customized_booking_screen.dart';
+import 'pending_booking_screen.dart';
 import 'add_service_screen.dart';
 import 'booking_details_screen.dart'; 
 import 'customer_list.dart';
@@ -107,6 +108,11 @@ void _closeBookingDetails() {
 
       case 'booking/all':
         return AllTransactionReportScreen(
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+        );
+
+      case 'booking/pending':
+        return PendingBookingScreen(
           onViewDetails: (booking) => _viewBookingDetails(booking),
         );
 

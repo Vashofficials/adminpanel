@@ -201,6 +201,14 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                         onTap: () => widget.onNav?.call('booking/all'),
                       ),
                       NavTile(
+                        icon: Icons.pending_actions_outlined,
+                        label: 'Pending',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('booking/pending'),
+                        onTap: () => widget.onNav?.call('booking/pending'),
+                      ),
+                      NavTile(
                         icon: Icons.receipt_long_outlined,
                         label: 'Offline Payment',
                         badge: 6,
