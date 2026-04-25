@@ -181,6 +181,8 @@ double get serviceDiscount {
     if (customerDetails == null) return "Guest/Unknown";
     return "${customerDetails!.firstName} ${customerDetails!.lastName}";
   }
+  // Add this getter in BookingModel class
+String get customerId => customerDetails?.id ?? '';
 
   String get customerPhone {
     return customerDetails?.mobileNo ?? "N/A";
@@ -190,11 +192,13 @@ double get serviceDiscount {
 // --- Sub-Models (No Changes Needed) ---
 
 class CustomerDetails {
+  final String id; // Add this line
   final String firstName;
   final String lastName;
   final String mobileNo;
 
   CustomerDetails({
+    required this.id, // Add this line
     required this.firstName,
     required this.lastName,
     required this.mobileNo,
@@ -202,6 +206,7 @@ class CustomerDetails {
 
   factory CustomerDetails.fromJson(Map<String, dynamic> json) {
     return CustomerDetails(
+      id: json['id']?.toString() ?? '', // Parse the ID here
       firstName: json['firstName']?.toString() ?? '',
       lastName: json['lastName']?.toString() ?? '',
       mobileNo: json['mobileNo']?.toString() ?? '',

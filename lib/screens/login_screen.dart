@@ -4,6 +4,8 @@ import 'package:flutter/services.dart'; // Required for Clipboard
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Required for SVG Logo
 import 'package:shared_preferences/shared_preferences.dart'; // <--- 1. ADDED THIS IMPORT
+import '../services/api_service.dart';
+import '../services/permission_manager.dart';
 
 import '../controllers/auth_controller.dart';
 import 'dashboard_screen.dart';
@@ -38,41 +40,66 @@ class _LoginScreenState extends State<LoginScreen> {
   // UPDATED LOGIN LOGIC
   // ---------------------------------------------------------
 void _handleLogin() async {
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    bool success = await _authController.login(
-      _usernameController.text.trim(), 
-      _passwordController.text,
-      context,
-    );
+  bool success = await _authController.login(
+    _usernameController.text.trim(),
+    _passwordController.text,
+    context,
+  );
 
-    if (success) {
-      final prefs = await SharedPreferences.getInstance();
-      
-      if (_rememberMe) {
-        // Professional fixed: Save session for auto-login
-        await prefs.setBool('isLoggedIn', true);
-      } else {
-        // If they didn't tick it, ensure no session is saved from previous attempts
-        await prefs.remove('isLoggedIn'); 
-        // Or await prefs.setBool('isLoggedIn', false);
-      }
-    }
+  setState(() => _isLoading = false);
 
-    setState(() => _isLoading = false);
+  if (!success) return;
 
-    if (success && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const PopScope(
-            canPop: false, // Block drag-to-close/back gestures on web
-            child: DashboardScreen(),
-          ),
-        ),
-      );
-    }
+  final prefs = await SharedPreferences.getInstance();
+
+  // ================================
+  // 1. SESSION HANDLING
+  // ================================
+  if (_rememberMe) {
+    await prefs.setBool('isLoggedIn', true);
+  } else {
+    await prefs.remove('isLoggedIn');
   }
+
+  // ================================
+  // 2. GET AUTH DATA (TEMP STATIC / OR FROM LOGIN RESPONSE LATER)
+  // ================================
+  const String staticUserId = "7011fe1a-e73a-4070-82af-326efe0f0042";
+
+  // If your login API returns token later, replace this
+  final String? token = prefs.getString("token");
+
+  // ================================
+  // 3. FETCH PERMISSIONS (IMPORTANT ADDITION)
+  // ================================
+  try {
+    final api = ApiService();
+
+    final permissions = await api.getUserActivePermissions();
+
+    PermissionManager.set(permissions);
+    await PermissionManager.saveToLocal(); // 🔥 ADD THIS
+  } catch (e) {
+    debugPrint("Permission fetch failed: $e");
+  }
+
+  // ================================
+  // 4. NAVIGATE TO DASHBOARD
+  // ================================
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: DashboardScreen(),
+        ),
+      ),
+    );
+  }
+}
 
   void _copyCredentials() {
     Clipboard.setData(ClipboardData(text: "Email: $_demoEmail\nPassword: $_demoPass"));

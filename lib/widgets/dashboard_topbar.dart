@@ -4,6 +4,7 @@ import '../screens/login_screen.dart';
 import '../repositories/auth_repository.dart';
 import '../config/admin_navigation.dart'; // Ensure this points to your extracted NavItem file
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../services/permission_manager.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -81,6 +82,7 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
     _overlayEntry = null;
   }
 
+  // =========================
   void _onSearchChanged(String query) {
     if (query.isEmpty) {
       setState(() => _searchResults = []);
@@ -89,10 +91,17 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
     }
 
     setState(() {
-      _searchResults = AdminNavigation.searchRegistry
-          .where((item) => item.label.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      _searchResults = AdminNavigation.searchRegistry.where((item) {
+        final matches = item.label.toLowerCase().contains(query.toLowerCase());
+
+        final hasPermission = item.permissionKey == null
+            ? true
+            : PermissionManager.can(item.permissionKey!);
+
+        return matches && hasPermission;
+      }).toList();
     });
+
     _showOverlay();
   }
 
@@ -238,6 +247,8 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
       confirmText: "Yes, Logout",
       cancelText: "No",
       onConfirm: () async {
+        await PermissionManager.clear();
+
         await AuthRepository().logout();
         if (kIsWeb) {
           html.window.location.reload();

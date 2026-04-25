@@ -5,6 +5,10 @@ import '../repositories/auth_repository.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import '../services/permission_manager.dart';
+
+
+
 
 class DashboardSidebar extends StatefulWidget {
   final bool collapsed;
@@ -40,6 +44,20 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   bool _discountsOpen = false;
   bool _couponsOpen = false;
   bool _referralsOpen = false;
+
+  bool _can(String module) {
+  return PermissionManager.can(module);
+}
+@override
+void initState() {
+  super.initState();
+  _ensurePermissionsLoaded();
+}
+
+void _ensurePermissionsLoaded() async {
+  await PermissionManager.loadFromLocal();
+  if (mounted) setState(() {});
+}
 
   bool _isActive(String key) {
     final r = widget.currentRoute ?? '';
@@ -153,6 +171,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               children: [
                 SectionHeader('MAIN', hidden: collapsed),
+                if (_can('dashboard_screen'))
                 NavTile(
                   icon: Icons.dashboard_outlined,
                   label: 'Dashboard',
@@ -160,6 +179,7 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                   isActive: _isActive('dashboard'),
                   onTap: () => widget.onNav?.call('dashboard'),
                 ),
+              if (_can('booking_management')) ...[
 
                 // --- BOOKING MANAGEMENT SECTION ---
                 SectionHeader('BOOKING MANAGEMENT', hidden: collapsed),
@@ -247,8 +267,10 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                     ],
                   ),
                 ),
+              ],
+              if (_can('service_management')) ...[
 
-                SectionHeader('SERVICE MANAGEMENT', hidden: collapsed),
+              SectionHeader('SERVICE MANAGEMENT', hidden: collapsed),
 
                 // --- CATEGORY SECTION ---
                 // --- ZONE SECTION ---
@@ -389,6 +411,11 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
                     ],
                   ),
                 ),
+              ],
+              if (_can('provider_management')) ...[
+
+                // --- PROVIDER MANAGEMENT SECTION ---
+                
               SectionHeader('PROVIDER MANAGEMENT', hidden: collapsed),
 
                 NavTile(
@@ -481,6 +508,8 @@ NavTile(
                     ],
                   ),
                 ),
+              ],
+              if (_can('customer_management')) ...[
 
                 // --- CUSTOMER MANAGEMENT SECTION ---
                 SectionHeader('USER MANAGEMENT', hidden: collapsed),
@@ -527,7 +556,8 @@ NavTile(
                     ],
                   ),
                 ),
-
+              ],
+if (_can('referral_management')) ...[
                 // ============================================================
                 // REFERRAL MANAGEMENT SECTION
                 // ============================================================
@@ -581,6 +611,8 @@ NavTile(
                     ],
                   ),
                 ),
+],
+if (_can('report_analytics')) ...[
 
                 // --- TRANSACTION REPORTS & ANALYTICS ---
                 SectionHeader('TRANSACTION & ANALYTICS', hidden: collapsed),
@@ -667,10 +699,12 @@ NavTile(
                     ],
                   ),
                 ), */
+],
 
                 // ============================================================
                 // NEW: PROMOTION MANAGEMENT (RESTRUCTURED)
                 // ============================================================
+                if (_can('promotion_management')) ...[
                 SectionHeader('PROMOTION MANAGEMENT', hidden: collapsed),
 
                 // 1. Promotion Banners (Separate, Top-Level)
@@ -765,10 +799,12 @@ NavTile(
                     ],
                   ),
                 ),
+                ],
 
                 // ============================================================
                 // NOTIFICATION MANAGEMENT
                 // ============================================================
+                if (_can('notification_management')) ...[
                 SectionHeader('NOTIFICATION MANAGEMENT', hidden: collapsed),
 
                 NavTile(
@@ -811,10 +847,12 @@ NavTile(
                     ],
                   ),
                 ),
+                ],
 
                 // ============================================================
                 // EMPLOYEE MANAGEMENT SECTION
                 // ============================================================
+                if (_can('employee_management')) ...[
                 SectionHeader('EMPLOYEE MANAGEMENT', hidden: collapsed),
 
                 NavTile(
@@ -840,7 +878,7 @@ NavTile(
                     children: [
                       NavTile(
                         icon: Icons.admin_panel_settings_outlined,
-                        label: 'Employee Role Setup',
+                        label: 'Module Setup',
                         collapsed: collapsed,
                         isChild: true,
                         isActive: _isActive('employee/role-setup'),
@@ -862,9 +900,18 @@ NavTile(
                         isActive: _isActive('employee/add'),
                         onTap: () => widget.onNav?.call('employee/add'),
                       ),
+                      NavTile(
+                        icon: Icons.badge_outlined,
+                        label: 'Module Permission',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('employee/permission'),
+                        onTap: () => widget.onNav?.call('employee/permission'),
+                      ),
                     ],
                   ),
                 ),
+                ],
 
                 // --- ACCOUNT SECTION ---
 SectionHeader('ACCOUNT', hidden: collapsed),
@@ -874,6 +921,8 @@ NavTile(
   collapsed: collapsed,
   onTap: () async {
     // 1. Clear Session & Cache
+    await PermissionManager.clear();
+
     await AuthRepository().logout();
 
     // 2. Perform Hard Reload for Web

@@ -22,6 +22,9 @@ import '../models/coupon_model.dart';
 import '../models/customer_refundbank.dart';
 import '../models/booking_report_model.dart';
 import '../models/customer_models.dart';
+import '../models/module_model.dart';
+import '../models/employee_model.dart';
+import '../models/permission_module.dart';
 
 
 class ApiService {
@@ -1655,6 +1658,155 @@ Future<Response> updateRefundStatus(
     );
   } catch (e) {
     rethrow;
+  }
+}
+Future<List<ModuleModel>> fetchModules() async {
+  try {
+    final response = await _dio.get('/admin/getModules');
+    
+    // Check if the structure matches your JSON example: { "result": [...] }
+    if (response.statusCode == 200 && response.data['result'] != null) {
+      final List data = response.data['result'];
+      return data.map((json) => ModuleModel.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching modules: $e");
+    return [];
+  }
+}
+
+// 2. Add a new module
+Future<bool> addModule(String name, String identifier) async {
+  try {
+    final response = await _dio.post(
+      '/admin/addModule',
+      data: {
+        "moduleName": name,
+        "moduleIdentifier": identifier,
+      },
+    );
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    debugPrint("Error adding module: $e");
+    return false;
+  }
+}
+
+Future<bool> registerEmployee({
+  required String name,
+  required String mobileNo,
+  required String emailId,
+  required String address,
+  required String username,
+  required String password,
+}) async {
+  try {
+    final response = await _dio.post('/admin/registerEmployee', data: {
+      "userType": 2, // 👈 Always sending 2 as requested
+      "name": name,
+      "mobileNo": mobileNo,
+      "emailId": emailId,
+      "address": address,
+      "username": username,
+      "password": password
+    });
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    debugPrint("Registration Error: $e");
+    return false;
+  }
+}
+
+// 3. Assign Permissions to Employee
+Future<bool> addAdminPermission({
+  required String userId,
+  required List<String> moduleIds,
+}) async {
+  try {
+    final response = await _dio.post(
+      '/admin/addAdminPermission',
+      data: {
+        "userId": userId,
+        "moduleIds": moduleIds,
+      },
+    );
+    return response.statusCode == 200 || response.statusCode == 201;
+  } catch (e) {
+    debugPrint("Permission Error: $e");
+    return false;
+  }
+}
+
+Future<List<EmployeeModel>> getActiveEmployees() async {
+  try {
+    final response = await _dio.get('/admin/getActiveEmployees');
+    if (response.statusCode == 200 && response.data['result'] != null) {
+      final List data = response.data['result'];
+      return data.map((json) => EmployeeModel.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching active employees: $e");
+    return [];
+  }
+}
+Future<List<UserModule>> getUserActivePermissions() async {
+  try {
+    const String staticUserId = "7011fe1a-e73a-4070-82af-326efe0f0042";
+
+    final response = await _dio.get(
+      '/admin/getAdminUserActivePermission',
+      queryParameters: {
+        'adminUserId': staticUserId,
+      },
+    );
+
+    if (response.statusCode == 200 && response.data['result'] != null) {
+      final List data = response.data['result'];
+
+      return data.map((json) => UserModule.fromJson(json)).toList();
+    }
+
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching permissions: $e");
+    return [];
+  }
+}
+Future<bool> rescheduleBooking(Map<String, dynamic> payload) async {
+  try {
+    final response = await _dio.post(
+      '/admin/rescheduleBookingByAdmin',
+      data: payload, // Dio uses 'data' for the request body
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint("Booking rescheduled successfully");
+      return true;
+    }
+    return false;
+  } catch (e) {
+    debugPrint("Error rescheduling booking: $e");
+    return false;
+  }
+}
+
+Future<bool> cancelBooking(Map<String, dynamic> payload) async {
+  try {
+    final response = await _dio.post(
+      '/admin/cancelBookingByAdmin',
+      data: payload,
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint("Booking cancelled successfully");
+      return true;
+    }
+    return false;
+  } catch (e) {
+    debugPrint("Error cancelling booking: $e");
+    return false;
   }
 }
 }

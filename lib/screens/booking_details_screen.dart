@@ -5,6 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/booking_models.dart';
 import 'package:flutter/services.dart'; // For loading SVG from assets
+import '../services/api_service.dart';
+import '../widgets/custom_center_dialog.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final BookingModel booking; // <--- Changed: Accept Full Object
@@ -21,7 +23,14 @@ class BookingDetailsScreen extends StatefulWidget {
 }
 
 class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
+  final ApiService _apiService = ApiService(); // Use the actual name of your service class
   String _currentTab = "Details"; 
+  // Controllers for Reschedule Dialog
+final TextEditingController _reasonController = TextEditingController();
+final TextEditingController _cancelReasonController = TextEditingController();
+DateTime? _selectedDate;
+TimeOfDay? _selectedTime;
+String? _selectedAddressId; // To handle the "Change Address" logic
 // --- NEW: INVOICE GENERATION LOGIC ---
   // --- NEW: DYNAMIC INVOICE GENERATION LOGIC ---
   Future<void> _printInvoice(BookingModel booking) async {
@@ -780,10 +789,339 @@ if (booking.couponDiscountValue > 0)
             ],
           ),
         ),
+          const SizedBox(height: 24),
+if (booking.status.toLowerCase() != 'canceled' && booking.status.toLowerCase() != 'cancelled')
+  Row(
+    children: [
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () => _showRescheduleDialog(booking),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.yellow[700],
+            foregroundColor: Colors.black,
+          ),
+          child: const Text("Reschedule"),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: ElevatedButton(
+          onPressed: () => _showCancelDialog(booking),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text("Cancel Booking", style: TextStyle(color: Colors.white)),
+        ),
+      ),
+    ],
+  ),
+    
+        
       ],
     );
   }
+void _showRescheduleDialog(BookingModel booking) {
+  _selectedAddressId = booking.address?.id;
 
+  final TextEditingController dateCtrl = TextEditingController(
+    text: booking.bookingDate.split('T')[0],
+  );
+
+  final TextEditingController timeCtrl = TextEditingController(
+    text: booking.bookingTime,
+  );
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+
+                  /// 🔹 ICON
+                  const Icon(Icons.schedule, size: 30, color: Color(0xFFF97316)),
+
+                  const SizedBox(height: 18),
+
+                  /// 🔹 TITLE
+                  const Text(
+                    "Reschedule Booking",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  /// 🔹 DATE FIELD
+                  TextField(
+                    controller: dateCtrl,
+                    readOnly: true,
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime(2030),
+                      );
+                      if (date != null) {
+                        setDialogState(() {
+                          _selectedDate = date;
+                          dateCtrl.text = date.toString().split(' ')[0];
+                        });
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: "Booking Date",
+                      prefixIcon: Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  /// 🔹 TIME FIELD (MANUAL)
+                  TextField(
+                    controller: timeCtrl,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(
+                      labelText: "Booking Time (HH:mm)",
+                      prefixIcon: Icon(Icons.access_time),
+                      border: OutlineInputBorder(),
+                      hintText: "e.g. 10:00",
+                    ),
+                    onChanged: (val) {
+                      if (val.contains(":")) {
+                        final parts = val.split(":");
+                        if (parts.length == 2) {
+                          _selectedTime = TimeOfDay(
+                            hour: int.tryParse(parts[0]) ?? 0,
+                            minute: int.tryParse(parts[1]) ?? 0,
+                          );
+                        }
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  /// 🔹 REASON
+                  TextField(
+                    controller: _reasonController,
+                    decoration: const InputDecoration(
+                      labelText: "Reason",
+                      prefixIcon: Icon(Icons.edit_note),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  /// 🔹 ACTION BUTTONS
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Cancel"),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF97316),
+                          ),
+                          onPressed: () async {
+
+                            /// 🔴 VALIDATION
+                            if (timeCtrl.text.isEmpty || !timeCtrl.text.contains(":")) {
+    CustomCenterDialog.show(
+      context,
+      title: "Invalid Time",
+      message: "Please enter time in HH:mm format",
+      type: DialogType.required,
+    );
+    return;
+  }
+
+                            final payload = {
+                              "bookingId": booking.id,
+                              "customerId": booking.customerId,
+                              "spId": booking.provider?.id ?? "",
+                              "addressId": _selectedAddressId,
+                              "bookingDate": _selectedDate?.toIso8601String() ?? booking.bookingDate,
+                              "bookingTime": timeCtrl.text,
+                              "rescheduleReason": _reasonController.text,
+                            };
+
+                            bool success = await _apiService.rescheduleBooking(payload);
+
+                             if (success) {
+    Navigator.pop(context);
+    widget.onBack();
+
+    CustomCenterDialog.show(
+      context,
+      title: "Success",
+      message: "Booking rescheduled successfully",
+      type: DialogType.success,
+    );
+  } else {
+    CustomCenterDialog.show(
+      context,
+      title: "Failed",
+      message: "Something went wrong. Please try again.",
+      type: DialogType.error,
+    );
+  }
+},
+                          child: const Text(
+                            "Update",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+void _showCancelDialog(BookingModel booking) {
+  _cancelReasonController.clear();
+
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: Colors.white,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              /// 🔹 ICON
+              const Icon(Icons.cancel, size: 30, color: Colors.red),
+
+              const SizedBox(height: 18),
+
+              /// 🔹 TITLE
+              const Text(
+                "Cancel Booking",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 22),
+
+              /// 🔹 REASON FIELD
+              TextField(
+                controller: _cancelReasonController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: "Reason",
+                  prefixIcon: Icon(Icons.edit_note),
+                  border: OutlineInputBorder(),
+                  hintText: "Enter cancellation reason",
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              /// 🔹 ACTION BUTTONS
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Back"),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      onPressed: () async {
+
+                     /// 🔴 VALIDATION
+  if (_cancelReasonController.text.trim().isEmpty) {
+    CustomCenterDialog.show(
+      context,
+      title: "Required",
+      message: "Please enter a cancellation reason",
+      type: DialogType.required,
+    );
+    return;
+  }
+
+  /// 🔥 CONFIRMATION DIALOG
+  CustomCenterDialog.show(
+    context,
+    title: "Confirm Cancellation",
+    message: "Are you sure you want to cancel this booking?",
+    type: DialogType.warning,
+    confirmText: "Yes, Cancel",
+    cancelText: "No",
+        onConfirm: () async {
+
+                        final payload = {
+                          "bookingId": booking.id,
+                          "reason": _cancelReasonController.text.trim(),
+                        };
+
+                        bool success = await _apiService.cancelBooking(payload);
+
+      Navigator.pop(context); // close main dialog
+      widget.onBack();
+
+      if (success) {
+        CustomCenterDialog.show(
+          context,
+          title: "Cancelled",
+          message: "Booking cancelled successfully",
+          type: DialogType.success,
+        );
+      } else {
+        CustomCenterDialog.show(
+          context,
+          title: "Failed",
+          message: "Unable to cancel booking",
+          type: DialogType.error,
+        );
+      }
+    },
+  );
+},
+                      child: const Text(
+                        "Confirm",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
   // --- WIDGET HELPERS ---
 
   Widget _buildCard({String? title, IconData? titleIcon, required Widget child}) {

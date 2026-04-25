@@ -57,6 +57,9 @@ import '../controllers/provider_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import 'refund_management_screen.dart';
 import 'booking_overview_screen.dart';
+import 'module_permssion-screen.dart'; // <--- ADD THIS IMPORT
+import 'welcome_dashboard_screen.dart';
+import '../services/permission_manager.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -86,8 +89,16 @@ void _closeBookingDetails() {
     _selectedBooking = null;
   });
 }
+bool _hasDashboardAccess() {
+  return _can('dashboard_screen');
+}
+bool _can(String module) {
+  return PermissionManager.can(module);
+}
 
  Widget _getBody() {
+    final hasAccess = _hasDashboardAccess();
+
   // If a booking is selected, show the Details Screen
   if (_selectedBooking != null) {
     return BookingDetailsScreen(
@@ -97,9 +108,11 @@ void _closeBookingDetails() {
   }
 
     switch (_currentRoute) {
-      case 'dashboard':
-        return const DashboardHome();
-      
+     case 'dashboard':
+  if (!_can('dashboard_screen')) {
+    return const WelcomeDashboardScreen();
+  }
+  return const DashboardHome(); 
       case 'booking/overview':
         return BookingOverviewScreen(
           onNav: _handleNavigation,
@@ -257,6 +270,8 @@ onEditCustomer: (customer) {
 
       case 'employee/add':  
         return const AddEmployeeScreen();
+      case 'employee/permission':
+        return const ModulePermissionScreen();  
 
       // --- PROMOTIONS ---
       case 'promotion/banner':  
