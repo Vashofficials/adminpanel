@@ -30,7 +30,7 @@ class AdminNavigation {
     NavItem(label: 'Offline Payment', route: 'booking/offline', icon: Icons.receipt_long_outlined, badge: 6,permissionKey: 'booking_management'),
     NavItem(label: 'Ongoing', route: 'booking/ongoing', icon: Icons.timelapse_outlined, badge: 10,permissionKey: 'booking_management'),
     NavItem(label: 'Completed', route: 'booking/completed', icon: Icons.done_all_outlined, badge: 37,permissionKey: 'booking_management'),
-    NavItem(label: 'Canceled', route: 'booking/canceled', icon: Icons.cancel_outlined, badge: 4,permissionKey: 'booking_management'),
+    NavItem(label: 'Cancelled', route: 'booking/canceled', icon: Icons.cancel_outlined, badge: 4,permissionKey: 'booking_management'),
   ];
 
   // SERVICE SECTION

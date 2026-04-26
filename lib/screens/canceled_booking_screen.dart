@@ -13,17 +13,17 @@ import '../services/audio_service.dart';
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 
-class CanceledBookingScreen extends StatefulWidget {
+class CancelledBookingScreen extends StatefulWidget {
   // Navigation Callback
   final Function(BookingModel) onViewDetails;
 
-  const CanceledBookingScreen({super.key, required this.onViewDetails});
+  const CancelledBookingScreen({super.key, required this.onViewDetails});
 
   @override
-  State<CanceledBookingScreen> createState() => _CanceledBookingScreenState();
+  State<CancelledBookingScreen> createState() => _CancelledBookingScreenState();
 }
 
-class _CanceledBookingScreenState extends State<CanceledBookingScreen> {
+class _CancelledBookingScreenState extends State<CancelledBookingScreen> {
   // 1. STATE VARIABLES
   final BookingRepository _repo = BookingRepository();
   final TextEditingController _searchController = TextEditingController();
@@ -382,7 +382,7 @@ class _CanceledBookingScreenState extends State<CanceledBookingScreen> {
 
     try {
       final excel = xl.Excel.createExcel();
-      final sheet = excel['Canceled Bookings'];
+      final sheet = excel['Cancelled Bookings'];
 
       xl.CellStyle headerStyle = xl.CellStyle(
         bold: true,
@@ -608,7 +608,7 @@ class _CanceledBookingScreenState extends State<CanceledBookingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Canceled Bookings",
+                "Cancelled Bookings",
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,

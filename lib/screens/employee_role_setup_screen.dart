@@ -24,7 +24,7 @@ class _EmployeeRoleSetupScreenState extends State<EmployeeRoleSetupScreen> {
       'Offline Payment': false,
       'Ongoing': false,
       'Completed': false,
-      'Canceled': false,
+      'Cancelled': false,
     },
     'Service Management': {
       'Zone Setup (Map & Buffer)': false,

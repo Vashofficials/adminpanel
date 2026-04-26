@@ -257,7 +257,7 @@ void _ensurePermissionsLoaded() async {
                       ),
                       NavTile(
                         icon: Icons.cancel_outlined,
-                        label: 'Canceled',
+                        label: 'Cancelled',
                         badge: 4,
                         collapsed: collapsed,
                         isChild: true,

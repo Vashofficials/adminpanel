@@ -241,7 +241,7 @@ class BookingOverviewController extends GetxController {
           count: completedCount.value,
           colorHex: 0xFF22C55E),
       DonutSegment(
-          label: 'Canceled',
+          label: 'Cancelled',
           count: canceledCount.value,
           colorHex: 0xFFEF4444),
       DonutSegment(

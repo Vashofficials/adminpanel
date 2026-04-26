@@ -414,7 +414,7 @@ if (booking.couponDiscountValue > 0)
     String s = booking.status.toLowerCase();
     if (s.contains('accept') || s.contains('progress') || s.contains('ongoing')) step = 2;
     if (s.contains('complet')) step = 3;
-    bool isCanceled = s.contains('cancel');
+    bool isCancelled = s.contains('cancel');
 
     return _buildCard(
       title: "Booking Status",
@@ -427,19 +427,19 @@ if (booking.couponDiscountValue > 0)
             isLast: false,
           ),
           _buildTimelineItem(
-            title: isCanceled ? "Canceled" : "InProgress / Ongoing",
-            subtitle: isCanceled 
+            title: isCancelled ? "Cancelled" : "InProgress / Ongoing",
+            subtitle: isCancelled 
                 ? (booking.cancelReason.isNotEmpty ? "Reason: ${booking.cancelReason}" : "Booking was canceled") 
                 : "Provider Assigned",
-            isActive: isCanceled || step >= 2,
+            isActive: isCancelled || step >= 2,
             isLast: false,
-            overrideColor: isCanceled ? Colors.red : null,
-            overrideIcon: isCanceled ? Icons.close : null,
+            overrideColor: isCancelled ? Colors.red : null,
+            overrideIcon: isCancelled ? Icons.close : null,
           ),
           _buildTimelineItem(
             title: "Completed",
             subtitle: "Service Done",
-            isActive: !isCanceled && step >= 3,
+            isActive: !isCancelled && step >= 3,
             isLast: true,
           ),
         ],

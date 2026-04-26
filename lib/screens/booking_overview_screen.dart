@@ -376,7 +376,7 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
           gradientColors: [const Color(0xFF22C55E), const Color(0xFF16A34A)],
         ),
         _KpiData(
-          title: 'Canceled',
+          title: 'Cancelled',
           value: _ctrl.canceledCount.value.toString(),
           subtitle: _ctrl.percentOf(_ctrl.canceledCount.value),
           icon: Icons.cancel_rounded,
@@ -707,7 +707,7 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
           route: 'booking/completed',
           colorHex: 0xFF22C55E),
       _QuickAction(
-          label: 'Canceled',
+          label: 'Cancelled',
           icon: Icons.cancel_rounded,
           route: 'booking/canceled',
           colorHex: 0xFFEF4444),

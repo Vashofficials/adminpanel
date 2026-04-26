@@ -441,7 +441,7 @@ class _SummaryStatsCard extends StatelessWidget {
             children: [
               _StatItem(
                 color: const Color(0xFFEF4444), 
-                label: 'Canceled', 
+                label: 'Cancelled', 
                 value: cancelled.toString(), 
                 icon: Icons.cancel_outlined,
                 isActive: activeStatus == 'Cancelled',

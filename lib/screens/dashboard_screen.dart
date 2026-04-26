@@ -135,7 +135,7 @@ onViewDetails: (booking) => _viewBookingDetails(booking),        );
         
 
       case 'booking/canceled':
-        return CanceledBookingScreen(
+        return CancelledBookingScreen(
 onViewDetails: (booking) => _viewBookingDetails(booking),        );  
 
       case 'booking/completed':
