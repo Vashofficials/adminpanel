@@ -77,7 +77,7 @@ void _handleLogin() async {
   try {
     final api = ApiService();
 
-    final permissions = await api.getUserActivePermissions();
+    final permissions = await api.getUserAccessPermissions();
 
     PermissionManager.set(permissions);
     await PermissionManager.saveToLocal(); // 🔥 ADD THIS

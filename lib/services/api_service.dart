@@ -1774,6 +1774,22 @@ Future<List<UserModule>> getUserActivePermissions() async {
     return [];
   }
 }
+Future<List<UserModule>> getUserAccessPermissions() async {
+  try {
+    // This call relies on the Token being present in the Dio headers/interceptor
+    final response = await _dio.get('/admin/getAdminUserAccessPermission');
+
+    if (response.statusCode == 200 && response.data['result'] != null) {
+      final List data = response.data['result'];
+      return data.map((json) => UserModule.fromJson(json)).toList();
+    }
+
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching access permissions: $e");
+    return [];
+  }
+}
 Future<bool> rescheduleBooking(Map<String, dynamic> payload) async {
   try {
     final response = await _dio.post(
