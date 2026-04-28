@@ -386,7 +386,12 @@ class _CustomizedBookingScreenState extends State<CustomizedBookingScreen> {
   static TextStyle _subStyle() => GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8));
   
   static TextStyle _linkStyle() => GoogleFonts.inter(
-    fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF2563EB), decoration: TextDecoration.underline);
+    fontSize: 13, 
+    fontWeight: FontWeight.w500, 
+    color: const Color(0xFFEF7822), 
+    decoration: TextDecoration.underline,
+    decorationColor: const Color(0xFFEF7822),
+  );
 }
 
 // -----------------------------------------------------------------------------

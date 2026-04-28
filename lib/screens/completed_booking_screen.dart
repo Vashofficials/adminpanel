@@ -6,8 +6,6 @@ import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:get/get.dart';
-import '../services/audio_service.dart';
 
 // --- IMPORTS ---
 import '../models/booking_models.dart';
@@ -36,16 +34,15 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
 
   // Pagination
   int _currentPage = 0;
-  int _pageSize = 50;
+  int _pageSize = 100;
   int _totalPages = 1;
   int _totalElements = 0;
 
-  DateTime? _selectedScheduleDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
   String? _selectedCategory; // null = "All"
   String? _selectedStatus = "Completed";
 
-  // Previous booking IDs for new-booking alert detection
-  Set<String> _knownBookingIds = {};
   Timer? _pollingTimer;
 
   // Dynamically build unique category list from loaded bookings
@@ -64,8 +61,8 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
   void initState() {
     super.initState();
     _fetchData();
-    // Poll every 30 seconds to detect new bookings
-    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Poll every 5 minutes
+    _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _fetchData();
     });
   }
@@ -95,19 +92,6 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
       if (response.content != null) {
         final offlineList = response.content;
 
-        // --- New booking alert detection ---
-        if (_knownBookingIds.isNotEmpty) {
-          final newBookings = offlineList
-              .where((b) => !_knownBookingIds.contains(b.bookingRef))
-              .toList();
-          if (newBookings.isNotEmpty) {
-            AudioService().playBookingSound();
-            _showNewBookingAlert(newBookings.first);
-          }
-        }
-        final newIds = offlineList.map((b) => b.bookingRef).toSet();
-        _knownBookingIds = newIds;
-
         setState(() {
           _bookings = offlineList;
           _totalElements = offlineList.length;
@@ -122,118 +106,6 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
       });
     }
   }
-
-  // 2b. New booking alert popup
-  void _showNewBookingAlert(BookingModel booking) {
-    if (!mounted) return;
-    final svcName = booking.services.isNotEmpty
-        ? booking.services.first.serviceName
-        : 'N/A';
-    final location = booking.address?.city ?? 'N/A';
-    final schedDate = _formatScheduleDate(booking.bookingDate);
-    final schedTime = booking.bookingTime.isNotEmpty ? booking.bookingTime : '';
-    final amount = '₹${booking.grandTotalPrice.toStringAsFixed(2)}';
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) {
-        // Auto-close after 12 seconds
-        Future.delayed(const Duration(seconds: 12), () {
-          if (ctx.mounted) Navigator.of(ctx, rootNavigator: true).maybePop();
-        });
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: 380,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 24, offset: const Offset(0, 8))],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFEF7822), size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Text('New Booking Received 🚀',
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A))),
-                ]),
-                const SizedBox(height: 16),
-                const Divider(color: Color(0xFFF1F5F9)),
-                const SizedBox(height: 12),
-                _alertRow(Icons.tag, 'Booking ID', booking.bookingRef),
-                _alertRow(Icons.person_outline, 'Customer', booking.customerName),
-                _alertRow(Icons.design_services_outlined, 'Service', svcName),
-                _alertRow(Icons.location_on_outlined, 'Location', location),
-                _alertRow(Icons.schedule, 'Schedule', '$schedDate  $schedTime'.trim()),
-                _alertRow(Icons.currency_rupee, 'Amount', amount),
-                const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF64748B),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text('Dismiss', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(ctx, rootNavigator: true).pop();
-                        widget.onViewDetails(booking);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF7822),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text('View Booking',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.white)),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _alertRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
-          const SizedBox(width: 8),
-          Text('$label: ', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B))),
-          Expanded(
-            child: Text(value,
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
-
 
   // 3. SEARCH LOGIC
   void _runFilter() {
@@ -278,9 +150,12 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
     if (_selectedStatus != null) {
       final apiStatus = _statusApiMap[_selectedStatus] ?? '';
       list = list.where((item) {
-        final st = item.status.toUpperCase();
+        final st = item.status.toUpperCase().trim();
         if (apiStatus == 'CANCELED' || apiStatus == 'CANCELLED') {
           return st == 'CANCELED' || st == 'CANCELLED';
+        }
+        if (apiStatus == 'COMPLETED') {
+          return st == 'COMPLETED' || st == 'DELIVERED' || st == 'DONE';
         }
         if (apiStatus == 'ONGOING') {
           return st == 'ONGOING' || st == 'IN PROGRESS' || st == 'ACCEPTED' || st == 'PROCESSING';
@@ -290,14 +165,21 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
     }
 
     // 5. Schedule Date Filter (IST)
-    if (_selectedScheduleDate != null) {
+    if (_startDate != null || _endDate != null) {
       list = list.where((item) {
         if (item.bookingDate.isEmpty) return false;
         try {
           final dt = DateTime.parse(item.bookingDate).toLocal();
-          return dt.year == _selectedScheduleDate!.year &&
-                 dt.month == _selectedScheduleDate!.month &&
-                 dt.day == _selectedScheduleDate!.day;
+          final dtDate = DateTime(dt.year, dt.month, dt.day);
+          if (_startDate != null) {
+            final startDate = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+            if (dtDate.compareTo(startDate) < 0) return false;
+          }
+          if (_endDate != null) {
+            final endDate = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+            if (dtDate.compareTo(endDate) > 0) return false;
+          }
+          return true;
         } catch (_) {
           return false;
         }
@@ -365,7 +247,6 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
       setState(() {
         _currentPage = newPage;
       });
-      _fetchData();
     }
   }
 
@@ -615,25 +496,6 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
               ),
               Row(
                 children: [
-                  // Stop Sound Button
-                  Obx(() => AudioService().isPlaying.value
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: ElevatedButton.icon(
-                            onPressed: () => AudioService().stopSound(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            icon: const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white),
-                            label: Text('Stop Sound',
-                                style: GoogleFonts.inter(
-                                    color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                        )
-                      : const SizedBox.shrink()),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -713,17 +575,17 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                       ),
                       const SizedBox(width: 12),
 
-                      // Filter by Date
+                      // Start Date
                       InkWell(
                         onTap: () async {
                           final picked = await showDatePicker(
                             context: context,
-                            initialDate: _selectedScheduleDate ?? DateTime.now(),
+                            initialDate: _startDate ?? DateTime.now(),
                             firstDate: DateTime(2023),
                             lastDate: DateTime(2030),
                           );
                           if (picked != null) {
-                            setState(() => _selectedScheduleDate = picked);
+                            setState(() => _startDate = picked);
                             _runFilter();
                           }
                         },
@@ -740,20 +602,20 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                               const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
                               const SizedBox(width: 8),
                               Text(
-                                _selectedScheduleDate == null 
-                                  ? 'Filter by Date' 
-                                  : DateFormat('dd MMM yyyy').format(_selectedScheduleDate!),
+                                _startDate == null 
+                                  ? 'Start Date' 
+                                  : DateFormat('dd MMM yyyy').format(_startDate!),
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
-                                  fontWeight: _selectedScheduleDate == null ? FontWeight.w400 : FontWeight.w600,
-                                  color: _selectedScheduleDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                                  fontWeight: _startDate == null ? FontWeight.w400 : FontWeight.w600,
+                                  color: _startDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
                                 ),
                               ),
-                              if (_selectedScheduleDate != null) ...[
+                              if (_startDate != null) ...[
                                 const SizedBox(width: 8),
                                 InkWell(
                                   onTap: () {
-                                    setState(() => _selectedScheduleDate = null);
+                                    setState(() => _startDate = null);
                                     _runFilter();
                                   },
                                   child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
@@ -766,13 +628,73 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                           ),
                         ),
                       ),
-
+                      
                       const SizedBox(width: 12),
 
+                      // End Date
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _endDate ?? _startDate ?? DateTime.now(),
+                            firstDate: DateTime(2023),
+                            lastDate: DateTime(2030),
+                          );
+                          if (picked != null) {
+                            setState(() => _endDate = picked);
+                            _runFilter();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
+                              const SizedBox(width: 8),
+                              Text(
+                                _endDate == null 
+                                  ? 'End Date' 
+                                  : DateFormat('dd MMM yyyy').format(_endDate!),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: _endDate == null ? FontWeight.w400 : FontWeight.w600,
+                                  color: _endDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                                ),
+                              ),
+                              if (_endDate != null) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() => _endDate = null);
+                                    _runFilter();
+                                  },
+                                  child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                )
+                              ] else ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                              ]
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+                      
                       // Today Button
                       TextButton(
                         onPressed: () {
-                          setState(() => _selectedScheduleDate = DateTime.now());
+                          final now = DateTime.now();
+                          setState(() {
+                            _startDate = now;
+                            _endDate = now;
+                          });
                           _runFilter();
                         },
                         style: TextButton.styleFrom(
@@ -784,42 +706,7 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                         child: Text("Today", style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
                       ),
 
-                      const SizedBox(width: 12),
 
-                      // Status Filter Dropdown
-                      Container(
-                        height: 44,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String?>(
-                            value: _selectedStatus,
-                            hint: Text('All Statuses',
-                                style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF94A3B8))),
-                            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
-                            items: [
-                              DropdownMenuItem<String?>(
-                                value: null,
-                                child: Text('All Statuses',
-                                    style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF334155)))),
-                              ..._statusOptions.map((label) => DropdownMenuItem<String?>(
-                                value: label,
-                                child: Text(label,
-                                    style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF334155))),
-                              )),
-                            ],
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedStatus = val;
-                                _currentPage = 0;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
 
                       const Spacer(),
 
@@ -835,7 +722,7 @@ class _CompletedBookingScreenState extends State<CompletedBookingScreen> {
                           child: DropdownButton<int>(
                             value: _pageSize,
                             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
-                            items: [50, 100, 200].map((int value) {
+                            items: [100, 200, 300].map((int value) {
                               return DropdownMenuItem<int>(
                                 value: value,
                                 child: Text('Show $value',

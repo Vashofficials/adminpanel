@@ -112,7 +112,7 @@ bool _can(String module) {
   if (!_can('dashboard_screen')) {
     return const WelcomeDashboardScreen();
   }
-  return const DashboardHome(); 
+  return DashboardHome(onNav: _handleNavigation); 
       case 'booking/overview':
         return BookingOverviewScreen(
           onNav: _handleNavigation,
@@ -435,94 +435,160 @@ onEditCustomer: (customer) {
 }
 
 // -----------------------------------------------------------------------------
-// DASHBOARD HOME CONTENT (UPDATED FOR INDIA/LUCKNOW)
+// DASHBOARD HOME CONTENT (COMPREHENSIVE OVERVIEW)
 // -----------------------------------------------------------------------------
 class DashboardHome extends StatelessWidget {
-  const DashboardHome({super.key});
+  final Function(String)? onNav;
+
+  const DashboardHome({super.key, this.onNav});
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // KPI Band
-          LayoutBuilder(builder: (context, constraints) {
-            final DashboardController controller = Get.put(DashboardController());
-            int crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 800 ? 2 : 1);
-            double width = (constraints.maxWidth - (16 * (crossAxisCount - 1))) / crossAxisCount;
-            
-            return Wrap(
-              spacing: 16,
-              runSpacing: 16,
+    final DashboardController controller = Get.put(DashboardController());
+
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row: Title & Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: width,
-                  child: Obx(() => PanelCard.gradient(
-                    title: 'Total Revenue', 
-                    value: controller.totalRevenue.value.toStringAsFixed(0),
-                    gradient: [Color(0xFF2563EB), Color(0xFF4F46E5)],
-                    icon: Icons.currency_rupee,
-                  )),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Dashboard Overview", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                    Text("Welcome back! Here's what's happening on your platform today.", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                  ],
                 ),
-                SizedBox(
-                  width: width,
-                  child: Obx(() => PanelCard.gradient(
-                    title: 'Total Bookings', 
-                    value: controller.totalBookings.value.toString(),
-                    gradient: [Color(0xFF10B981), Color(0xFF059669)],
-                    icon: Icons.calendar_today,
-                  )),
-                ),
-                SizedBox(
-                  width: width,
-                  child: Obx(() => PanelCard.gradient(
-                    title: 'Active Services', 
-                    value: controller.activeServices.value.toString(),
-                    gradient: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                    icon: Icons.cleaning_services,
-                  )),
-                ),
-                SizedBox(
-                  width: width,
-                  child: Obx(() => PanelCard.solid(
-                    title: 'Customers (Lko)', 
-                    value: controller.totalCustomers.value.toString(),
-                    color: Color(0xFF1E3A8A),
-                    icon: Icons.people,
-                  )),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                          const SizedBox(width: 8),
+                          Text("26 Apr 2026 - 26 May 2026", style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+                          const SizedBox(width: 8),
+                          Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey.shade600),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => controller.exportDashboardData(),
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text("Export Report"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF97316),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            );
-          }),
+            ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 24),
+            // 1. Primary KPI Cards (6 cards)
+            LayoutBuilder(builder: (context, constraints) {
+              int crossAxisCount = constraints.maxWidth > 1400 ? 6 : (constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 800 ? 2 : 1));
+              double spacing = 16.0;
+              double width = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
 
-          // Earning Chart & Recent List
-          LayoutBuilder(builder: (context, constraints) {
-            if (constraints.maxWidth > 1000) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Expanded(flex: 2, child: EarningChart()),
-                  SizedBox(width: 24),
-                  // Updated Title
-                  Expanded(child: RecentList(title: "Top Providers (Lucknow)")),
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  SizedBox(width: width, child: StatCard(isPrimary: true, title: "Revenue Today", value: "₹${controller.todayRevenue.value.toStringAsFixed(0)}", icon: Icons.currency_rupee, color: const Color(0xFF4361EE), subtitle: "+8% from yesterday")),
+                  SizedBox(width: width, child: StatCard(title: "Orders Today", value: controller.todayBookings.value.toString(), icon: Icons.shopping_cart, color: const Color(0xFF10B981), subtitle: "+5% from yesterday")),
+                  SizedBox(width: width, child: StatCard(title: "Active Providers", value: controller.totalProviders.value.toString(), icon: Icons.handyman, color: const Color(0xFFF59E0B), subtitle: "Currently online")),
+                  SizedBox(width: width, child: StatCard(title: "Pending Assignments", value: controller.pendingBookings.value.toString(), icon: Icons.pending_actions, color: const Color(0xFF8B5CF6), subtitle: "Needs action")),
+                  SizedBox(width: width, child: StatCard(title: "Cancellations", value: controller.cancelledBookings.value.toString(), icon: Icons.cancel, color: const Color(0xFFEF4444), subtitle: "Today's cancellations")),
+                  SizedBox(width: width, child: StatCard(title: "Total Users", value: controller.totalCustomers.value.toString(), icon: Icons.group, color: const Color(0xFF3B82F6), subtitle: "Registered customers")),
                 ],
               );
-            } else {
-              return Column(
-                children: const [
-                  EarningChart(),
-                  SizedBox(height: 24),
-                  RecentList(title: "Top Providers (Lucknow)"),
-                ],
-              );
-            }
-          }),
-        ],
-      ),
-    );
+            }),
+            const SizedBox(height: 24),
+
+            // 2. Charts Row: Revenue/Bookings Trend, Booking Status, Recent Notifications
+            LayoutBuilder(builder: (context, constraints) {
+              bool isDesktop = constraints.maxWidth > 1200;
+              if (isDesktop) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 5, child: const RevenueBookingsTrend()),
+                    const SizedBox(width: 24),
+                    Expanded(flex: 3, child: const OrdersByCategoryChart()),
+                    const SizedBox(width: 24),
+                    Expanded(flex: 3, child: const RecentNotifications()),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    const RevenueBookingsTrend(),
+                    const SizedBox(height: 24),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: const OrdersByCategoryChart()),
+                        const SizedBox(width: 24),
+                        Expanded(child: const RecentNotifications()),
+                      ],
+                    ),
+                  ],
+                );
+              }
+            }),
+
+            const SizedBox(height: 24),
+
+            // 4. Tables Row: Top Services, Top Providers, Platform Summary
+            LayoutBuilder(builder: (context, constraints) {
+              bool isDesktop = constraints.maxWidth > 1000;
+              if (isDesktop) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 4, child: const TopServicesList()),
+                    const SizedBox(width: 24),
+                    Expanded(flex: 4, child: const TopProvidersList()),
+                    const SizedBox(width: 24),
+                    Expanded(flex: 3, child: const PlatformSummary()),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    const TopServicesList(),
+                    const SizedBox(height: 24),
+                    const TopProvidersList(),
+                    const SizedBox(height: 24),
+                    const PlatformSummary(),
+                  ],
+                );
+              }
+            }),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -530,57 +596,100 @@ class DashboardHome extends StatelessWidget {
 // HELPER WIDGETS
 // -----------------------------------------------------------------------------
 
-class PanelCard extends StatelessWidget {
+class StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final List<Color>? gradient;
-  final Color? color;
+  final Color color;
+  final String subtitle;
+  final bool isPrimary;
 
-  const PanelCard.gradient({
-    super.key, required this.title, required this.value, required this.icon, required this.gradient,
-  }) : color = null;
-
-  const PanelCard.solid({
-    super.key, required this.title, required this.value, required this.icon, required this.color,
-  }) : gradient = null;
+  const StatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.subtitle,
+    this.isPrimary = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 110,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        color: isPrimary ? color : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        gradient: gradient != null ? LinearGradient(colors: gradient!) : null,
-        color: color,
+        border: isPrimary ? null : Border.all(color: color.withOpacity(0.5)),
         boxShadow: [
-          BoxShadow(color: (gradient?.first ?? color!).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+          if (isPrimary)
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              Icon(icon, color: Colors.white38, size: 24),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isPrimary ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isPrimary ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: isPrimary ? Colors.white : color,
+                  size: 20,
+                ),
+              ),
             ],
           ),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: isPrimary ? Colors.white : color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: isPrimary ? Colors.white.withOpacity(0.8) : color.withOpacity(0.8),
+              fontSize: 13,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class EarningChart extends StatelessWidget {
-  const EarningChart({super.key});
+
+class RevenueBookingsTrend extends StatelessWidget {
+  const RevenueBookingsTrend({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final DashboardController controller = Get.find<DashboardController>();
+    
     return Container(
       height: 400,
       padding: const EdgeInsets.all(24),
@@ -592,31 +701,36 @@ class EarningChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Revenue Trends (in Lakhs)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("7-Day Revenue Trend", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              Row(
+                children: [
+                  _buildLegendItem("Revenue", const Color(0xFF2563EB)),
+                ],
+              )
+            ],
+          ),
           const SizedBox(height: 24),
           Expanded(
             child: Obx(() {
-              final DashboardController controller = Get.find<DashboardController>();
-              
               if (controller.chartData.isEmpty) {
-                return Center(child: Text("No trending data available", style: TextStyle(color: Colors.grey)));
+                return const Center(child: Text("No trending data available", style: TextStyle(color: Colors.grey)));
               }
 
-              // Map controller.chartData to FlSpot
               List<FlSpot> spots = [];
               for (int i = 0; i < controller.chartData.length; i++) {
                 final month = controller.chartData[i];
                 final total = (month.cashBooking ?? 0) + (month.onlineBooking ?? 0);
-                // For "In Lakhs", we display the actual value for now as we don't know the scale,
-                // but usually we divide by 100,000. Let's keep it direct and scale Y axis automatically.
                 spots.add(FlSpot(i.toDouble(), total.toDouble()));
               }
 
               return LineChart(
                 LineChartData(
-                  gridData: const FlGridData(show: true, drawVerticalLine: false),
+                  gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1)),
                   titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)))),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true, 
@@ -625,7 +739,10 @@ class EarningChart extends StatelessWidget {
                           int idx = value.toInt();
                           if (idx >= 0 && idx < controller.chartData.length) {
                              String name = controller.chartData[idx].mothName?.substring(0, 3) ?? "";
-                             return Text(name, style: const TextStyle(fontSize: 10, color: Colors.grey));
+                             return Padding(
+                               padding: const EdgeInsets.only(top: 8.0),
+                               child: Text(name, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                             );
                           }
                           return const Text("");
                         }
@@ -654,53 +771,24 @@ class EarningChart extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+      ],
+    );
+  }
 }
 
-// -----------------------------------------------------------------------------
-// RECENT LIST (DATA CUSTOMIZED FOR LUCKNOW)
-// -----------------------------------------------------------------------------
-class RecentList extends StatelessWidget {
-  final String title;
-  const RecentList({super.key, required this.title});
-  static const List<Map<String, dynamic>> _providers = [];
+class OrdersByCategoryChart extends StatelessWidget {
+  const OrdersByCategoryChart({super.key});
 
-  /*
-  // Mock Data for Lucknow Providers
-  static const List<Map<String, dynamic>> _providers = [
-    {
-      "name": "Amit Kumar",
-      "specialty": "AC Repair (Gomti Nagar)",
-      "rating": "4.9",
-      "earnings": "24,000"
-    },
-    {
-      "name": "Sneha Gupta",
-      "specialty": "Bridal Makeup (Hazratganj)",
-      "rating": "4.8",
-      "earnings": "18,500"
-    },
-    {
-      "name": "Ravi Verma",
-      "specialty": "Electrician (Indira Nagar)",
-      "rating": "4.7",
-      "earnings": "15,200"
-    },
-    {
-      "name": "Mohd. Ariz",
-      "specialty": "Plumber (Aliganj)",
-      "rating": "4.6",
-      "earnings": "12,800"
-    },
-    {
-      "name": "Priya Singh",
-      "specialty": "Home Cleaning (Mahanagar)",
-      "rating": "4.9",
-      "earnings": "21,000"
-    },
-  ];
- */
   @override
   Widget build(BuildContext context) {
+    final DashboardController controller = Get.find<DashboardController>();
     return Container(
       height: 400,
       padding: const EdgeInsets.all(24),
@@ -712,86 +800,360 @@ class RecentList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          const Text("Orders by Category", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          const SizedBox(height: 32),
           Expanded(
             child: Obx(() {
-              final DashboardController controller = Get.find<DashboardController>();
-              final providers = controller.topProviders;
-
-              if (providers.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_off, size: 48, color: Colors.grey.shade300),
-                      const SizedBox(height: 12),
-                      Text(
-                        "No Data Available",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade500),
-                      ),
-                    ],
-                  ),
-                );
+              if (controller.categoryNames.isEmpty || controller.categoryCounts.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
               }
+              
+              double maxY = controller.categoryCounts.reduce((curr, next) => curr > next ? curr : next).toDouble() * 1.2;
+              if (maxY == 0) maxY = 100;
 
-              return ListView.separated(
-                itemCount: providers.length,
-                separatorBuilder: (c, i) => const Divider(height: 24),
-                itemBuilder: (c, i) {
-                  final provider = providers[i];
-                  return Row(
+              return BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxY,
+                  barTouchData: BarTouchData(enabled: true),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          const style = TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500, fontSize: 12);
+                          int index = value.toInt();
+                          String text = '';
+                          if (index >= 0 && index < controller.categoryNames.length) {
+                             text = controller.categoryNames[index];
+                          }
+                          if (text.length > 10) text = '${text.substring(0, 8)}..';
+                          return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(text, style: style));
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  gridData: const FlGridData(show: false),
+                  barGroups: List.generate(controller.categoryCounts.length, (i) {
+                     final colors = [
+                        const Color(0xFF10B981),
+                        const Color(0xFF3B82F6),
+                        const Color(0xFFF59E0B),
+                        const Color(0xFFEF4444),
+                        const Color(0xFF8B5CF6)
+                     ];
+                     return BarChartGroupData(
+                       x: i,
+                       barRods: [
+                         BarChartRodData(
+                           toY: controller.categoryCounts[i].toDouble(), 
+                           color: colors[i % colors.length], 
+                           width: 16, 
+                           borderRadius: BorderRadius.circular(4)
+                         )
+                       ]
+                     );
+                  }),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RecentNotifications extends StatelessWidget {
+  const RecentNotifications({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Mock notifications for now
+    final List<Map<String, dynamic>> notifications = [
+      {"title": "New Booking (#BK-0092)", "time": "10 mins ago", "icon": Icons.book, "color": Colors.blue},
+      {"title": "Provider 'Amit' registered", "time": "45 mins ago", "icon": Icons.person_add, "color": Colors.green},
+      {"title": "Booking (#BK-0081) cancelled", "time": "2 hours ago", "icon": Icons.cancel, "color": Colors.red},
+      {"title": "Low wallet balance warning", "time": "5 hours ago", "icon": Icons.warning, "color": Colors.orange},
+      {"title": "Payout completed successfully", "time": "1 day ago", "icon": Icons.account_balance_wallet, "color": Colors.purple},
+    ];
+
+    return Container(
+      height: 400,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Recent Notifications", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              TextButton(onPressed: () {}, child: const Text("View All", style: TextStyle(fontSize: 13))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.separated(
+              itemCount: notifications.length,
+              separatorBuilder: (c, i) => Divider(color: Colors.grey.shade100, height: 16),
+              itemBuilder: (context, index) {
+                final notif = notifications[index];
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: notif['color'].withOpacity(0.1), shape: BoxShape.circle),
+                      child: Icon(notif['icon'], color: notif['color'], size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(notif['title'], style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                          Text(notif['time'], style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TopServicesList extends StatelessWidget {
+  const TopServicesList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Mock top services data
+    final List<Map<String, dynamic>> services = [
+      {"name": "AC Repair & Servicing", "category": "Appliance Repair", "bookings": 420, "revenue": "₹2.5L"},
+      {"name": "Full Home Cleaning", "category": "Cleaning", "bookings": 350, "revenue": "₹1.8L"},
+      {"name": "Bridal Makeup", "category": "Salon & Beauty", "bookings": 210, "revenue": "₹3.2L"},
+      {"name": "Plumbing Service", "category": "Home Repairs", "bookings": 380, "revenue": "₹0.9L"},
+      {"name": "Pest Control", "category": "Cleaning", "bookings": 150, "revenue": "₹0.6L"},
+    ];
+
+    return Container(
+      height: 350,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Top 5 Services Today", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              TextButton(onPressed: () {}, child: const Text("View All", style: TextStyle(fontSize: 13))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: services.length,
+              itemBuilder: (context, index) {
+                final svc = services[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Row(
                     children: [
-                      CircleAvatar(
-                        backgroundColor: const Color(0xFFE0E7FF),
-                        backgroundImage: (provider.imageUrl != null && provider.imageUrl!.isNotEmpty)
-                            ? NetworkImage(provider.imageUrl!)
-                            : null,
-                        child: (provider.imageUrl == null || provider.imageUrl!.isEmpty)
-                            ? Text(
-                                provider.firstName[0], 
-                                style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)
-                              )
-                            : null,
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                        child: Center(child: Text("${index + 1}", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold))),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(provider.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            Text(
-                              "${provider.city ?? 'Lucknow'} • ${provider.totalRating.toStringAsFixed(1)} ★", 
-                              style: const TextStyle(fontSize: 12, color: Colors.grey)
-                            ),
+                            Text(svc['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            Text(svc['category'], style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            "${provider.totalReview} Reviews", 
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 11)
-                          ),
-                          Text(
-                            "Verified", 
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold, 
-                              color: provider.isAadharVerified ? Colors.green : Colors.orange,
-                              fontSize: 10
-                            )
-                          ),
+                          Text(svc['revenue'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                          Text("${svc['bookings']} Bookings", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                         ],
                       ),
                     ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TopProvidersList extends StatelessWidget {
+  const TopProvidersList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final DashboardController controller = Get.find<DashboardController>();
+
+    return Container(
+      height: 350,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Top Providers by Rating", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              TextButton(onPressed: () {}, child: const Text("View All", style: TextStyle(fontSize: 13))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Obx(() {
+              final providers = controller.topProviders;
+              if (providers.isEmpty) {
+                return const Center(child: Text("No Data Available", style: TextStyle(color: Colors.grey)));
+              }
+
+              return ListView.builder(
+                itemCount: providers.length,
+                itemBuilder: (context, index) {
+                  final provider = providers[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: const Color(0xFFE0E7FF),
+                          backgroundImage: (provider.imageUrl != null && provider.imageUrl!.isNotEmpty)
+                              ? NetworkImage(provider.imageUrl!)
+                              : null,
+                          child: (provider.imageUrl == null || provider.imageUrl!.isEmpty)
+                              ? Text(provider.firstName[0], style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold))
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(provider.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              Text("${provider.city ?? 'Lucknow'} • ${provider.isAadharVerified ? 'Verified' : 'Unverified'}", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.orange.shade400, size: 14),
+                              const SizedBox(width: 4),
+                              Text(provider.totalRating.toStringAsFixed(1), style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 },
               );
             }),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class PlatformSummary extends StatelessWidget {
+  const PlatformSummary({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 350,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Platform Summary", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+          const SizedBox(height: 24),
+          Expanded(
+            child: Column(
+              children: [
+                _buildSummaryRow("App Downloads", "12,450", "+15%"),
+                const Divider(),
+                _buildSummaryRow("Active Users (Monthly)", "8,210", "+5%"),
+                const Divider(),
+                _buildSummaryRow("Avg. Booking Value", "₹1,250", "+2%"),
+                const Divider(),
+                _buildSummaryRow("Refund Rate", "1.2%", "-0.5%"),
+                const Divider(),
+                _buildSummaryRow("Customer Retention", "68%", "+4%"),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, String trend) {
+    bool isPositive = trend.startsWith("+");
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+          Row(
+            children: [
+              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B))),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: isPositive ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                child: Text(trend, style: TextStyle(color: isPositive ? Colors.green.shade700 : Colors.red.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          )
         ],
       ),
     );

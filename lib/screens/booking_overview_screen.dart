@@ -7,8 +7,6 @@ import 'package:intl/intl.dart';
 
 import '../controllers/booking_overview_controller.dart';
 import '../models/booking_models.dart';
-import '../services/audio_service.dart';
-
 // =============================================================================
 // BOOKING OVERVIEW SCREEN
 // =============================================================================
@@ -310,25 +308,7 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
         ),
         Row(
           children: [
-            // Stop Notification Button (only visible when sound is playing)
-            Obx(() => AudioService().isPlaying.value
-                ? Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: ElevatedButton.icon(
-                      onPressed: () => AudioService().stopSound(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF4444),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.volume_off_rounded, size: 16, color: Colors.white),
-                      label: Text('Stop Notification',
-                          style: GoogleFonts.inter(
-                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                    ),
-                  )
-                : const SizedBox.shrink()),
+            // Removed Stop Notification Button
             ElevatedButton.icon(
               onPressed: _ctrl.fetchOverviewData,
               style: ElevatedButton.styleFrom(
@@ -383,7 +363,7 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
           gradientColors: [const Color(0xFFEF4444), const Color(0xFFDC2626)],
         ),
         _KpiData(
-          title: 'Total Revenue',
+          title: 'Total Collection',
           value: '₹${NumberFormat('#,##,###').format(_ctrl.totalRevenue.value.toInt())}',
           subtitle: 'From completed bookings',
           icon: Icons.currency_rupee_rounded,

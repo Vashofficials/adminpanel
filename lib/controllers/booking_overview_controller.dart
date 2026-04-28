@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
-import '../services/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -58,7 +57,6 @@ class BookingOverviewController extends GetxController {
 
   // Internal: full fetched list used for computation
   final List<BookingModel> _allFetched = [];
-  final Set<String> _previousBookingIds = {};
   Timer? _refreshTimer;
 
   @override
@@ -75,9 +73,9 @@ class BookingOverviewController extends GetxController {
   }
 
   void _startPolling() {
-    // Poll every 60 seconds for new bookings
+    // Poll every 5 minutes for new bookings
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       fetchOverviewData(showLoading: false);
     });
   }
@@ -102,7 +100,6 @@ class BookingOverviewController extends GetxController {
       _computeTrend();
       _computeDonut();
       _computeRecentBookings();
-      _checkNewBookings();
     } catch (e) {
       errorMessage.value = 'Failed to load data. Please refresh.';
       debugPrint('BookingOverviewController Error: $e');
@@ -118,7 +115,10 @@ class BookingOverviewController extends GetxController {
     totalBookings.value = _allFetched.length;
 
     pendingCount.value = _allFetched
-        .where((b) => b.status.toLowerCase() == 'pending')
+        .where((b) {
+          final s = b.status.toUpperCase().replaceAll(' ', '');
+          return s == 'PENDING' || s == 'ONGOING' || s == 'INPROGRESS' || s == 'PROGRESS' || s == 'ACCEPTED' || s == 'PROCESSING';
+        })
         .length;
 
     completedCount.value = _allFetched
@@ -195,24 +195,31 @@ class BookingOverviewController extends GetxController {
   }
 
   void _buildWeeklyTrend() {
-    // Group by ISO week number
-    final Map<int, int> countByWeek = {};
+    // Group by Year-Week
+    final Map<String, int> countByWeek = {};
     for (final b in _allFetched) {
       if (b.creationTime.isEmpty) continue;
       try {
         final dt = DateTime.parse(b.creationTime);
         final weekNum = _isoWeek(dt);
-        countByWeek[weekNum] = (countByWeek[weekNum] ?? 0) + 1;
+        final year = dt.year;
+        final key = '${year}_${weekNum.toString().padLeft(2, '0')}';
+        countByWeek[key] = (countByWeek[key] ?? 0) + 1;
       } catch (_) {}
     }
 
     final sorted = countByWeek.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    // Take last 12 weeks to avoid clutter if data spans years
+    final recentSorted = sorted.length > 12 ? sorted.sublist(sorted.length - 12) : sorted;
+    
     final points = <TrendPoint>[];
-    for (int i = 0; i < sorted.length; i++) {
+    for (int i = 0; i < recentSorted.length; i++) {
+      final parts = recentSorted[i].key.split('_');
+      final wNum = int.parse(parts[1]);
       points.add(TrendPoint(
-          label: 'Wk ${sorted[i].key}',
+          label: 'Wk $wNum',
           x: i.toDouble(),
-          count: sorted[i].value));
+          count: recentSorted[i].value));
     }
     trendPoints.assignAll(points);
   }
@@ -244,10 +251,6 @@ class BookingOverviewController extends GetxController {
           label: 'Cancelled',
           count: canceledCount.value,
           colorHex: 0xFFEF4444),
-      DonutSegment(
-          label: 'Offline',
-          count: offlinePaymentCount.value,
-          colorHex: 0xFF8B5CF6),
     ]);
   }
 
@@ -266,45 +269,5 @@ class BookingOverviewController extends GetxController {
   String percentOf(int part) {
     if (totalBookings.value == 0) return '0%';
     return '${((part / totalBookings.value) * 100).toStringAsFixed(1)}%';
-  }
-
-  // ---------------------------------------------------------------------------
-  // NEW BOOKING DETECTION
-  // ---------------------------------------------------------------------------
-  void _checkNewBookings() {
-    if (_allFetched.isEmpty) return;
-
-    final currentIds = _allFetched.map((b) => b.id).toSet();
-
-    // If we already have a previous state, check for differences
-    if (_previousBookingIds.isNotEmpty) {
-      final newIds = currentIds.difference(_previousBookingIds);
-      if (newIds.isNotEmpty) {
-        // Trigger sound
-        AudioService().playBookingSound();
-
-        // Show UI notification
-        Get.snackbar(
-          'New Order Received!',
-          'You have ${newIds.length} new booking(s).',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFFFF9800),
-          colorText: Colors.white,
-          icon: const Icon(Icons.notifications_active, color: Colors.white),
-          duration: const Duration(seconds: 15),
-          mainButton: TextButton(
-            onPressed: () {
-              AudioService().stopSound();
-              if (Get.isSnackbarOpen) Get.back();
-            },
-            child: const Text('STOP SOUND', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        );
-      }
-    }
-
-    // Update the set for the next comparison
-    _previousBookingIds.clear();
-    _previousBookingIds.addAll(currentIds);
   }
 }

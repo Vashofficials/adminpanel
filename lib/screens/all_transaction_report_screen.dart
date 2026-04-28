@@ -7,11 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
-import '../services/audio_service.dart';
-
 // --- IMPORTS ---
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
+import '../services/booking_notification_service.dart';
 
 class AllTransactionReportScreen extends StatefulWidget {
   // Navigation Callback
@@ -42,12 +41,12 @@ class _AllTransactionReportScreenState
   int _totalPages = 1;
   int _totalElements = 0;
 
-  DateTime? _selectedScheduleDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
   String? _selectedCategory; // null = "All"
   String? _selectedStatus;   // null = "All Statuses"
 
-  // New-booking alert detection
-  Set<String> _knownBookingIds = {};
+
   Timer? _pollingTimer;
 
   // Dynamically build unique category list from loaded bookings
@@ -66,8 +65,8 @@ class _AllTransactionReportScreenState
   void initState() {
     super.initState();
     _fetchData();
-    // Poll every 30 seconds to detect new bookings
-    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Poll every 5 minutes to auto-refresh data
+    _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _fetchData();
     });
   }
@@ -81,7 +80,7 @@ class _AllTransactionReportScreenState
     super.dispose();
   }
 
-  // 2. API FETCH — Shows ALL transactions (no payment mode filter)
+  // 2. API FETCH — Fetches a large batch for client-side filtering
   Future<void> _fetchData() async {
     if (!mounted) return;
     setState(() {
@@ -91,30 +90,19 @@ class _AllTransactionReportScreenState
 
     try {
       final response =
-          await _repo.fetchBookings(page: _currentPage, size: _pageSize);
+          await _repo.fetchBookings(page: 0, size: 500);
 
       if (!mounted) return;
 
       final allBookings = response.content;
 
-      // --- New booking alert detection ---
-      if (_knownBookingIds.isNotEmpty) {
-        final newBookings = allBookings
-            .where((b) => !_knownBookingIds.contains(b.bookingRef))
-            .toList();
-        if (newBookings.isNotEmpty) {
-          AudioService().playBookingSound();
-          _showNewBookingAlert(newBookings.first);
-        }
-      }
-      _knownBookingIds = allBookings.map((b) => b.bookingRef).toSet();
-
       setState(() {
         _bookings = allBookings; // All transactions, no filter
-        _totalPages = response.totalPages;
-        _totalElements = response.totalElements;
+        _totalElements = allBookings.length;
         _isLoading = false;
       });
+
+      BookingNotificationService().checkNewBooking(_bookings, 'AllTransactionReportScreen');
 
       if (_searchController.text.isNotEmpty) {
         _runFilter();
@@ -128,152 +116,7 @@ class _AllTransactionReportScreenState
     }
   }
 
-  // 2b. New booking alert popup
-  void _showNewBookingAlert(BookingModel booking) {
-    if (!mounted) return;
-    final svcName = booking.services.isNotEmpty
-        ? booking.services.first.serviceName
-        : 'N/A';
-    final location = booking.address?.city ?? 'N/A';
-    String schedDate = '-';
-    if (booking.bookingDate.isNotEmpty) {
-      try {
-        final dt = DateTime.parse(booking.bookingDate).toLocal();
-        schedDate = DateFormat('dd MMM yyyy').format(dt);
-      } catch (_) {}
-    }
-    final schedTime = booking.bookingTime.isNotEmpty ? booking.bookingTime : '';
-    final amount = '₹${booking.grandTotalPrice.toStringAsFixed(2)}';
 
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) {
-        Future.delayed(const Duration(seconds: 12), () {
-          if (ctx.mounted) Navigator.of(ctx, rootNavigator: true).maybePop();
-        });
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: 380,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                )
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.notifications_active_rounded,
-                        color: Color(0xFFEF7822), size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text('New Booking Received 🚀',
-                        style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F172A))),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(),
-                    icon: const Icon(Icons.close, size: 18, color: Color(0xFF94A3B8)),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ]),
-                const SizedBox(height: 16),
-                const Divider(color: Color(0xFFF1F5F9)),
-                const SizedBox(height: 12),
-                _alertRow(Icons.tag, 'Booking ID', booking.bookingRef),
-                _alertRow(Icons.person_outline, 'Customer', booking.customerName),
-                _alertRow(Icons.design_services_outlined, 'Service', svcName),
-                _alertRow(Icons.location_on_outlined, 'Location', location),
-                _alertRow(Icons.schedule, 'Schedule', '$schedDate  $schedTime'.trim()),
-                _alertRow(Icons.currency_rupee, 'Amount', amount),
-                const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF64748B),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text('Dismiss',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(ctx, rootNavigator: true).pop();
-                        widget.onViewDetails(booking);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF7822),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text('View Booking',
-                          style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _alertRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
-          const SizedBox(width: 8),
-          Text('$label: ',
-              style: GoogleFonts.inter(
-                  fontSize: 13, color: const Color(0xFF64748B))),
-          Expanded(
-            child: Text(value,
-                style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0F172A)),
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
 
   // 3. SEARCH LOGIC
   void _runFilter() {
@@ -329,19 +172,39 @@ class _AllTransactionReportScreenState
     // 3. Status Filter
     if (_selectedStatus != null) {
       final apiStatus = _statusApiMap[_selectedStatus] ?? '';
-      list = list.where((item) => item.status.toUpperCase() == apiStatus).toList();
+      list = list.where((item) {
+        final st = item.status.toUpperCase().trim();
+        if (apiStatus == 'CANCELED' || apiStatus == 'CANCELLED') {
+          return st == 'CANCELED' || st == 'CANCELLED';
+        }
+        if (apiStatus == 'COMPLETED') {
+          return st == 'COMPLETED' || st == 'DELIVERED' || st == 'DONE';
+        }
+        if (apiStatus == 'ONGOING') {
+          return st == 'ONGOING' || st == 'IN PROGRESS' || st == 'PROGRESS' || st == 'ACCEPTED' || st == 'PROCESSING';
+        }
+        return st == apiStatus || st == apiStatus.replaceAll(' ', '');
+      }).toList();
     }
 
     // 4. Schedule Date Filter — compare bookingDate in LOCAL timezone (IST)
-    if (_selectedScheduleDate != null) {
+    if (_startDate != null || _endDate != null) {
       list = list.where((item) {
         if (item.bookingDate.isEmpty) return false;
         try {
           // .toLocal() ensures IST (+05:30) dates are not shifted to the previous day
           final dt = DateTime.parse(item.bookingDate).toLocal();
-          return dt.year == _selectedScheduleDate!.year &&
-                 dt.month == _selectedScheduleDate!.month &&
-                 dt.day == _selectedScheduleDate!.day;
+          final dtDate = DateTime(dt.year, dt.month, dt.day);
+          
+          if (_startDate != null) {
+            final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+            if (dtDate.compareTo(start) < 0) return false;
+          }
+          if (_endDate != null) {
+            final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+            if (dtDate.compareTo(end) > 0) return false;
+          }
+          return true;
         } catch (_) {
           return false;
         }
@@ -367,13 +230,27 @@ class _AllTransactionReportScreenState
     'Cancelled':   'CANCELED',
   };
 
+  // Client-side paginated slice
+  List<BookingModel> get _displayedBookings {
+    final all = _filteredBookings;
+    final start = _currentPage * _pageSize;
+    final end = (start + _pageSize).clamp(0, all.length);
+    if (start >= all.length) return [];
+    return all.sublist(start, end);
+  }
+
+  int get _clientTotalPages {
+    final total = _filteredBookings.length;
+    if (total == 0) return 1;
+    return (total / _pageSize).ceil();
+  }
+
   // 4. PAGINATION LOGIC
   void _onPageChanged(int newPage) {
-    if (newPage >= 0 && newPage < _totalPages) {
+    if (newPage >= 0 && newPage < _clientTotalPages) {
       setState(() {
         _currentPage = newPage;
       });
-      _fetchData();
     }
   }
 
@@ -631,7 +508,7 @@ class _AllTransactionReportScreenState
 
   @override
   Widget build(BuildContext context) {
-    final displayed = _filteredBookings;
+    final displayed = _displayedBookings;
 
     return Column(
       children: [
@@ -651,25 +528,7 @@ class _AllTransactionReportScreenState
               ),
               Row(
                 children: [
-                  // Stop Sound Button (Reactive)
-                  Obx(() => AudioService().isPlaying.value
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: ElevatedButton.icon(
-                            onPressed: () => AudioService().stopSound(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEF4444),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            icon: const Icon(Icons.volume_off_rounded, size: 14, color: Colors.white),
-                            label: Text('Stop Sound',
-                                style: GoogleFonts.inter(
-                                    color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                          ),
-                        )
-                      : const SizedBox.shrink()),
+
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -786,17 +645,17 @@ class _AllTransactionReportScreenState
                       ),
                       const SizedBox(width: 12),
 
-                      // Filter by Date
+                      // Start Date
                       InkWell(
                         onTap: () async {
                           final picked = await showDatePicker(
                             context: context,
-                            initialDate: _selectedScheduleDate ?? DateTime.now(),
+                            initialDate: _startDate ?? DateTime.now(),
                             firstDate: DateTime(2023),
                             lastDate: DateTime(2030),
                           );
                           if (picked != null) {
-                            setState(() => _selectedScheduleDate = picked);
+                            setState(() => _startDate = picked);
                             _runFilter();
                           }
                         },
@@ -813,20 +672,76 @@ class _AllTransactionReportScreenState
                               const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
                               const SizedBox(width: 8),
                               Text(
-                                _selectedScheduleDate == null 
-                                  ? 'Filter by Date' 
-                                  : DateFormat('dd MMM yyyy').format(_selectedScheduleDate!),
+                                _startDate == null 
+                                  ? 'Start Date' 
+                                  : DateFormat('dd MMM yyyy').format(_startDate!),
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
-                                  fontWeight: _selectedScheduleDate == null ? FontWeight.w400 : FontWeight.w600,
-                                  color: _selectedScheduleDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                                  fontWeight: _startDate == null ? FontWeight.w400 : FontWeight.w600,
+                                  color: _startDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
                                 ),
                               ),
-                              if (_selectedScheduleDate != null) ...[
+                              if (_startDate != null) ...[
                                 const SizedBox(width: 8),
                                 InkWell(
                                   onTap: () {
-                                    setState(() => _selectedScheduleDate = null);
+                                    setState(() => _startDate = null);
+                                    _runFilter();
+                                  },
+                                  child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
+                                )
+                              ] else ...[
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
+                              ]
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(width: 12),
+
+                      // End Date
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _endDate ?? _startDate ?? DateTime.now(),
+                            firstDate: DateTime(2023),
+                            lastDate: DateTime(2030),
+                          );
+                          if (picked != null) {
+                            setState(() => _endDate = picked);
+                            _runFilter();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
+                              const SizedBox(width: 8),
+                              Text(
+                                _endDate == null 
+                                  ? 'End Date' 
+                                  : DateFormat('dd MMM yyyy').format(_endDate!),
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: _endDate == null ? FontWeight.w400 : FontWeight.w600,
+                                  color: _endDate == null ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                                ),
+                              ),
+                              if (_endDate != null) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () {
+                                    setState(() => _endDate = null);
                                     _runFilter();
                                   },
                                   child: const Icon(Icons.close, size: 16, color: Color(0xFF64748B)),
@@ -845,7 +760,11 @@ class _AllTransactionReportScreenState
                       // Today Button
                       TextButton(
                         onPressed: () {
-                          setState(() => _selectedScheduleDate = DateTime.now());
+                          final now = DateTime.now();
+                          setState(() {
+                            _startDate = now;
+                            _endDate = now;
+                          });
                           _runFilter();
                         },
                         style: TextButton.styleFrom(
@@ -869,13 +788,13 @@ class _AllTransactionReportScreenState
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
                             value: _selectedStatus,
-                            hint: Text('All Statuses',
+                            hint: Text('All Status',
                                 style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF94A3B8))),
                             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
                             items: [
                               DropdownMenuItem<String?>(
                                 value: null,
-                                child: Text('All Statuses',
+                                child: Text('All Status',
                                     style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF334155)))),
                               ..._statusOptions.map((label) => DropdownMenuItem<String?>(
                                 value: label,
@@ -907,7 +826,7 @@ class _AllTransactionReportScreenState
                           child: DropdownButton<int>(
                             value: _pageSize,
                             icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF64748B)),
-                            items: [10, 30, 50, 100].map((int value) {
+                            items: [100, 200, 300].map((int value) {
                               return DropdownMenuItem<int>(
                                 value: value,
                                 child: Text('Show $value',
@@ -1134,9 +1053,21 @@ class _AllTransactionReportScreenState
                                                     style: _cellStyle())),
 
                                                 // Booking ID
-                                                DataCell(Text(
-                                                    data.bookingRef,
-                                                    style: _cellStyle())),
+                                                DataCell(
+                                                  InkWell(
+                                                    onTap: () => widget.onViewDetails(data),
+                                                    child: Text(
+                                                      data.bookingRef,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: const Color(0xFFEF7822),
+                                                        decoration: TextDecoration.underline,
+                                                        decorationColor: const Color(0xFFEF7822),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
 
                                                 // Service Details
                                                 DataCell(data.services.isEmpty
@@ -1433,7 +1364,7 @@ class _AllTransactionReportScreenState
                             shrinkWrap: true,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16),
-                            itemCount: _totalPages,
+                            itemCount: _clientTotalPages,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(width: 8),
                             itemBuilder: (context, index) {
@@ -1475,7 +1406,7 @@ class _AllTransactionReportScreenState
                       ),
 
                       OutlinedButton(
-                        onPressed: _currentPage < _totalPages - 1
+                        onPressed: _currentPage < _clientTotalPages - 1
                             ? () => _onPageChanged(_currentPage + 1)
                             : null,
                         style: OutlinedButton.styleFrom(
