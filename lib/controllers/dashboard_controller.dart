@@ -62,6 +62,14 @@ class DashboardController extends GetxController {
   // --- TOP PROVIDERS ---
   var topProviders = <ProviderModel>[].obs;
 
+  // --- TOP SERVICES (computed from bookings) ---
+  var topServices = <_TopServiceData>[].obs;
+
+  // --- PLATFORM SUMMARY (computed) ---
+  var avgBookingValue = 0.0.obs;     // avg actualAmount of completed bookings
+  var refundRate = 0.0.obs;          // (cancelled / total) * 100
+  var customerRetentionRate = 0.0.obs; // (active users / total users) * 100
+
   var isLoading = true.obs;
   var isRefreshing = false.obs;
   Timer? _refreshTimer;
@@ -195,7 +203,7 @@ class DashboardController extends GetxController {
         if (status == 'pending') {
           pendingTotal++;
           if (isToday) pendingToday++;
-        } else if (status == 'cancelled') {
+        } else if (status == 'cancelled' || status == 'canceled') {
           cancelledTotal++;
           if (isToday) cancelledToday++;
         } else if (status == 'completed') {
@@ -230,6 +238,34 @@ class DashboardController extends GetxController {
           }
         }
       }
+
+      // --- TOP SERVICES: count bookings per service name ---
+      Map<String, _TopServiceData> svcMap = {};
+      for (var b in bookings) {
+        for (var s in b.services) {
+          final key = s.serviceName.isNotEmpty ? s.serviceName : 'Unknown';
+          if (!svcMap.containsKey(key)) {
+            svcMap[key] = _TopServiceData(
+              name: key,
+              category: s.categoryName,
+              bookingCount: 0,
+              revenue: 0.0,
+            );
+          }
+          svcMap[key]!.bookingCount++;
+          if (b.status.toLowerCase() == 'completed') {
+            svcMap[key]!.revenue += b.actualAmount;
+          }
+        }
+      }
+      final sortedSvcs = svcMap.values.toList()
+        ..sort((a, b) => b.bookingCount.compareTo(a.bookingCount));
+      topServices.assignAll(sortedSvcs.take(5).toList());
+
+      // --- PLATFORM SUMMARY metrics ---
+      avgBookingValue.value = completedCount > 0 ? (allTimeRev / completedCount) : 0.0;
+      refundRate.value = bookings.isNotEmpty ? (cancelledTotal / bookings.length) * 100 : 0.0;
+      // retention computed after customer fetch — updated in _fetchCustomerData
 
       // Assign values
       allTimeCollection.value = allTimeRev;
@@ -322,6 +358,11 @@ class DashboardController extends GetxController {
       activeUsers.value = activeCount;
       inactiveUsers.value = inactiveCount;
 
+      // Customer retention = active / total * 100
+      customerRetentionRate.value = resp.totalElements > 0
+          ? (activeCount / resp.totalElements) * 100
+          : 0.0;
+
       // Legacy
       totalCustomers.value = resp.totalElements;
     } catch (e) {
@@ -404,4 +445,20 @@ class DashboardController extends GetxController {
       );
     }
   }
+}
+
+/// Helper data class used internally by DashboardController to aggregate
+/// per-service booking counts and revenue from raw booking data.
+class _TopServiceData {
+  final String name;
+  final String category;
+  int bookingCount;
+  double revenue;
+
+  _TopServiceData({
+    required this.name,
+    required this.category,
+    required this.bookingCount,
+    required this.revenue,
+  });
 }

@@ -1751,6 +1751,26 @@ Future<List<EmployeeModel>> getActiveEmployees() async {
     return [];
   }
 }
+/// Fetches the current module permissions assigned to a specific admin user.
+/// GET /admin/getAdminUserPermission?adminUserId={uuid}
+/// Returns list of UserModule (with mappingId, moduleName, moduleIdentifier, isActive).
+Future<List<UserModule>> getAdminUserPermission(String adminUserId) async {
+  try {
+    final response = await _dio.get(
+      '/admin/getAdminUserPermission',
+      queryParameters: {'adminUserId': adminUserId},
+    );
+    if (response.statusCode == 200 && response.data['result'] != null) {
+      final List data = response.data['result'];
+      return data.map((json) => UserModule.fromJson(json)).toList();
+    }
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching user permission: $e");
+    return [];
+  }
+}
+
 Future<List<UserModule>> getUserActivePermissions() async {
   try {
     const String staticUserId = "7011fe1a-e73a-4070-82af-326efe0f0042";

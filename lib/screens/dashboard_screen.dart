@@ -53,6 +53,7 @@ import 'MasterSetupScreen.dart'; // <--- IMPORT THE NEW SCREEN
 import 'withdraw_request_screen.dart'; // <--- ADD WITHDRAW REQUEST SCREEN
 import 'referral_management_screen.dart'; // <--- ADD REFERRAL MANAGEMENT SCREEN
 import '../models/booking_models.dart';
+import '../models/employee_model.dart';
 import '../controllers/provider_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import 'refund_management_screen.dart';
@@ -74,6 +75,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Customer? _selectedCustomer; // <--- ADD THIS VARIABLE
  // Map<String, String>? _selectedBooking; 
   BookingModel? _selectedBooking;
+
+  /// Holds the employee whose permissions are being viewed/edited.
+  /// Set when navigating from EmployeeListScreen → ModulePermissionScreen.
+  EmployeeModel? _permissionEmployee;
 
 final ProviderController providerController = Get.put(ProviderController());
 
@@ -266,12 +271,18 @@ onEditCustomer: (customer) {
               _currentRoute = 'employee/add';
             });
           },
+          onViewPermissions: (employee) {
+            setState(() {
+              _permissionEmployee = employee;
+              _currentRoute = 'employee/permission';
+            });
+          },
         );
 
       case 'employee/add':  
         return const AddEmployeeScreen();
       case 'employee/permission':
-        return const ModulePermissionScreen();  
+        return ModulePermissionScreen(preSelectedEmployee: _permissionEmployee);  
 
       // --- PROMOTIONS ---
       case 'promotion/banner':  
@@ -617,7 +628,7 @@ class DashboardHome extends StatelessWidget {
             }),
             const SizedBox(height: 24),
 
-            // 2. Charts Row: Revenue/Bookings Trend, Booking Status, Recent Notifications
+            // 2. Charts Row: Revenue/Bookings Trend, Orders by Category, Top Providers by Rating
             LayoutBuilder(builder: (context, constraints) {
               bool isDesktop = constraints.maxWidth > 1200;
               if (isDesktop) {
@@ -628,7 +639,7 @@ class DashboardHome extends StatelessWidget {
                     const SizedBox(width: 24),
                     Expanded(flex: 3, child: const OrdersByCategoryChart()),
                     const SizedBox(width: 24),
-                    Expanded(flex: 3, child: const RecentNotifications()),
+                    Expanded(flex: 3, child: const TopProvidersList()),
                   ],
                 );
               } else {
@@ -641,7 +652,7 @@ class DashboardHome extends StatelessWidget {
                       children: [
                         Expanded(child: const OrdersByCategoryChart()),
                         const SizedBox(width: 24),
-                        Expanded(child: const RecentNotifications()),
+                        Expanded(child: const TopProvidersList()),
                       ],
                     ),
                   ],
@@ -651,32 +662,8 @@ class DashboardHome extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // 4. Tables Row: Top Services, Top Providers, Platform Summary
-            LayoutBuilder(builder: (context, constraints) {
-              bool isDesktop = constraints.maxWidth > 1000;
-              if (isDesktop) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 4, child: const TopServicesList()),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 4, child: const TopProvidersList()),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 3, child: const PlatformSummary()),
-                  ],
-                );
-              } else {
-                return Column(
-                  children: [
-                    const TopServicesList(),
-                    const SizedBox(height: 24),
-                    const TopProvidersList(),
-                    const SizedBox(height: 24),
-                    const PlatformSummary(),
-                  ],
-                );
-              }
-            }),
+            // 4. Tables Row: Top 5 Services (full width)
+            const TopServicesList(),
           ],
         ),
       );

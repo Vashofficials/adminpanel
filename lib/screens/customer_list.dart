@@ -49,7 +49,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   
   // --- Pagination State (0-BASED) ---
   int _currentPage = 0; // UPDATED: Start at 0 for API
-  int _pageSize = 10;
+  int _pageSize = 50;   // default; user can switch to 500 / 1000 / 1500
+  static const List<int> _pageSizeOptions = [50, 500, 1000, 1500];
   int _totalPages = 1;
   int _totalElements = 0;
 
@@ -341,7 +342,62 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                                 );
                               }).toList(),
                             ),
-                            Text('Total Customers: $_totalElements', style: const TextStyle(color: kTextLight, fontWeight: FontWeight.bold)),
+                            // --- RANGE SELECTOR + Total Count ---
+                            Row(
+                              children: [
+                                // Range selector label
+                                const Text('Show:', style: TextStyle(color: kTextLight, fontSize: 13)),
+                                const SizedBox(width: 8),
+                                // Segmented buttons: 500 | 1000 | 1500
+                                ...([500, 1000, 1500].map((size) {
+                                  final bool isActive = _pageSize == size;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (_pageSize != size) {
+                                        setState(() {
+                                          _pageSize = size;
+                                          _currentPage = 0;
+                                        });
+                                        _fetchData();
+                                      }
+                                    },
+                                    child: Container(
+                                      margin: const EdgeInsets.only(right: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isActive ? kPrimaryOrange : Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: isActive ? kPrimaryOrange : kBorderColor,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$size',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isActive ? Colors.white : kTextDark,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList()),
+                                const SizedBox(width: 16),
+                                // Total count badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Total Customers: $_totalElements',
+                                    style: const TextStyle(color: kTextDark, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),

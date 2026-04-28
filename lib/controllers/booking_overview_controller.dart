@@ -90,7 +90,7 @@ class BookingOverviewController extends GetxController {
 
       // Fetch a large page to compute stats in-memory.
       // If the API has a dedicated stats endpoint in future, replace this.
-      final response = await _repo.fetchBookings(page: 0, size: 500);
+      final response = await _repo.fetchBookings(page: 0, size: 1000);
 
       _allFetched
         ..clear()
@@ -114,20 +114,21 @@ class BookingOverviewController extends GetxController {
   void _computeKpis() {
     totalBookings.value = _allFetched.length;
 
+    // Pending = only 'pending' status (matches dashboard logic)
     pendingCount.value = _allFetched
-        .where((b) {
-          final s = b.status.toUpperCase().replaceAll(' ', '');
-          return s == 'PENDING' || s == 'ONGOING' || s == 'INPROGRESS' || s == 'PROGRESS' || s == 'ACCEPTED' || s == 'PROCESSING';
-        })
+        .where((b) => b.status.toLowerCase() == 'pending')
         .length;
 
     completedCount.value = _allFetched
         .where((b) => b.status.toLowerCase() == 'completed')
         .length;
 
+    // Cancelled = both spellings (cancelled / canceled)
     canceledCount.value = _allFetched
-        .where((b) => b.status.toLowerCase() == 'cancelled' ||
-            b.status.toLowerCase() == 'canceled')
+        .where((b) {
+          final s = b.status.toLowerCase();
+          return s == 'cancelled' || s == 'canceled';
+        })
         .length;
 
     offlinePaymentCount.value = _allFetched
@@ -136,10 +137,10 @@ class BookingOverviewController extends GetxController {
             b.paymentMode.toUpperCase() == 'OFFLINE')
         .length;
 
-    // Revenue = sum of grandTotalPrice from completed bookings
+    // Revenue = sum of actualAmount from completed bookings (matches dashboard logic)
     totalRevenue.value = _allFetched
         .where((b) => b.status.toLowerCase() == 'completed')
-        .fold(0.0, (sum, b) => sum + b.grandTotalPrice);
+        .fold(0.0, (sum, b) => sum + b.actualAmount);
   }
 
   // ---------------------------------------------------------------------------
