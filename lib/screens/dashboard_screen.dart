@@ -660,10 +660,6 @@ class DashboardHome extends StatelessWidget {
               }
             }),
 
-            const SizedBox(height: 24),
-
-            // 4. Tables Row: Top 5 Services (full width)
-            const TopServicesList(),
           ],
         ),
       );
@@ -1153,83 +1149,6 @@ class RecentNotifications extends StatelessWidget {
   }
 }
 
-class TopServicesList extends StatelessWidget {
-  const TopServicesList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // Mock top services data
-    final List<Map<String, dynamic>> services = [
-      {"name": "AC Repair & Servicing", "category": "Appliance Repair", "bookings": 420, "revenue": "₹2.5L"},
-      {"name": "Full Home Cleaning", "category": "Cleaning", "bookings": 350, "revenue": "₹1.8L"},
-      {"name": "Bridal Makeup", "category": "Salon & Beauty", "bookings": 210, "revenue": "₹3.2L"},
-      {"name": "Plumbing Service", "category": "Home Repairs", "bookings": 380, "revenue": "₹0.9L"},
-      {"name": "Pest Control", "category": "Cleaning", "bookings": 150, "revenue": "₹0.6L"},
-    ];
-
-    return Container(
-      height: 350,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Top 5 Services Today", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-              TextButton(onPressed: () {}, child: const Text("View All", style: TextStyle(fontSize: 13))),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              itemCount: services.length,
-              itemBuilder: (context, index) {
-                final svc = services[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                        child: Center(child: Text("${index + 1}", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold))),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(svc['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                            Text(svc['category'], style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(svc['revenue'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                          Text("${svc['bookings']} Bookings", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class TopProvidersList extends StatelessWidget {
   const TopProvidersList({super.key});
 
@@ -1313,66 +1232,4 @@ class TopProvidersList extends StatelessWidget {
     );
   }
 }
-
-class PlatformSummary extends StatelessWidget {
-  const PlatformSummary({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 350,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Platform Summary", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-          const SizedBox(height: 24),
-          Expanded(
-            child: Column(
-              children: [
-                _buildSummaryRow("App Downloads", "12,450", "+15%"),
-                const Divider(),
-                _buildSummaryRow("Active Users (Monthly)", "8,210", "+5%"),
-                const Divider(),
-                _buildSummaryRow("Avg. Booking Value", "₹1,250", "+2%"),
-                const Divider(),
-                _buildSummaryRow("Refund Rate", "1.2%", "-0.5%"),
-                const Divider(),
-                _buildSummaryRow("Customer Retention", "68%", "+4%"),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, String value, String trend) {
-    bool isPositive = trend.startsWith("+");
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-          Row(
-            children: [
-              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E293B))),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: isPositive ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
-                child: Text(trend, style: TextStyle(color: isPositive ? Colors.green.shade700 : Colors.red.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-}
+
