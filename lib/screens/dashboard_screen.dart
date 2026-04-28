@@ -442,6 +442,15 @@ class DashboardHome extends StatelessWidget {
 
   const DashboardHome({super.key, this.onNav});
 
+  String _formatCurrency(double amount) {
+    if (amount >= 100000) {
+      return '₹${(amount / 100000).toStringAsFixed(1)}L';
+    } else if (amount >= 1000) {
+      return '₹${(amount / 1000).toStringAsFixed(1)}K';
+    }
+    return '₹${amount.toStringAsFixed(0)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final DashboardController controller = Get.put(DashboardController());
@@ -456,57 +465,59 @@ class DashboardHome extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row: Title & Actions
+            // Header Row: Title + Refresh + Export
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Dashboard Overview", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
-                    Text("Welcome back! Here's what's happening on your platform today.", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                  ],
-                ),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                          const SizedBox(width: 8),
-                          Text("26 Apr 2026 - 26 May 2026", style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
-                          const SizedBox(width: 8),
-                          Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey.shade600),
-                        ],
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Dashboard Overview", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                        Text("Welcome back! Here's what's happening on your platform.", style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      ],
                     ),
                     const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => controller.exportDashboardData(),
-                      icon: const Icon(Icons.download, size: 18),
-                      label: const Text("Export Report"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF97316),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    // Refresh Button
+                    Obx(() => Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: controller.isRefreshing.value ? null : () => controller.manualRefresh(),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4361EE).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF4361EE).withValues(alpha: 0.3)),
+                          ),
+                          child: controller.isRefreshing.value
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4361EE)))
+                              : const Icon(Icons.refresh, size: 20, color: Color(0xFF4361EE)),
+                        ),
                       ),
-                    ),
+                    )),
                   ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => controller.exportDashboardData(),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text("Export Report"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // 1. Primary KPI Cards (6 cards)
+            // --- KPI CARDS: 2 ROWS × 3 COLUMNS ---
             LayoutBuilder(builder: (context, constraints) {
-              int crossAxisCount = constraints.maxWidth > 1400 ? 6 : (constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 800 ? 2 : 1));
+              int crossAxisCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 800 ? 2 : 1);
               double spacing = 16.0;
               double width = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
 
@@ -514,12 +525,93 @@ class DashboardHome extends StatelessWidget {
                 spacing: spacing,
                 runSpacing: spacing,
                 children: [
-                  SizedBox(width: width, child: StatCard(isPrimary: true, title: "Total Collection", value: "₹${controller.todayRevenue.value.toStringAsFixed(0)}", icon: Icons.currency_rupee, color: const Color(0xFF4361EE), subtitle: "+8% from yesterday")),
-                  SizedBox(width: width, child: StatCard(title: "Orders Today", value: controller.todayBookings.value.toString(), icon: Icons.shopping_cart, color: const Color(0xFF10B981), subtitle: "+5% from yesterday")),
-                  SizedBox(width: width, child: StatCard(title: "Active Providers", value: controller.totalProviders.value.toString(), icon: Icons.handyman, color: const Color(0xFFF59E0B), subtitle: "Currently online")),
-                  SizedBox(width: width, child: StatCard(title: "Pending Assignments", value: controller.pendingBookings.value.toString(), icon: Icons.pending_actions, color: const Color(0xFF8B5CF6), subtitle: "Needs action")),
-                  SizedBox(width: width, child: StatCard(title: "Cancellations", value: controller.cancelledBookings.value.toString(), icon: Icons.cancel, color: const Color(0xFFEF4444), subtitle: "Today's cancellations")),
-                  SizedBox(width: width, child: StatCard(title: "Total Users", value: controller.totalCustomers.value.toString(), icon: Icons.group, color: const Color(0xFF3B82F6), subtitle: "Registered customers")),
+                  // 1. Collection Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "All Time Collection",
+                      mainValue: _formatCurrency(controller.allTimeCollection.value),
+                      icon: Icons.currency_rupee,
+                      color: const Color(0xFF4361EE),
+                      isPrimary: true,
+                      subItems: [
+                        _SubItem("Today", _formatCurrency(controller.todayCollection.value)),
+                      ],
+                    ),
+                  ),
+
+                  // 2. Orders Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "Total Bookings",
+                      mainValue: controller.totalOrders.value.toString(),
+                      icon: Icons.shopping_cart,
+                      color: const Color(0xFF10B981),
+                      subItems: [
+                        _SubItem("Today", controller.todayOrders.value.toString()),
+                        _SubItem("Today Scheduled", controller.todayScheduledBookings.value.toString()),
+                      ],
+                    ),
+                  ),
+
+                  // 3. Providers Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "Total Providers",
+                      mainValue: controller.totalProviders.value.toString(),
+                      icon: Icons.handyman,
+                      color: const Color(0xFFF59E0B),
+                      subItems: [
+                        _SubItem("Active", controller.activeProviders.value.toString(), itemColor: const Color(0xFF10B981)),
+                        _SubItem("Inactive", controller.inactiveProviders.value.toString(), itemColor: const Color(0xFFEF4444)),
+                      ],
+                    ),
+                  ),
+
+                  // 4. Pending Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "Total Pending",
+                      mainValue: controller.totalPending.value.toString(),
+                      icon: Icons.pending_actions,
+                      color: const Color(0xFF8B5CF6),
+                      subItems: [
+                        _SubItem("Today", controller.todayPending.value.toString()),
+                      ],
+                    ),
+                  ),
+
+                  // 5. Cancellations Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "Total Cancelled",
+                      mainValue: controller.totalCancelled.value.toString(),
+                      icon: Icons.cancel,
+                      color: const Color(0xFFEF4444),
+                      subItems: [
+                        _SubItem("Today", controller.todayCancelled.value.toString()),
+                      ],
+                    ),
+                  ),
+
+                  // 6. Users Card
+                  SizedBox(
+                    width: width,
+                    child: _UpgradedStatCard(
+                      title: "Total Users",
+                      mainValue: controller.totalUsers.value.toString(),
+                      icon: Icons.group,
+                      color: const Color(0xFF3B82F6),
+                      subItems: [
+                        _SubItem("Active", controller.activeUsers.value.toString(), itemColor: const Color(0xFF10B981)),
+                        _SubItem("Inactive", controller.inactiveUsers.value.toString(), itemColor: const Color(0xFFEF4444)),
+                      ],
+                    ),
+                  ),
                 ],
               );
             }),
@@ -593,25 +685,33 @@ class DashboardHome extends StatelessWidget {
 }
 
 // -----------------------------------------------------------------------------
-// HELPER WIDGETS
+// HELPER: Sub-item data for upgraded stat cards
 // -----------------------------------------------------------------------------
-
-class StatCard extends StatelessWidget {
-  final String title;
+class _SubItem {
+  final String label;
   final String value;
+  final Color? itemColor;
+  const _SubItem(this.label, this.value, {this.itemColor});
+}
+
+// -----------------------------------------------------------------------------
+// UPGRADED STAT CARD (Total + Today / Active + Inactive)
+// -----------------------------------------------------------------------------
+class _UpgradedStatCard extends StatelessWidget {
+  final String title;
+  final String mainValue;
   final IconData icon;
   final Color color;
-  final String subtitle;
   final bool isPrimary;
+  final List<_SubItem> subItems;
 
-  const StatCard({
-    super.key,
+  const _UpgradedStatCard({
     required this.title,
-    required this.value,
+    required this.mainValue,
     required this.icon,
     required this.color,
-    required this.subtitle,
     this.isPrimary = false,
+    required this.subItems,
   });
 
   @override
@@ -620,36 +720,42 @@ class StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isPrimary ? color : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isPrimary ? null : Border.all(color: color.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(16),
+        border: isPrimary ? null : Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
-          if (isPrimary)
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
+          BoxShadow(
+            color: isPrimary
+                ? color.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: isPrimary ? 12 : 8,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Title + Icon
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isPrimary ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: isPrimary ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF64748B),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isPrimary ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: isPrimary ? Colors.white.withValues(alpha: 0.2) : color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
@@ -659,22 +765,71 @@ class StatCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+
+          // Main Value (BIG)
           Text(
-            value,
+            mainValue,
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: isPrimary ? Colors.white : color,
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: isPrimary ? Colors.white : const Color(0xFF1E293B),
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: isPrimary ? Colors.white.withOpacity(0.8) : color.withOpacity(0.8),
-              fontSize: 13,
-            ),
+          const SizedBox(height: 12),
+
+          // Divider
+          Divider(
+            color: isPrimary ? Colors.white.withValues(alpha: 0.2) : Colors.grey.shade200,
+            height: 1,
+          ),
+          const SizedBox(height: 12),
+
+          // Sub Items Row
+          Row(
+            children: subItems.map((item) {
+              final isLast = item == subItems.last;
+              return Expanded(
+                child: Row(
+                  children: [
+                    if (item != subItems.first)
+                      Container(
+                        width: 1,
+                        height: 28,
+                        margin: const EdgeInsets.only(right: 12),
+                        color: isPrimary ? Colors.white.withValues(alpha: 0.2) : Colors.grey.shade200,
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              color: isPrimary ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade500,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.value,
+                            style: TextStyle(
+                              color: isPrimary
+                                  ? Colors.white
+                                  : (item.itemColor ?? color),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -704,10 +859,10 @@ class RevenueBookingsTrend extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("7-Day Revenue Trend", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+              const Text("Monthly Bookings", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
               Row(
                 children: [
-                  _buildLegendItem("Revenue", const Color(0xFF2563EB)),
+                  _buildLegendItem("Bookings", const Color(0xFF4361EE)),
                 ],
               )
             ],
@@ -716,21 +871,74 @@ class RevenueBookingsTrend extends StatelessWidget {
           Expanded(
             child: Obx(() {
               if (controller.chartData.isEmpty) {
-                return const Center(child: Text("No trending data available", style: TextStyle(color: Colors.grey)));
+                return const Center(child: Text("No booking data available", style: TextStyle(color: Colors.grey)));
               }
 
-              List<FlSpot> spots = [];
+              // Build bar groups from monthly booking counts
+              List<BarChartGroupData> barGroups = [];
+              double maxY = 0;
               for (int i = 0; i < controller.chartData.length; i++) {
                 final month = controller.chartData[i];
-                final total = (month.cashBooking ?? 0) + (month.onlineBooking ?? 0);
-                spots.add(FlSpot(i.toDouble(), total.toDouble()));
+                final total = (month.cashBooking ?? 0).toDouble();
+                if (total > maxY) maxY = total;
+                barGroups.add(
+                  BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: total,
+                        width: 18,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(6),
+                          topRight: Radius.circular(6),
+                        ),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF4361EE), Color(0xFF7C3AED)],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               }
 
-              return LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1)),
+              // Add 20% padding to maxY for breathing room
+              maxY = maxY > 0 ? (maxY * 1.25).ceilToDouble() : 10;
+
+              return BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxY,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipRoundedRadius: 8,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        String monthName = controller.chartData[group.x].mothName ?? '';
+                        return BarTooltipItem(
+                          '$monthName\n${rod.toY.toInt()} bookings',
+                          const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        );
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                  ),
                   titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (value, meta) => Text(value.toInt().toString(), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)))),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) => Text(
+                          value.toInt().toString(),
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                        ),
+                      ),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true, 
@@ -741,7 +949,7 @@ class RevenueBookingsTrend extends StatelessWidget {
                              String name = controller.chartData[idx].mothName?.substring(0, 3) ?? "";
                              return Padding(
                                padding: const EdgeInsets.only(top: 8.0),
-                               child: Text(name, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                               child: Text(name, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
                              );
                           }
                           return const Text("");
@@ -752,17 +960,7 @@ class RevenueBookingsTrend extends StatelessWidget {
                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
                   borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      color: const Color(0xFF2563EB),
-                      barWidth: 3,
-                      isStrokeCapRound: true,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(show: true, color: const Color(0xFF2563EB).withOpacity(0.1)),
-                    ),
-                  ],
+                  barGroups: barGroups,
                 ),
               );
             }),
@@ -786,6 +984,17 @@ class RevenueBookingsTrend extends StatelessWidget {
 class OrdersByCategoryChart extends StatelessWidget {
   const OrdersByCategoryChart({super.key});
 
+  static const List<Color> _chartColors = [
+    Color(0xFF10B981),
+    Color(0xFF3B82F6),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+    Color(0xFFEC4899),
+    Color(0xFFF97316),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final DashboardController controller = Get.find<DashboardController>();
@@ -801,65 +1010,86 @@ class OrdersByCategoryChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text("Orders by Category", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Expanded(
             child: Obx(() {
               if (controller.categoryNames.isEmpty || controller.categoryCounts.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-              
-              double maxY = controller.categoryCounts.reduce((curr, next) => curr > next ? curr : next).toDouble() * 1.2;
-              if (maxY == 0) maxY = 100;
 
-              return BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxY,
-                  barTouchData: BarTouchData(enabled: true),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const style = TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500, fontSize: 12);
-                          int index = value.toInt();
-                          String text = '';
-                          if (index >= 0 && index < controller.categoryNames.length) {
-                             text = controller.categoryNames[index];
-                          }
-                          if (text.length > 10) text = '${text.substring(0, 8)}..';
-                          return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(text, style: style));
-                        },
+              final int totalOrders = controller.categoryCounts.fold(0, (sum, c) => sum + c);
+              if (totalOrders == 0) {
+                return const Center(child: Text("No category data", style: TextStyle(color: Colors.grey)));
+              }
+
+              // Build pie sections
+              final List<PieChartSectionData> sections = [];
+              for (int i = 0; i < controller.categoryNames.length; i++) {
+                final count = controller.categoryCounts[i];
+                final double pct = (count / totalOrders) * 100;
+                sections.add(
+                  PieChartSectionData(
+                    color: _chartColors[i % _chartColors.length],
+                    value: count.toDouble(),
+                    title: '${pct.toStringAsFixed(0)}%',
+                    titleStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    radius: 50,
+                    titlePositionPercentageOffset: 0.55,
+                  ),
+                );
+              }
+
+              return Column(
+                children: [
+                  // Donut Chart
+                  Expanded(
+                    child: PieChart(
+                      PieChartData(
+                        sections: sections,
+                        centerSpaceRadius: 40,
+                        sectionsSpace: 2,
+                        borderData: FlBorderData(show: false),
                       ),
                     ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
-                  borderData: FlBorderData(show: false),
-                  gridData: const FlGridData(show: false),
-                  barGroups: List.generate(controller.categoryCounts.length, (i) {
-                     final colors = [
-                        const Color(0xFF10B981),
-                        const Color(0xFF3B82F6),
-                        const Color(0xFFF59E0B),
-                        const Color(0xFFEF4444),
-                        const Color(0xFF8B5CF6)
-                     ];
-                     return BarChartGroupData(
-                       x: i,
-                       barRods: [
-                         BarChartRodData(
-                           toY: controller.categoryCounts[i].toDouble(), 
-                           color: colors[i % colors.length], 
-                           width: 16, 
-                           borderRadius: BorderRadius.circular(4)
-                         )
-                       ]
-                     );
-                  }),
-                ),
+                  const SizedBox(height: 16),
+                  // Legend
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(controller.categoryNames.length, (i) {
+                      final name = controller.categoryNames[i];
+                      final count = controller.categoryCounts[i];
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: _chartColors[i % _chartColors.length],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$name ($count)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ],
               );
             }),
           ),

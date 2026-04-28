@@ -13,18 +13,44 @@ import '../models/booking_models.dart';
 class DashboardController extends GetxController {
   final ApiService _api = ApiService();
 
-  // --- KPI STATE ---
+  // --- 1. COLLECTION ---
+  var allTimeCollection = 0.0.obs;
+  var todayCollection = 0.0.obs;
+
+  // --- 2. ORDERS ---
+  var totalOrders = 0.obs;
+  var todayOrders = 0.obs;
+  var todayScheduledBookings = 0.obs;
+
+  // --- 3. PROVIDERS ---
+  var totalProviders = 0.obs;
+  var activeProviders = 0.obs;
+  var inactiveProviders = 0.obs;
+
+  // --- 4. PENDING BOOKINGS ---
+  var totalPending = 0.obs;
+  var todayPending = 0.obs;
+
+  // --- 5. CANCELLATIONS ---
+  var totalCancelled = 0.obs;
+  var todayCancelled = 0.obs;
+
+  // --- 6. USERS ---
+  var totalUsers = 0.obs;
+  var activeUsers = 0.obs;
+  var inactiveUsers = 0.obs;
+
+  // --- BOOKING STATUS (kept for other screens) ---
+  var completedBookings = 0.obs;
+  var ongoingBookings = 0.obs;
+  var pendingBookings = 0.obs;
+  var cancelledBookings = 0.obs;
+
+  // --- LEGACY KPI (kept for export/other screens) ---
   var totalRevenue = 0.0.obs;
   var totalBookings = 0.obs;
   var activeServices = 0.obs;
   var totalCustomers = 0.obs;
-  var totalProviders = 0.obs;
-  var completedBookings = 0.obs;
-
-  // --- BOOKING STATUS ---
-  var pendingBookings = 0.obs;
-  var cancelledBookings = 0.obs;
-  var ongoingBookings = 0.obs;
 
   // --- CATEGORY DATA ---
   var categoryNames = <String>[].obs;
@@ -33,18 +59,13 @@ class DashboardController extends GetxController {
   // --- CHART STATE ---
   var chartData = <MonthData>[].obs;
 
-  // --- MOCK TODAY'S DATA ---
-  var todayRevenue = 245000.0.obs;
-  var todayBookings = 24.obs;
-  var newCustomers = 32.obs;
-  var newProviders = 8.obs;
-  var averageRating = 4.6.obs;
-
   // --- TOP PROVIDERS ---
   var topProviders = <ProviderModel>[].obs;
 
   var isLoading = true.obs;
+  var isRefreshing = false.obs;
   Timer? _refreshTimer;
+  DateTime? _lastFetchTime;
 
   @override
   void onInit() {
@@ -65,167 +86,267 @@ class DashboardController extends GetxController {
     super.onClose();
   }
 
+  /// Check if cache is still valid (45 seconds)
+  bool _isCacheValid() {
+    if (_lastFetchTime == null) return false;
+    return DateTime.now().difference(_lastFetchTime!).inSeconds < 45;
+  }
+
+  /// Manual refresh from UI button
+  Future<void> manualRefresh() async {
+    _lastFetchTime = null; // Invalidate cache
+    isRefreshing.value = true;
+    await refreshDashboard(isAutoRefresh: true);
+    isRefreshing.value = false;
+  }
+
+  /// Helper: Check if a datetime string is today
+  bool _isToday(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) return false;
+    try {
+      final now = DateTime.now();
+      String dateStr = dateTimeStr;
+      if (dateStr.contains('T')) {
+        dateStr = dateStr.split('T').first;
+      }
+      final parsed = DateTime.parse(dateStr);
+      return parsed.year == now.year && parsed.month == now.month && parsed.day == now.day;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> refreshDashboard({bool isAutoRefresh = false}) async {
+    // Skip if cache is still valid for auto-refresh
+    if (isAutoRefresh && _isCacheValid()) return;
+
     try {
       if (!isAutoRefresh) isLoading.value = true;
-      
-      // 1. Fetch Bookings to count metrics, Pending, and Cancellations
-      try {
-        final bookingData = await _api.getBookings(page: 0, size: 1000);
-        if (bookingData != null && bookingData['result'] != null) {
-          final bookingResp = BookingResponse.fromJson(bookingData);
-          final List<BookingModel> bookings = bookingResp.content;
-          
-          final now = DateTime.now();
-          final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-          
-          double revToday = 0.0;
-          int ordersToday = 0;
-          int pendingCount = 0;
-          int cancelledCount = 0;
-          int completedCount = 0;
-          int ongoingCount = 0;
 
-          // Monthly revenue tracker
-          List<MonthData> monthlyRevenue = List.generate(12, (index) => MonthData(
-            mothName: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index], 
-            cashBooking: 0, 
-            onlineBooking: 0
-          ));
+      // --- PARALLEL API CALLS ---
+      final results = await Future.wait([
+        _fetchBookingData(),
+        _fetchProviderData(),
+        _fetchCustomerData(),
+        _fetchCategoryData(),
+      ]);
 
-          // Category count tracker
-          Map<String, int> catCounts = {};
-          
-          for (var b in bookings) {
-            String status = b.status.toLowerCase();
-            if (status == 'pending') {
-              pendingCount++;
-            } else if (status == 'cancelled') {
-              cancelledCount++;
-            } else if (status == 'completed') {
-              completedCount++;
-            } else if (status == 'ongoing') {
-              ongoingCount++;
-            }
-            
-            // Calculate Monthly Trend Data
-            try {
-              String bDateStr = b.bookingDate;
-              if (bDateStr.contains('T')) {
-                bDateStr = bDateStr.split('T').first;
-              }
-              final bDateParsed = DateTime.parse(bDateStr);
-              if (bDateParsed.year == now.year) {
-                int monthIdx = bDateParsed.month - 1;
-                if (monthIdx >= 0 && monthIdx < 12) {
-                  if (b.paymentMode.toUpperCase() == 'CASH') {
-                    final int currentCash = monthlyRevenue[monthIdx].cashBooking ?? 0;
-                    monthlyRevenue[monthIdx].cashBooking = currentCash + b.grandTotalPrice.toInt();
-                  } else {
-                    final int currentOnline = monthlyRevenue[monthIdx].onlineBooking ?? 0;
-                    monthlyRevenue[monthIdx].onlineBooking = currentOnline + b.grandTotalPrice.toInt();
-                  }
-                }
-              }
-            } catch (e) {
-              // Date parsing fallback
-            }
-
-            // Calculate Category counts
-            for (var s in b.services) {
-              final cName = s.categoryName;
-              if (cName.isNotEmpty) {
-                catCounts[cName] = (catCounts[cName] ?? 0) + 1;
-              }
-            }
-
-            String bDate = b.bookingDate;
-            if (bDate.contains('T')) {
-              bDate = bDate.split('T').first;
-            }
-            
-            if (bDate == todayStr) {
-              ordersToday++;
-              if (status != 'cancelled') {
-                revToday += b.grandTotalPrice;
-              }
-            }
-          }
-          
-          todayRevenue.value = revToday;
-          todayBookings.value = ordersToday;
-          pendingBookings.value = pendingCount;
-          cancelledBookings.value = cancelledCount;
-          completedBookings.value = completedCount;
-          ongoingBookings.value = ongoingCount;
-          
-          totalBookings.value = bookings.length;
-
-          // Assign Chart Data
-          chartData.assignAll(monthlyRevenue);
-
-          // Assign Category Counts
-          if (catCounts.isNotEmpty) {
-            var sortedKeys = catCounts.keys.toList()..sort((a, b) => catCounts[b]!.compareTo(catCounts[a]!));
-            categoryNames.assignAll(sortedKeys.take(5).toList());
-            categoryCounts.assignAll(sortedKeys.take(5).map((k) => catCounts[k]!).toList());
-          } else {
-            categoryNames.assignAll(['Cleaning', 'Plumbing', 'Electrician', 'Salon', 'Appliances']);
-            categoryCounts.assignAll([0, 0, 0, 0, 0]);
-          }
-        }
-      } catch (e) {
-        debugPrint("❌ Error calculating real-time bookings for dashboard: $e");
-      }
-
-      // 2. Fetch Categories & active services for extra logic
-      try {
-        final categories = await _api.getCategories();
-
-        List<Future<List<ServiceModel>>> serviceFutures = [];
-        for (var cat in categories) {
-          serviceFutures.add(_api.getServices(categoryId: cat.id));
-        }
-        
-        final serviceResults = await Future.wait(serviceFutures);
-        int activeCount = 0;
-        for (var list in serviceResults) {
-          activeCount += list.where((s) => s.isActive).length;
-        }
-        activeServices.value = activeCount;
-      } catch (e) {
-        debugPrint("❌ Error calculating categories for dashboard: $e");
-      }
-
-      // 4. Fetch Total Customers count
-      try {
-        final customerData = await _api.getAllCustomers(page: 0, size: 10);
-        if (customerData != null && customerData['result'] != null) {
-          final resp = CustomerResponse.fromJson(customerData);
-          totalCustomers.value = resp.totalElements;
-        }
-      } catch (e) {
-        debugPrint("❌ Error calculating customer count for dashboard: $e");
-      }
-
-      // 5. Fetch Total Providers count and Top Providers
-      try {
-        final providerData = await _api.getAllServiceProviders();
-        final providerResp = ProviderResponse.fromJson(providerData);
-        
-        totalProviders.value = providerResp.result.length;
-
-        List<ProviderModel> providers = List.from(providerResp.result);
-        providers.sort((a, b) => b.totalRating.compareTo(a.totalRating));
-        topProviders.assignAll(providers.take(5).toList());
-      } catch (e) {
-        debugPrint("❌ Error calculating provider counts for dashboard: $e");
-      }
-
+      _lastFetchTime = DateTime.now();
     } catch (e) {
       debugPrint("❌ Dashboard Refresh Error: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Fetch and process all booking data
+  Future<void> _fetchBookingData() async {
+    try {
+      final bookingData = await _api.getBookings(page: 0, size: 1000);
+      if (bookingData == null || bookingData['result'] == null) return;
+
+      final bookingResp = BookingResponse.fromJson(bookingData);
+      final List<BookingModel> bookings = bookingResp.content;
+      final now = DateTime.now();
+
+      double allTimeRev = 0.0;
+      double todayRev = 0.0;
+      int todayOrderCount = 0;
+      int todayScheduledCount = 0;
+      int pendingTotal = 0;
+      int pendingToday = 0;
+      int cancelledTotal = 0;
+      int cancelledToday = 0;
+      int completedCount = 0;
+      int ongoingCount = 0;
+
+      // Monthly revenue tracker
+      List<MonthData> monthlyRevenue = List.generate(12, (index) => MonthData(
+        mothName: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index],
+        cashBooking: 0,
+        onlineBooking: 0,
+      ));
+
+      // Category count tracker
+      Map<String, int> catCounts = {};
+
+      for (var b in bookings) {
+        String status = b.status.toLowerCase();
+        bool isToday = _isToday(b.creationTime);
+
+        // --- Collection: SUM where status = "Completed" ---
+        if (status == 'completed') {
+          allTimeRev += b.actualAmount;
+          if (isToday) {
+            todayRev += b.actualAmount;
+          }
+        }
+
+        // --- Today orders ---
+        if (isToday) {
+          todayOrderCount++;
+        }
+
+        if (_isToday(b.bookingDate)) {
+          todayScheduledCount++;
+        }
+
+        // --- Status counts ---
+        if (status == 'pending') {
+          pendingTotal++;
+          if (isToday) pendingToday++;
+        } else if (status == 'cancelled') {
+          cancelledTotal++;
+          if (isToday) cancelledToday++;
+        } else if (status == 'completed') {
+          completedCount++;
+        } else if (status == 'ongoing') {
+          ongoingCount++;
+        }
+
+        // --- Monthly Booking Count Data ---
+        try {
+          String bDateStr = b.bookingDate;
+          if (bDateStr.contains('T')) {
+            bDateStr = bDateStr.split('T').first;
+          }
+          final bDateParsed = DateTime.parse(bDateStr);
+          if (bDateParsed.year == now.year) {
+            int monthIdx = bDateParsed.month - 1;
+            if (monthIdx >= 0 && monthIdx < 12) {
+              final int currentCount = monthlyRevenue[monthIdx].cashBooking ?? 0;
+              monthlyRevenue[monthIdx].cashBooking = currentCount + 1;
+            }
+          }
+        } catch (e) {
+          // Date parsing fallback
+        }
+
+        // --- Category counts ---
+        for (var s in b.services) {
+          final cName = s.categoryName;
+          if (cName.isNotEmpty) {
+            catCounts[cName] = (catCounts[cName] ?? 0) + 1;
+          }
+        }
+      }
+
+      // Assign values
+      allTimeCollection.value = allTimeRev;
+      todayCollection.value = todayRev;
+      totalOrders.value = bookings.length;
+      todayOrders.value = todayOrderCount;
+      todayScheduledBookings.value = todayScheduledCount;
+      totalPending.value = pendingTotal;
+      todayPending.value = pendingToday;
+      totalCancelled.value = cancelledTotal;
+      todayCancelled.value = cancelledToday;
+      completedBookings.value = completedCount;
+      ongoingBookings.value = ongoingCount;
+
+      // Legacy fields
+      totalRevenue.value = allTimeRev;
+      totalBookings.value = bookings.length;
+      pendingBookings.value = pendingTotal;
+      cancelledBookings.value = cancelledTotal;
+
+      // Chart Data
+      chartData.assignAll(monthlyRevenue);
+
+      // Category Counts
+      if (catCounts.isNotEmpty) {
+        var sortedKeys = catCounts.keys.toList()..sort((a, b) => catCounts[b]!.compareTo(catCounts[a]!));
+        categoryNames.assignAll(sortedKeys.take(5).toList());
+        categoryCounts.assignAll(sortedKeys.take(5).map((k) => catCounts[k]!).toList());
+      } else {
+        categoryNames.assignAll(['Cleaning', 'Plumbing', 'Electrician', 'Salon', 'Appliances']);
+        categoryCounts.assignAll([0, 0, 0, 0, 0]);
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching booking data: $e");
+    }
+  }
+
+  /// Fetch and process provider data
+  Future<void> _fetchProviderData() async {
+    try {
+      final providerData = await _api.getAllServiceProviders();
+      final providerResp = ProviderResponse.fromJson(providerData);
+      final providers = providerResp.result;
+
+      int activeCount = 0;
+      int inactiveCount = 0;
+
+      for (var p in providers) {
+        if (p.isActive) {
+          activeCount++;
+        } else {
+          inactiveCount++;
+        }
+      }
+
+      totalProviders.value = providers.length;
+      activeProviders.value = activeCount;
+      inactiveProviders.value = inactiveCount;
+
+      // Top providers by rating
+      List<ProviderModel> sorted = List.from(providers);
+      sorted.sort((a, b) => b.totalRating.compareTo(a.totalRating));
+      topProviders.assignAll(sorted.take(5).toList());
+    } catch (e) {
+      debugPrint("❌ Error fetching provider data: $e");
+    }
+  }
+
+  /// Fetch and process customer data
+  Future<void> _fetchCustomerData() async {
+    try {
+      final customerData = await _api.getAllCustomers(page: 0, size: 5000);
+      if (customerData == null || customerData['result'] == null) return;
+
+      final resp = CustomerResponse.fromJson(customerData);
+      final customers = resp.content;
+
+      int activeCount = 0;
+      int inactiveCount = 0;
+
+      for (var c in customers) {
+        if (c.isActive) {
+          activeCount++;
+        } else {
+          inactiveCount++;
+        }
+      }
+
+      totalUsers.value = resp.totalElements;
+      activeUsers.value = activeCount;
+      inactiveUsers.value = inactiveCount;
+
+      // Legacy
+      totalCustomers.value = resp.totalElements;
+    } catch (e) {
+      debugPrint("❌ Error fetching customer data: $e");
+    }
+  }
+
+  /// Fetch category/service data
+  Future<void> _fetchCategoryData() async {
+    try {
+      final categories = await _api.getCategories();
+
+      List<Future<List<ServiceModel>>> serviceFutures = [];
+      for (var cat in categories) {
+        serviceFutures.add(_api.getServices(categoryId: cat.id));
+      }
+
+      final serviceResults = await Future.wait(serviceFutures);
+      int activeCount = 0;
+      for (var list in serviceResults) {
+        activeCount += list.where((s) => s.isActive).length;
+      }
+      activeServices.value = activeCount;
+    } catch (e) {
+      debugPrint("❌ Error fetching category data: $e");
     }
   }
 
@@ -242,22 +363,29 @@ class DashboardController extends GetxController {
       ]);
 
       // Add Data
-      sheetObject.appendRow([TextCellValue('Total Collection'), IntCellValue((totalRevenue.value).toInt())]);
-      sheetObject.appendRow([TextCellValue('Total Bookings'), IntCellValue(totalBookings.value)]);
-      sheetObject.appendRow([TextCellValue('Active Services'), IntCellValue(activeServices.value)]);
-      sheetObject.appendRow([TextCellValue('Total Customers'), IntCellValue(totalCustomers.value)]);
+      sheetObject.appendRow([TextCellValue('All Time Collection'), IntCellValue((allTimeCollection.value).toInt())]);
+      sheetObject.appendRow([TextCellValue('Today Collection'), IntCellValue((todayCollection.value).toInt())]);
+      sheetObject.appendRow([TextCellValue('Total Bookings'), IntCellValue(totalOrders.value)]);
+      sheetObject.appendRow([TextCellValue('Today Orders'), IntCellValue(todayOrders.value)]);
+      sheetObject.appendRow([TextCellValue('Today Scheduled'), IntCellValue(todayScheduledBookings.value)]);
       sheetObject.appendRow([TextCellValue('Total Providers'), IntCellValue(totalProviders.value)]);
-      sheetObject.appendRow([TextCellValue('Completed Bookings'), IntCellValue(completedBookings.value)]);
+      sheetObject.appendRow([TextCellValue('Active Providers'), IntCellValue(activeProviders.value)]);
+      sheetObject.appendRow([TextCellValue('Inactive Providers'), IntCellValue(inactiveProviders.value)]);
+      sheetObject.appendRow([TextCellValue('Total Users'), IntCellValue(totalUsers.value)]);
+      sheetObject.appendRow([TextCellValue('Active Users'), IntCellValue(activeUsers.value)]);
+      sheetObject.appendRow([TextCellValue('Inactive Users'), IntCellValue(inactiveUsers.value)]);
 
       sheetObject.appendRow([TextCellValue('')]);
       sheetObject.appendRow([TextCellValue('Booking Status')]);
+      sheetObject.appendRow([TextCellValue('Total Pending'), IntCellValue(totalPending.value)]);
+      sheetObject.appendRow([TextCellValue('Today Pending'), IntCellValue(todayPending.value)]);
+      sheetObject.appendRow([TextCellValue('Total Cancelled'), IntCellValue(totalCancelled.value)]);
+      sheetObject.appendRow([TextCellValue('Today Cancelled'), IntCellValue(todayCancelled.value)]);
       sheetObject.appendRow([TextCellValue('Completed'), IntCellValue(completedBookings.value)]);
       sheetObject.appendRow([TextCellValue('Ongoing'), IntCellValue(ongoingBookings.value)]);
-      sheetObject.appendRow([TextCellValue('Pending'), IntCellValue(pendingBookings.value)]);
-      sheetObject.appendRow([TextCellValue('Cancelled'), IntCellValue(cancelledBookings.value)]);
 
       excel.save(fileName: "Dashboard_Report_${DateTime.now().toIso8601String().split('T').first}.xlsx");
-      
+
       Get.snackbar(
         "Export Successful",
         "Dashboard report exported successfully.",
