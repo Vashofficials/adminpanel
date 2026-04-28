@@ -108,17 +108,19 @@ class DashboardController extends GetxController {
     isRefreshing.value = false;
   }
 
-  /// Helper: Check if a datetime string is today
-  bool _isToday(String? dateTimeStr) {
+  /// Helper: Check if a datetime string is today in IST
+  bool _isTodayIST(String? dateTimeStr) {
     if (dateTimeStr == null || dateTimeStr.isEmpty) return false;
     try {
-      final now = DateTime.now();
+      final nowUtc = DateTime.now().toUtc();
+      final nowIST = nowUtc.add(const Duration(hours: 5, minutes: 30));
+      
       String dateStr = dateTimeStr;
       if (dateStr.contains('T')) {
         dateStr = dateStr.split('T').first;
       }
       final parsed = DateTime.parse(dateStr);
-      return parsed.year == now.year && parsed.month == now.month && parsed.day == now.day;
+      return parsed.year == nowIST.year && parsed.month == nowIST.month && parsed.day == nowIST.day;
     } catch (e) {
       return false;
     }
@@ -180,32 +182,36 @@ class DashboardController extends GetxController {
 
       for (var b in bookings) {
         String status = b.status.toLowerCase();
-        bool isToday = _isToday(b.creationTime);
+        String paymentStatus = b.paymentStatus.toLowerCase();
+        bool isTodayCreation = _isTodayIST(b.creationTime);
+        bool isTodayBooking = _isTodayIST(b.bookingDate);
 
-        // --- Collection: SUM where status = "Completed" ---
+        // --- All Time Collection ---
         if (status == 'completed') {
           allTimeRev += b.actualAmount;
-          if (isToday) {
-            todayRev += b.actualAmount;
-          }
+        }
+
+        // --- Today Collection ---
+        if (isTodayBooking && status == 'completed' && paymentStatus == 'paid') {
+          todayRev += b.actualAmount;
         }
 
         // --- Today orders ---
-        if (isToday) {
+        if (isTodayCreation) {
           todayOrderCount++;
         }
 
-        if (_isToday(b.bookingDate)) {
+        if (isTodayBooking) {
           todayScheduledCount++;
         }
 
         // --- Status counts ---
         if (status == 'pending') {
           pendingTotal++;
-          if (isToday) pendingToday++;
+          if (isTodayCreation) pendingToday++;
         } else if (status == 'cancelled' || status == 'canceled') {
           cancelledTotal++;
-          if (isToday) cancelledToday++;
+          if (isTodayCreation) cancelledToday++;
         } else if (status == 'completed') {
           completedCount++;
         } else if (status == 'ongoing') {
