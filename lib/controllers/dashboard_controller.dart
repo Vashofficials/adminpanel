@@ -7,6 +7,8 @@ import '../models/provider_model.dart';
 import '../models/customer_models.dart';
 import '../models/data_models.dart'; // ServiceModel
 import 'package:excel/excel.dart';
+import '../models/booking_models.dart';
+
 
 class DashboardController extends GetxController {
   final ApiService _api = ApiService();
@@ -67,95 +69,158 @@ class DashboardController extends GetxController {
     try {
       if (!isAutoRefresh) isLoading.value = true;
       
-      // 1. Fetch Booking Report for Current Year
-      final currentYear = DateTime.now().year.toString();
-      final report = await _api.getBookingReport(currentYear);
-      
-      if (report != null && report.result != null) {
-        final res = report.result!;
-        
-        completedBookings.value = res.completed ?? 150;
-        ongoingBookings.value = res.ongoing ?? 28;
-        pendingBookings.value = res.pending ?? 171;
-        cancelledBookings.value = res.cancelled ?? 92;
+      // 1. Fetch Bookings to count metrics, Pending, and Cancellations
+      try {
+        final bookingData = await _api.getBookings(page: 0, size: 1000);
+        if (bookingData != null && bookingData['result'] != null) {
+          final bookingResp = BookingResponse.fromJson(bookingData);
+          final List<BookingModel> bookings = bookingResp.content;
+          
+          final now = DateTime.now();
+          final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+          
+          double revToday = 0.0;
+          int ordersToday = 0;
+          int pendingCount = 0;
+          int cancelledCount = 0;
+          int completedCount = 0;
+          int ongoingCount = 0;
 
-        // Calculate Total Bookings
-        totalBookings.value = completedBookings.value + 
-                             ongoingBookings.value + 
-                             pendingBookings.value + 
-                             cancelledBookings.value;
-        if (totalBookings.value == 0) totalBookings.value = 441;
-        
-        // Chart Data (Completed Months)
-        chartData.assignAll(res.completedMonth ?? []);
-        
-        totalRevenue.value = 7765000.0; // Mock total revenue based on UI
-      } else {
-        totalBookings.value = 441;
-        completedBookings.value = 150;
-        pendingBookings.value = 171;
-        cancelledBookings.value = 92;
-        ongoingBookings.value = 28;
-        totalRevenue.value = 7765000.0;
-      }
+          // Monthly revenue tracker
+          List<MonthData> monthlyRevenue = List.generate(12, (index) => MonthData(
+            mothName: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index], 
+            cashBooking: 0, 
+            onlineBooking: 0
+          ));
 
-      // 2. Fetch Active Services count & Category Names
-      final categories = await _api.getCategories();
-      
-      // Store top 5 category names for the chart
-      List<String> names = categories.take(5).map((c) => c.name).toList();
-      if (names.isEmpty) {
-        names = ['Cleaning', 'Plumbing', 'Electrician', 'Salon', 'Appliances'];
-      }
-      categoryNames.assignAll(names);
-      
-      // Distribute totalBookings among categories for chart data
-      int rem = totalBookings.value;
-      List<int> mockCounts = [];
-      for (int i = 0; i < names.length; i++) {
-        if (i == names.length - 1) {
-          mockCounts.add(rem);
-        } else {
-          int c = (totalBookings.value * (0.3 - (i * 0.05))).toInt();
-          if (c < 0) c = 0;
-          if (c > rem) c = rem;
-          mockCounts.add(c);
-          rem -= c;
+          // Category count tracker
+          Map<String, int> catCounts = {};
+          
+          for (var b in bookings) {
+            String status = b.status.toLowerCase();
+            if (status == 'pending') {
+              pendingCount++;
+            } else if (status == 'cancelled') {
+              cancelledCount++;
+            } else if (status == 'completed') {
+              completedCount++;
+            } else if (status == 'ongoing') {
+              ongoingCount++;
+            }
+            
+            // Calculate Monthly Trend Data
+            try {
+              String bDateStr = b.bookingDate;
+              if (bDateStr.contains('T')) {
+                bDateStr = bDateStr.split('T').first;
+              }
+              final bDateParsed = DateTime.parse(bDateStr);
+              if (bDateParsed.year == now.year) {
+                int monthIdx = bDateParsed.month - 1;
+                if (monthIdx >= 0 && monthIdx < 12) {
+                  if (b.paymentMode.toUpperCase() == 'CASH') {
+                    final int currentCash = monthlyRevenue[monthIdx].cashBooking ?? 0;
+                    monthlyRevenue[monthIdx].cashBooking = currentCash + b.grandTotalPrice.toInt();
+                  } else {
+                    final int currentOnline = monthlyRevenue[monthIdx].onlineBooking ?? 0;
+                    monthlyRevenue[monthIdx].onlineBooking = currentOnline + b.grandTotalPrice.toInt();
+                  }
+                }
+              }
+            } catch (e) {
+              // Date parsing fallback
+            }
+
+            // Calculate Category counts
+            for (var s in b.services) {
+              final cName = s.categoryName;
+              if (cName.isNotEmpty) {
+                catCounts[cName] = (catCounts[cName] ?? 0) + 1;
+              }
+            }
+
+            String bDate = b.bookingDate;
+            if (bDate.contains('T')) {
+              bDate = bDate.split('T').first;
+            }
+            
+            if (bDate == todayStr) {
+              ordersToday++;
+              if (status != 'cancelled') {
+                revToday += b.grandTotalPrice;
+              }
+            }
+          }
+          
+          todayRevenue.value = revToday;
+          todayBookings.value = ordersToday;
+          pendingBookings.value = pendingCount;
+          cancelledBookings.value = cancelledCount;
+          completedBookings.value = completedCount;
+          ongoingBookings.value = ongoingCount;
+          
+          totalBookings.value = bookings.length;
+
+          // Assign Chart Data
+          chartData.assignAll(monthlyRevenue);
+
+          // Assign Category Counts
+          if (catCounts.isNotEmpty) {
+            var sortedKeys = catCounts.keys.toList()..sort((a, b) => catCounts[b]!.compareTo(catCounts[a]!));
+            categoryNames.assignAll(sortedKeys.take(5).toList());
+            categoryCounts.assignAll(sortedKeys.take(5).map((k) => catCounts[k]!).toList());
+          } else {
+            categoryNames.assignAll(['Cleaning', 'Plumbing', 'Electrician', 'Salon', 'Appliances']);
+            categoryCounts.assignAll([0, 0, 0, 0, 0]);
+          }
         }
-      }
-      categoryCounts.assignAll(mockCounts);
-
-      List<Future<List<ServiceModel>>> serviceFutures = [];
-      for (var cat in categories) {
-        serviceFutures.add(_api.getServices(categoryId: cat.id));
-      }
-      
-      final serviceResults = await Future.wait(serviceFutures);
-      int activeCount = 0;
-      for (var list in serviceResults) {
-        activeCount += list.where((s) => s.isActive).length;
-      }
-      activeServices.value = activeCount > 0 ? activeCount : 220; // fallback mock
-
-      // 3. Fetch Total Customers count
-      final customerData = await _api.getAllCustomers(page: 0, size: 10);
-      if (customerData != null && customerData['result'] != null) {
-        final resp = CustomerResponse.fromJson(customerData);
-        totalCustomers.value = resp.totalElements > 0 ? resp.totalElements : 1519;
-      } else {
-        totalCustomers.value = 1519;
+      } catch (e) {
+        debugPrint("❌ Error calculating real-time bookings for dashboard: $e");
       }
 
-      // 4. Fetch Top Providers (Sorted by rating)
-      final providerData = await _api.getAllServiceProviders();
-      final providerResp = ProviderResponse.fromJson(providerData);
-      
-      totalProviders.value = providerResp.result.length > 0 ? providerResp.result.length : 321;
+      // 2. Fetch Categories & active services for extra logic
+      try {
+        final categories = await _api.getCategories();
 
-      // Sort providers by totalRating descending and take top 5
-      List<ProviderModel> providers = List.from(providerResp.result);
-      providers.sort((a, b) => b.totalRating.compareTo(a.totalRating));
-      topProviders.assignAll(providers.take(5).toList());
+        List<Future<List<ServiceModel>>> serviceFutures = [];
+        for (var cat in categories) {
+          serviceFutures.add(_api.getServices(categoryId: cat.id));
+        }
+        
+        final serviceResults = await Future.wait(serviceFutures);
+        int activeCount = 0;
+        for (var list in serviceResults) {
+          activeCount += list.where((s) => s.isActive).length;
+        }
+        activeServices.value = activeCount;
+      } catch (e) {
+        debugPrint("❌ Error calculating categories for dashboard: $e");
+      }
+
+      // 4. Fetch Total Customers count
+      try {
+        final customerData = await _api.getAllCustomers(page: 0, size: 10);
+        if (customerData != null && customerData['result'] != null) {
+          final resp = CustomerResponse.fromJson(customerData);
+          totalCustomers.value = resp.totalElements;
+        }
+      } catch (e) {
+        debugPrint("❌ Error calculating customer count for dashboard: $e");
+      }
+
+      // 5. Fetch Total Providers count and Top Providers
+      try {
+        final providerData = await _api.getAllServiceProviders();
+        final providerResp = ProviderResponse.fromJson(providerData);
+        
+        totalProviders.value = providerResp.result.length;
+
+        List<ProviderModel> providers = List.from(providerResp.result);
+        providers.sort((a, b) => b.totalRating.compareTo(a.totalRating));
+        topProviders.assignAll(providers.take(5).toList());
+      } catch (e) {
+        debugPrint("❌ Error calculating provider counts for dashboard: $e");
+      }
 
     } catch (e) {
       debugPrint("❌ Dashboard Refresh Error: $e");

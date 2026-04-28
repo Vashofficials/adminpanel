@@ -260,7 +260,7 @@ class BookingOverviewController extends GetxController {
   void _computeRecentBookings() {
     final sorted = List<BookingModel>.from(_allFetched);
     sorted.sort((a, b) => b.creationTime.compareTo(a.creationTime));
-    recentBookings.assignAll(sorted.take(20).toList());
+    recentBookings.assignAll(sorted.take(200).toList());
   }
 
   // ---------------------------------------------------------------------------

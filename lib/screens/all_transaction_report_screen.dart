@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
+import 'package:audioplayers/audioplayers.dart';
 // --- IMPORTS ---
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
@@ -45,6 +46,12 @@ class _AllTransactionReportScreenState
   DateTime? _endDate;
   String? _selectedCategory; // null = "All"
   String? _selectedStatus;   // null = "All Statuses"
+  
+  final Map<String, DateTime> _lastEscalationAlertTime = {};
+  final AudioPlayer _escalationPlayer = AudioPlayer();
+  
+  final List<BookingModel> _escalationQueue = [];
+  bool _isEscalationDialogOpen = false;
 
 
   Timer? _pollingTimer;
@@ -65,8 +72,8 @@ class _AllTransactionReportScreenState
   void initState() {
     super.initState();
     _fetchData();
-    // Poll every 5 minutes to auto-refresh data
-    _pollingTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+    // Poll every 1 minute to auto-refresh data and run escalation logic
+    _pollingTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _fetchData();
     });
   }
@@ -77,14 +84,19 @@ class _AllTransactionReportScreenState
     _searchController.dispose();
     _horizontalScrollController.dispose();
     _verticalScrollController.dispose();
+    _escalationPlayer.dispose();
     super.dispose();
   }
 
   // 2. API FETCH — Fetches a large batch for client-side filtering
   Future<void> _fetchData() async {
     if (!mounted) return;
+    if (_bookings.isEmpty) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     setState(() {
-      _isLoading = true;
       _errorMessage = '';
     });
 
@@ -103,6 +115,7 @@ class _AllTransactionReportScreenState
       });
 
       BookingNotificationService().checkNewBooking(_bookings, 'AllTransactionReportScreen');
+      _checkEscalations();
 
       if (_searchController.text.isNotEmpty) {
         _runFilter();
@@ -1470,6 +1483,172 @@ class _AllTransactionReportScreenState
 
   static TextStyle _subStyle() {
     return GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8));
+  }
+
+  void _checkEscalations() {
+    final now = DateTime.now();
+    final keysToRemove = <String>[];
+
+    for (final booking in _bookings) {
+      final status = booking.status.toLowerCase().trim();
+      
+      if (status == 'in progress' || status == 'completed' || status == 'cancelled' || status == 'canceled') {
+        keysToRemove.add(booking.id);
+        continue;
+      }
+
+      if (status != 'pending') continue;
+
+      DateTime? bDate;
+      try {
+        bDate = DateTime.parse(booking.bookingDate).toLocal();
+      } catch (_) {
+        continue;
+      }
+
+      if (bDate.year != now.year || bDate.month != now.month || bDate.day != now.day) {
+        continue;
+      }
+
+      DateTime? finalScheduleTime;
+      try {
+        final timeParts = booking.bookingTime.split(':');
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        finalScheduleTime = DateTime(bDate.year, bDate.month, bDate.day, hour, minute);
+      } catch (_) {
+        continue;
+      }
+
+      if (now.isAfter(finalScheduleTime)) {
+        final lastAlert = _lastEscalationAlertTime[booking.id];
+        if (lastAlert == null || now.difference(lastAlert) >= const Duration(minutes: 15)) {
+          if (!_escalationQueue.any((b) => b.id == booking.id)) {
+            _escalationQueue.add(booking);
+          }
+        }
+      }
+    }
+
+    for (final key in keysToRemove) {
+      _lastEscalationAlertTime.remove(key);
+    }
+
+    _processEscalationQueue();
+  }
+
+  void _processEscalationQueue() {
+    if (_isEscalationDialogOpen || _escalationQueue.isEmpty) return;
+    final booking = _escalationQueue.removeAt(0);
+    _lastEscalationAlertTime[booking.id] = DateTime.now();
+    _triggerEscalationAlert(booking);
+  }
+
+  void _triggerEscalationAlert(BookingModel booking) async {
+    _isEscalationDialogOpen = true;
+    try {
+      await _escalationPlayer.play(AssetSource('alert.mp3'));
+      Future.delayed(const Duration(seconds: 10), () {
+        _escalationPlayer.stop();
+      });
+    } catch (e) {
+      debugPrint('Failed to play alert sound: $e');
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              const SizedBox(width: 10),
+              Text(
+                'Pending Booking Delayed!',
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _popupRow('Booking ID', booking.bookingRef),
+              _popupRow('Customer Name', booking.customerName),
+              _popupRow('Service Name', booking.mainServiceName),
+              _popupRow('Location', booking.address?.city ?? 'N/A'),
+              _popupRow('Scheduled Time', booking.bookingTime),
+              _popupRow('Amount', '₹${booking.grandTotalPrice.toStringAsFixed(2)}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _escalationPlayer.stop();
+                Navigator.of(ctx).pop();
+                setState(() {
+                  _isEscalationDialogOpen = false;
+                });
+                _processEscalationQueue();
+              },
+              child: Text(
+                'Dismiss',
+                style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.w600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _escalationPlayer.stop();
+                Navigator.of(ctx).pop();
+                setState(() {
+                  _isEscalationDialogOpen = false;
+                });
+                widget.onViewDetails(booking);
+                _processEscalationQueue();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF7822),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              child: Text(
+                'View Booking',
+                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _popupRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -514,7 +514,7 @@ class DashboardHome extends StatelessWidget {
                 spacing: spacing,
                 runSpacing: spacing,
                 children: [
-                  SizedBox(width: width, child: StatCard(isPrimary: true, title: "Revenue Today", value: "₹${controller.todayRevenue.value.toStringAsFixed(0)}", icon: Icons.currency_rupee, color: const Color(0xFF4361EE), subtitle: "+8% from yesterday")),
+                  SizedBox(width: width, child: StatCard(isPrimary: true, title: "Total Collection", value: "₹${controller.todayRevenue.value.toStringAsFixed(0)}", icon: Icons.currency_rupee, color: const Color(0xFF4361EE), subtitle: "+8% from yesterday")),
                   SizedBox(width: width, child: StatCard(title: "Orders Today", value: controller.todayBookings.value.toString(), icon: Icons.shopping_cart, color: const Color(0xFF10B981), subtitle: "+5% from yesterday")),
                   SizedBox(width: width, child: StatCard(title: "Active Providers", value: controller.totalProviders.value.toString(), icon: Icons.handyman, color: const Color(0xFFF59E0B), subtitle: "Currently online")),
                   SizedBox(width: width, child: StatCard(title: "Pending Assignments", value: controller.pendingBookings.value.toString(), icon: Icons.pending_actions, color: const Color(0xFF8B5CF6), subtitle: "Needs action")),

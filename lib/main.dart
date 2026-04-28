@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Admin Panel',
       theme: ThemeData(
-        textTheme: GoogleFonts.interTextTheme(),
+        textTheme: GoogleFonts.poppinsTextTheme(),
         primaryColor: const Color(0xFFEA5800),
         useMaterial3: true,
       ),
