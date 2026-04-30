@@ -261,6 +261,7 @@ class ProviderListScreen extends StatelessWidget {
                               DataColumn(label: Text("CONTACT DETAILS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("LOCATION & ADDRESS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("STATUS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
+                              DataColumn(label: Text("HOLD PROVIDER BOOKING", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("ONBOARDING", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                               DataColumn(label: Text("ACTIONS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: textGrey))),
                             ],
@@ -379,6 +380,48 @@ DataCell(
     );
   }),
 ),
+                                // Hold Provider Booking
+                                DataCell(
+                                  Obx(() {
+                                    final provider = controller.providerList[index];
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Transform.scale(
+                                          scale: 0.8,
+                                          child: Switch(
+                                            value: provider.isHoldBooking,
+                                            activeColor: Colors.white,
+                                            activeTrackColor: const Color(0xFFF59E0B),
+                                            inactiveThumbColor: Colors.white,
+                                            inactiveTrackColor: Colors.grey.shade300,
+                                            onChanged: (bool val) => controller.handleToggleHoldStatus(context, index, val),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: provider.isHoldBooking
+                                                ? const Color(0xFFFEF3C7)
+                                                : const Color(0xFFF1F5F9),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            provider.isHoldBooking ? 'On Hold' : 'Open',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: provider.isHoldBooking
+                                                  ? const Color(0xFF92400E)
+                                                  : const Color(0xFF475569),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ),
+
                                 // Onboarding Badge
                                 DataCell(_buildStatusBadge(provider.onboardingStatus)),
 

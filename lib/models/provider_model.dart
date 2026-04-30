@@ -32,6 +32,7 @@ class ProviderModel {
   final double totalRating; // 👈 NEW
   final int totalReview;    // 👈 NEW
   bool isActive; 
+  bool isHoldBooking;
 
   ProviderModel({
     required this.id,
@@ -53,6 +54,7 @@ class ProviderModel {
     this.imageUrl,
     this.totalRating = 0.0,
     this.totalReview = 0,
+    this.isHoldBooking = false,
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) {
@@ -79,6 +81,10 @@ class ProviderModel {
       imageUrl: json['imageUrl'] ?? json['profilePic'],
       totalRating: (json['totalRating'] ?? 0).toDouble(),
       totalReview: (json['totalReview'] ?? 0).toInt(),
+      isHoldBooking: !(json['isAadharVerified'] == true || 
+                       json['isAadharVerified'] == 1 || 
+                       json['isAadharVerified']?.toString() == 'true' ||
+                       json['isAadharVerified']?.toString() == '1'),
     );
   }
 

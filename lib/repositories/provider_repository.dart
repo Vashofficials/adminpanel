@@ -29,6 +29,15 @@ class ProviderRepository {
       return false;
     }
   }
+
+  Future<bool> updateProviderHoldStatus(Map<String, dynamic> payload) async {
+    try {
+      return await _api.addPersonalDetails(payload);
+    } catch (e) {
+      print("❌ Repository Error: $e");
+      return false;
+    }
+  }
   
 
   // 2. ADD PROVIDER (Endpoint Placeholder)

@@ -702,7 +702,6 @@ class AddProviderController extends GetxController {
       "gender": selectedGender.value,
       "aadharNo": aadharCtrl.text.trim(),
       "emailId": emailCtrl.text.trim(), // Added emailId
-      "isAadharVerified": 1, // Set to 1 as requested
     };
 
     // 3. Call API

@@ -575,8 +575,8 @@ class DashboardHome extends StatelessWidget {
                       icon: Icons.handyman,
                       color: const Color(0xFFF59E0B),
                       subItems: [
-                        _SubItem("Active", controller.activeProviders.value.toString(), itemColor: const Color(0xFF10B981)),
-                        _SubItem("Inactive", controller.inactiveProviders.value.toString(), itemColor: const Color(0xFFEF4444)),
+                        _SubItem("Approved", controller.approvedProviders.value.toString(), itemColor: const Color(0xFF10B981)),
+                        _SubItem("Un Approved", controller.unApprovedProviders.value.toString(), itemColor: const Color(0xFFEF4444)),
                       ],
                     ),
                   ),

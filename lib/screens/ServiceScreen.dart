@@ -741,6 +741,7 @@ InputDecoration _popupInputDecoration(String hint) {
                                 DataColumn(label: Text("NAME", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                                 DataColumn(label: Text("CATEGORY", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                                 DataColumn(label: Text("PRICE", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
+                                DataColumn(label: Text("DURATION", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                                 DataColumn(label: Text("STATUS", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                                 DataColumn(label: Text("ACTION", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 12))),
                               ],
@@ -792,6 +793,9 @@ DataCell(
                                     
                                     // PRICE
                                     DataCell(Text("₹ ${svc.price.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold))),
+                                    
+                                    // DURATION
+                                    DataCell(Text("${svc.duration} mins", style: const TextStyle(fontWeight: FontWeight.w500))),
                                     
                                     // 1. Updated STATUS Cell with Confirmation
      DataCell(

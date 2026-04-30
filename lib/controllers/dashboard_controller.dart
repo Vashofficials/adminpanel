@@ -26,6 +26,8 @@ class DashboardController extends GetxController {
   var totalProviders = 0.obs;
   var activeProviders = 0.obs;
   var inactiveProviders = 0.obs;
+  var approvedProviders = 0.obs;
+  var unApprovedProviders = 0.obs;
 
   // --- 4. PENDING BOOKINGS ---
   var totalPending = 0.obs;
@@ -318,6 +320,8 @@ class DashboardController extends GetxController {
 
       int activeCount = 0;
       int inactiveCount = 0;
+      int approvedCount = 0;
+      int unApprovedCount = 0;
 
       for (var p in providers) {
         if (p.isActive) {
@@ -325,11 +329,19 @@ class DashboardController extends GetxController {
         } else {
           inactiveCount++;
         }
+        
+        if (p.isAadharVerified) {
+          approvedCount++;
+        } else {
+          unApprovedCount++;
+        }
       }
 
       totalProviders.value = providers.length;
       activeProviders.value = activeCount;
       inactiveProviders.value = inactiveCount;
+      approvedProviders.value = approvedCount;
+      unApprovedProviders.value = unApprovedCount;
 
       // Top providers by rating
       List<ProviderModel> sorted = List.from(providers);
@@ -418,6 +430,8 @@ class DashboardController extends GetxController {
       sheetObject.appendRow([TextCellValue('Total Providers'), IntCellValue(totalProviders.value)]);
       sheetObject.appendRow([TextCellValue('Active Providers'), IntCellValue(activeProviders.value)]);
       sheetObject.appendRow([TextCellValue('Inactive Providers'), IntCellValue(inactiveProviders.value)]);
+      sheetObject.appendRow([TextCellValue('Approved Providers'), IntCellValue(approvedProviders.value)]);
+      sheetObject.appendRow([TextCellValue('Unapproved Providers'), IntCellValue(unApprovedProviders.value)]);
       sheetObject.appendRow([TextCellValue('Total Users'), IntCellValue(totalUsers.value)]);
       sheetObject.appendRow([TextCellValue('Active Users'), IntCellValue(activeUsers.value)]);
       sheetObject.appendRow([TextCellValue('Inactive Users'), IntCellValue(inactiveUsers.value)]);

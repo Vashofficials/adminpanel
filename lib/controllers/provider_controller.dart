@@ -123,6 +123,60 @@ class ProviderController extends GetxController {
   return await _repo.updateProviderStatus(id, apiValue);
 }
 
+Future<bool> updateProviderHoldStatus(String id, bool apiValue) async {
+  try {
+    final provider = providerList.firstWhere((p) => p.id == id);
+    final payload = {
+      "spId": provider.id,
+      "firstName": provider.firstName,
+      "middleName": provider.middleName ?? "",
+      "lastName": provider.lastName ?? "",
+      "gender": provider.gender ?? "",
+      "aadharNo": provider.aadharNo,
+      "emailId": provider.emailId ?? "",
+      "isAadharVerified": apiValue ? 0 : 1, 
+    };
+    return await _repo.updateProviderHoldStatus(payload);
+  } catch (e) {
+    print("Error updating hold status: $e");
+    return false;
+  }
+}
+
+Future<void> handleToggleHoldStatus(BuildContext context, int index, bool newValue) async {
+  final provider = providerList[index];
+  
+  CustomCenterDialog.show(
+    context,
+    title: "Change Hold Status",
+    message: "Are you sure you want to ${newValue ? 'hold' : 'unhold'} bookings for this provider?",
+    type: DialogType.warning,
+    confirmText: "Yes, Change",
+    onConfirm: () async {
+      bool success = await updateProviderHoldStatus(provider.id, newValue);
+
+      if (success) {
+        provider.isHoldBooking = newValue; 
+        providerList.refresh(); 
+
+        CustomCenterDialog.show(
+          context,
+          title: "Success",
+          message: "Hold status updated successfully",
+          type: DialogType.success,
+        );
+      } else {
+        CustomCenterDialog.show(
+          context,
+          title: "Error",
+          message: "Failed to update hold status",
+          type: DialogType.error,
+        );
+      }
+    },
+  );
+}
+
 Future<void> handleToggleStatus(BuildContext context, int index, bool newValue) async {
   final provider = providerList[index];
   
