@@ -48,7 +48,7 @@ class BookingModel {
   final String paymentMode;
   final int bookingPin;
   
-  final String rescheduleReason;
+  final String? rescheduleReason;
   final String cancelReason;
   final String cancelledBy;
 
@@ -75,7 +75,7 @@ class BookingModel {
     required this.paymentStatus,
     required this.paymentMode,
     required this.bookingPin,
-    required this.rescheduleReason,
+    this.rescheduleReason,
     required this.cancelReason,
     required this.cancelledBy,
     this.address,
@@ -110,7 +110,7 @@ class BookingModel {
       paymentMode: json['paymentMode']?.toString() ?? 'N/A',
       bookingPin: (json['bookingPin'] as num?)?.toInt() ?? 0,
       
-      rescheduleReason: json['rescheduleReason']?.toString() ?? '',
+      rescheduleReason: json['rescheduleReason']?.toString(),
       cancelReason: json['cancelReason']?.toString() ?? '',
       cancelledBy: json['cancelledBy']?.toString() ?? '',
 
@@ -187,6 +187,10 @@ String get customerId => customerDetails?.id ?? '';
   String get customerPhone {
     return customerDetails?.mobileNo ?? "N/A";
   }
+ 
+  bool get hasRescheduleReason {
+  return rescheduleReason != null && rescheduleReason!.trim().isNotEmpty;
+}
 }
 
 // --- Sub-Models (No Changes Needed) ---
@@ -286,11 +290,15 @@ class BookingService {
   final double discountPercentage;
   final int serviceDuration;
   final int quantity;
+  final String categoryId;
+  final String serviceId;
 
   BookingService({
     required this.id,
     required this.serviceName,
     required this.categoryName,
+     required this.categoryId,   // ✅ ADD
+  required this.serviceId,    // ✅ ADD
     required this.price,
     required this.discountPrice,
     required this.discountPercentage,
@@ -303,6 +311,8 @@ class BookingService {
       id: json['id']?.toString() ?? '',
       serviceName: json['serviceIName']?.toString() ?? '',
       categoryName: json['categoryName']?.toString() ?? 'No Mapped Services',
+        categoryId: json['categoryId']?.toString() ?? '',   // ✅ ADD
+  serviceId: json['serviceId']?.toString() ?? '',     // ✅ ADD
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       discountPrice: (json['discountPrice'] as num?)?.toDouble() ?? 0.0,
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,

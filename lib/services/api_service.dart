@@ -1827,7 +1827,34 @@ Future<bool> rescheduleBooking(Map<String, dynamic> payload) async {
     return false;
   }
 }
+Future<List> getServiceProviders(Map<String, dynamic> payload) async {
+  try {
+    final res = await _dio.post(
+      '/admin/getServiceProviderForBooking',
+      data: payload,
+    );
 
+    if (res.statusCode == 200) {
+      return res.data['result'] ?? []; // ✅ FIXED
+    }
+    return [];
+  } catch (e) {
+    debugPrint("Provider API error: $e");
+    return [];
+  }
+}
+Future<List> getCustomerAddresses(String customerId) async {
+  try {
+    final res = await _dio.get(
+      '/admin/getCustomerAddress',
+      queryParameters: {"customerId": customerId},
+    );
+
+    return res.data['result'] ?? [];
+  } catch (e) {
+    return [];
+  }
+}
 Future<bool> cancelBooking(Map<String, dynamic> payload) async {
   try {
     final response = await _dio.post(

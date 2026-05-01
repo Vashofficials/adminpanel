@@ -289,46 +289,139 @@ if (booking.couponDiscountValue > 0)
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // --- HEADER SECTION ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Booking Details", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text("Booking # ${booking.bookingRef}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFEF7822))),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(booking.status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(booking.status, style: TextStyle(color: _getStatusColor(booking.status), fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+          // --- HEADER SECTION ---
+Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+
+    /// LEFT SIDE
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          const Text(
+            "Booking Details",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 8),
+
+          /// 🔥 BOOKING REF + COPY + STATUS
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(
+                    ClipboardData(text: booking.bookingRef),
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Booking ID copied"),
+                      duration: Duration(seconds: 1),
                     ),
-                    const SizedBox(height: 5),
-                    Text("Booking Placed : ${_formatDateTime(booking.creationTime)}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      "Booking # ${booking.bookingRef}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFEF7822),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.copy, size: 16, color: Colors.grey),
                   ],
                 ),
-               ElevatedButton.icon(
-                  onPressed: () => _printInvoice(booking), // Trigger PDF generation
-                  icon: const Icon(Icons.description, size: 18),
-                  label: const Text("Invoice"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+
+              const SizedBox(width: 10),
+
+              /// STATUS BADGE
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(booking.status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  booking.status,
+                  style: TextStyle(
+                    color: _getStatusColor(booking.status),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
-                )
-              ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          /// BOOKING DATE
+          Text(
+            "Booking Placed : ${_formatDateTime(booking.creationTime)}",
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+
+         if (booking.rescheduleReason != null &&
+    booking.rescheduleReason!.trim().isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Row(
+      children: [
+        const Icon(Icons.schedule, size: 14, color: Colors.orange),
+        const SizedBox(width: 6),
+
+        /// 🔥 TEXT TAG (NOT FULL WIDTH)
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
             ),
-            
+            child: Text(
+              "Reschedule: ${booking.rescheduleReason}",
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+        ],
+      ),
+    ),
+
+    const SizedBox(width: 12),
+
+    /// RIGHT SIDE (BUTTON)
+    ElevatedButton.icon(
+      onPressed: () => _printInvoice(booking),
+      icon: const Icon(Icons.description, size: 18),
+      label: const Text("Invoice"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2563EB),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    ),
+  ],
+),
+
             const SizedBox(height: 24),
 
             // --- TABS ---
@@ -819,176 +912,399 @@ if (booking.status.toLowerCase() != 'canceled' && booking.status.toLowerCase() !
     );
   }
 void _showRescheduleDialog(BookingModel booking) {
-  _selectedAddressId = booking.address?.id;
-
   final TextEditingController dateCtrl = TextEditingController(
     text: booking.bookingDate.split('T')[0],
   );
 
-  final TextEditingController timeCtrl = TextEditingController(
-    text: booking.bookingTime,
-  );
+  final TextEditingController timeCtrl = TextEditingController();
+  final TextEditingController reasonCtrl = TextEditingController();
+
+  List providers = [];
+  List addresses = [];
+
+  String? selectedProviderId;
+  String? selectedProviderName;
+
+  String? selectedAddressId;
+  String? selectedLocationId;
+
+  bool isLoadingProviders = false;
+  bool isLoadingAddress = false;
+
+  bool canFetch() {
+    if (booking.services.isEmpty) return false;
+    if (selectedAddressId == null) return false;
+    if (selectedLocationId == null) return false;
+    if (dateCtrl.text.isEmpty) return false;
+
+    final regex = RegExp(r'^\d{2}:\d{2}$');
+    return regex.hasMatch(timeCtrl.text.trim());
+  }
+
+  Future<void> fetchProviders(StateSetter setDialogState) async {
+    if (!canFetch()) return;
+
+    setDialogState(() => isLoadingProviders = true);
+
+    final service = booking.services.first;
+
+    final payload = {
+      "categoryId": service.categoryId,
+      "serviceId": service.serviceId,
+      "locationId": selectedLocationId,
+      "addressId": selectedAddressId,
+      "bookingDate": dateCtrl.text,
+      "bookingTime": timeCtrl.text,
+      "currentBookingDuration": booking.totalDuration,
+    };
+
+    final result = await _apiService.getServiceProviders(payload);
+
+    setDialogState(() {
+      providers = result;
+      isLoadingProviders = false;
+
+      if (providers.isNotEmpty) {
+        selectedProviderId = providers[0]['id'];
+        selectedProviderName =
+            "${providers[0]['firstName']} ${providers[0]['lastName']}";
+      } else {
+        selectedProviderId = null;
+        selectedProviderName = null;
+      }
+    });
+  }
 
   showDialog(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) {
+
+        /// 🔥 FETCH ADDRESSES ON LOAD
+        if (addresses.isEmpty && !isLoadingAddress) {
+          isLoadingAddress = true;
+
+          _apiService
+              .getCustomerAddresses(booking.customerId)
+              .then((res) {
+            setDialogState(() {
+              addresses = res;
+              isLoadingAddress = false;
+
+              if (addresses.isNotEmpty) {
+                final defaultAddr = addresses.firstWhere(
+                  (a) => a['isDefault'] == true,
+                  orElse: () => addresses[0],
+                );
+
+                selectedAddressId = defaultAddr['id'];
+                selectedLocationId = defaultAddr['locationId'];
+              }
+            });
+          });
+        }
+
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
 
-                  /// 🔹 ICON
-                  const Icon(Icons.schedule, size: 30, color: Color(0xFFF97316)),
+                    /// HEADER
+                    const Icon(Icons.schedule,
+                        size: 32, color: Color(0xFFF97316)),
+                    const SizedBox(height: 10),
+                    const Text("Reschedule Booking",
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
 
-                  const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                  /// 🔹 TITLE
-                  const Text(
-                    "Reschedule Booking",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                    /// 📍 ADDRESS SELECTION
+                    if (isLoadingAddress)
+                      const CircularProgressIndicator(),
 
-                  const SizedBox(height: 22),
+                    if (addresses.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Select Address",
+                              style:
+                                  TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
 
-                  /// 🔹 DATE FIELD
-                  TextField(
-                    controller: dateCtrl,
-                    readOnly: true,
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2030),
-                      );
-                      if (date != null) {
-                        setDialogState(() {
-                          _selectedDate = date;
-                          dateCtrl.text = date.toString().split(' ')[0];
-                        });
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Booking Date",
-                      prefixIcon: Icon(Icons.calendar_today),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
+                          ...addresses.map((addr) {
+                            final isSelected =
+                                selectedAddressId == addr['id'];
 
-                  const SizedBox(height: 16),
+                            return GestureDetector(
+                              onTap: () {
+                                setDialogState(() {
+                                  selectedAddressId = addr['id'];
+                                  selectedLocationId =
+                                      addr['locationId'];
 
-                  /// 🔹 TIME FIELD (MANUAL)
-                  TextField(
-                    controller: timeCtrl,
-                    keyboardType: TextInputType.datetime,
-                    decoration: const InputDecoration(
-                      labelText: "Booking Time (HH:mm)",
-                      prefixIcon: Icon(Icons.access_time),
-                      border: OutlineInputBorder(),
-                      hintText: "e.g. 10:00",
-                    ),
-                    onChanged: (val) {
-                      if (val.contains(":")) {
-                        final parts = val.split(":");
-                        if (parts.length == 2) {
-                          _selectedTime = TimeOfDay(
-                            hour: int.tryParse(parts[0]) ?? 0,
-                            minute: int.tryParse(parts[1]) ?? 0,
-                          );
+                                  providers.clear();
+                                  selectedProviderId = null;
+                                });
+
+                                fetchProviders(setDialogState);
+                              },
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.orange
+                                        : Colors.grey.shade300,
+                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
+                                  color: isSelected
+                                      ? Colors.orange.withOpacity(0.1)
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      addr['addressType'] == "Work"
+                                          ? Icons.work
+                                          : Icons.home,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        "${addr['addressLine1']}, ${addr['city']}",
+                                        style: const TextStyle(
+                                            fontSize: 13),
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+
+                    const SizedBox(height: 14),
+
+                    /// DATE
+                    TextField(
+                      controller: dateCtrl,
+                      readOnly: true,
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2030),
+                        );
+
+                        if (date != null) {
+                          setDialogState(() {
+                            dateCtrl.text =
+                                date.toString().split(' ')[0];
+                            providers.clear();
+                            selectedProviderId = null;
+                          });
+
+                          fetchProviders(setDialogState);
                         }
-                      }
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  /// 🔹 REASON
-                  TextField(
-                    controller: _reasonController,
-                    decoration: const InputDecoration(
-                      labelText: "Reason",
-                      prefixIcon: Icon(Icons.edit_note),
-                      border: OutlineInputBorder(),
+                      },
+                      decoration: const InputDecoration(
+                        labelText: "Booking Date",
+                        prefixIcon: Icon(Icons.calendar_today),
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 28),
+                    const SizedBox(height: 14),
 
-                  /// 🔹 ACTION BUTTONS
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text("Cancel"),
-                        ),
+                    /// TIME INPUT
+                    TextField(
+                      controller: timeCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Booking Time (HH:mm)",
+                        hintText: "e.g. 16:00",
+                        prefixIcon: Icon(Icons.access_time),
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF97316),
-                          ),
-                          onPressed: () async {
+                      onChanged: (_) {
+                        setDialogState(() {
+                          providers.clear();
+                          selectedProviderId = null;
+                        });
+                      },
+                      onEditingComplete: () {
+                        FocusScope.of(context).unfocus();
+                        fetchProviders(setDialogState);
+                      },
+                    ),
 
-                            /// 🔴 VALIDATION
-                            if (timeCtrl.text.isEmpty || !timeCtrl.text.contains(":")) {
-    CustomCenterDialog.show(
-      context,
-      title: "Invalid Time",
-      message: "Please enter time in HH:mm format",
-      type: DialogType.required,
-    );
-    return;
-  }
+                    const SizedBox(height: 14),
 
-                            final payload = {
-                              "bookingId": booking.id,
-                              "customerId": booking.customerId,
-                              "spId": booking.provider?.id ?? "",
-                              "addressId": _selectedAddressId,
-                              "bookingDate": _selectedDate?.toIso8601String() ?? booking.bookingDate,
-                              "bookingTime": timeCtrl.text,
-                              "rescheduleReason": _reasonController.text,
-                            };
+                    /// LOADER
+                    if (isLoadingProviders)
+                      const CircularProgressIndicator(),
 
-                            bool success = await _apiService.rescheduleBooking(payload);
+                    /// EMPTY
+                    if (!isLoadingProviders &&
+                        providers.isEmpty &&
+                        canFetch())
+                      const Text(
+                        "No providers available. Try another time.",
+                        style: TextStyle(color: Colors.red),
+                      ),
 
-                             if (success) {
-    Navigator.pop(context);
-    widget.onBack();
+                    /// PROVIDERS
+                    if (providers.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Available Providers",
+                              style:
+                                  TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
 
-    CustomCenterDialog.show(
-      context,
-      title: "Success",
-      message: "Booking rescheduled successfully",
-      type: DialogType.success,
-    );
-  } else {
-    CustomCenterDialog.show(
-      context,
-      title: "Failed",
-      message: "Something went wrong. Please try again.",
-      type: DialogType.error,
-    );
-  }
-},
-                          child: const Text(
-                            "Update",
-                            style: TextStyle(color: Colors.white),
+                          ...providers.map((sp) {
+                            final id = sp['id'];
+                            final name =
+                                "${sp['firstName']} ${sp['lastName']}";
+                            final isSelected =
+                                selectedProviderId == id;
+
+                            return GestureDetector(
+                              onTap: () {
+                                setDialogState(() {
+                                  selectedProviderId = id;
+                                  selectedProviderName = name;
+                                });
+                              },
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Colors.orange
+                                        : Colors.grey.shade300,
+                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                  color: isSelected
+                                      ? Colors.orange.withOpacity(0.1)
+                                      : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.person),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: Text(name)),
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+
+                    const SizedBox(height: 12),
+
+                    if (selectedProviderName != null)
+                      Text(
+                        "Selected: $selectedProviderName",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green),
+                      ),
+
+                    const SizedBox(height: 14),
+
+                    /// REASON
+                    TextField(
+                      controller: reasonCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Reason",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    /// ACTIONS
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                Navigator.pop(context),
+                            child: const Text("Cancel"),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Color(0xFFF97316)),
+                            onPressed: selectedProviderId == null
+                                ? null
+                                : () async {
+                                    final payload = {
+                                      "bookingId": booking.id,
+                                      "customerId":
+                                          booking.customerId,
+                                      "spId": selectedProviderId,
+                                      "addressId": selectedAddressId,
+                                      "bookingDate":
+                                          dateCtrl.text,
+                                      "bookingTime":
+                                          timeCtrl.text,
+                                      "rescheduleReason":
+                                          reasonCtrl.text,
+                                    };
+
+                                    bool success =
+                                        await _apiService
+                                            .rescheduleBooking(
+                                                payload);
+
+                                    if (success) {
+                                      Navigator.pop(context);
+                                      widget.onBack();
+
+                                      CustomCenterDialog.show(
+                                        context,
+                                        title: "Success",
+                                        message:
+                                            "Booking rescheduled successfully",
+                                        type: DialogType.success,
+                                      );
+                                    }
+                                  },
+                            child: const Text("Update"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -997,7 +1313,6 @@ void _showRescheduleDialog(BookingModel booking) {
     ),
   );
 }
-
 void _showCancelDialog(BookingModel booking) {
   _cancelReasonController.clear();
 
