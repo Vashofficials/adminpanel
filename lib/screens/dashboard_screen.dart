@@ -569,7 +569,8 @@ class DashboardHome extends StatelessWidget {
                       color: const Color(0xFF10B981),
                       subItems: [
                         _SubItem("Today", controller.todayOrders.value.toString()),
-                        _SubItem("Today Scheduled", controller.todayScheduledBookings.value.toString()),
+                        _SubItem("Completed", controller.totalCompleted.value.toString(), itemColor: const Color(0xFF10B981)),
+                        _SubItem("Today Completed", controller.todayCompleted.value.toString(), itemColor: const Color(0xFF10B981)),
                       ],
                     ),
                   ),
@@ -618,7 +619,8 @@ class DashboardHome extends StatelessWidget {
                     ),
                   ),
 
-                  // 6. Users Card
+
+                  // 7. Users Card
                   SizedBox(
                     width: width,
                     child: _UpgradedStatCard(

@@ -38,7 +38,11 @@ class DashboardController extends GetxController {
   var totalCancelled = 0.obs;
   var todayCancelled = 0.obs;
 
-  // --- 6. USERS ---
+  // --- 6. COMPLETED ---
+  var totalCompleted = 0.obs;
+  var todayCompleted = 0.obs;
+
+  // --- 7. USERS ---
   var totalUsers = 0.obs;
   var activeUsers = 0.obs;
   var inactiveUsers = 0.obs;
@@ -170,7 +174,8 @@ class DashboardController extends GetxController {
       int pendingToday = 0;
       int cancelledTotal = 0;
       int cancelledToday = 0;
-      int completedCount = 0;
+      int completedTotal = 0;
+      int completedToday = 0;
       int ongoingCount = 0;
 
       // Monthly revenue tracker
@@ -216,7 +221,8 @@ class DashboardController extends GetxController {
           cancelledTotal++;
           if (isTodayBooking) cancelledToday++;
         } else if (status == 'completed') {
-          completedCount++;
+          completedTotal++;
+          if (isTodayBooking) completedToday++;
         } else if (status == 'ongoing') {
           ongoingCount++;
         }
@@ -272,7 +278,7 @@ class DashboardController extends GetxController {
       topServices.assignAll(sortedSvcs.take(5).toList());
 
       // --- PLATFORM SUMMARY metrics ---
-      avgBookingValue.value = completedCount > 0 ? (allTimeRev / completedCount) : 0.0;
+      avgBookingValue.value = completedTotal > 0 ? (allTimeRev / completedTotal) : 0.0;
       refundRate.value = bookings.isNotEmpty ? (cancelledTotal / bookings.length) * 100 : 0.0;
       // retention computed after customer fetch — updated in _fetchCustomerData
 
@@ -286,7 +292,9 @@ class DashboardController extends GetxController {
       todayPending.value = pendingToday;
       totalCancelled.value = cancelledTotal;
       todayCancelled.value = cancelledToday;
-      completedBookings.value = completedCount;
+      totalCompleted.value = completedTotal;
+      todayCompleted.value = completedToday;
+      completedBookings.value = completedTotal;
       ongoingBookings.value = ongoingCount;
 
       // Legacy fields
@@ -360,10 +368,16 @@ class DashboardController extends GetxController {
       }
       todayActiveProviders.value = todayActiveCount;
 
-      // Top providers by rating
-      List<ProviderModel> sorted = List.from(providers);
-      sorted.sort((a, b) => b.totalRating.compareTo(a.totalRating));
-      topProviders.assignAll(sorted.take(5).toList());
+      // Top providers by rating — only approved+active, sorted by rating DESC then reviews DESC
+      final qualifiedProviders = providers
+          .where((p) => p.isActive && p.isAadharVerified)
+          .toList();
+      qualifiedProviders.sort((a, b) {
+        final ratingCmp = b.totalRating.compareTo(a.totalRating);
+        if (ratingCmp != 0) return ratingCmp;
+        return b.totalReview.compareTo(a.totalReview); // tiebreaker
+      });
+      topProviders.assignAll(qualifiedProviders.take(10).toList());
     } catch (e) {
       debugPrint("❌ Error fetching provider data: $e");
     }
@@ -493,7 +507,8 @@ class DashboardController extends GetxController {
       sheetObject.appendRow([TextCellValue('Today Pending'), IntCellValue(todayPending.value)]);
       sheetObject.appendRow([TextCellValue('Total Cancelled'), IntCellValue(totalCancelled.value)]);
       sheetObject.appendRow([TextCellValue('Today Cancelled'), IntCellValue(todayCancelled.value)]);
-      sheetObject.appendRow([TextCellValue('Completed'), IntCellValue(completedBookings.value)]);
+      sheetObject.appendRow([TextCellValue('Total Completed'), IntCellValue(totalCompleted.value)]);
+      sheetObject.appendRow([TextCellValue('Today Completed'), IntCellValue(todayCompleted.value)]);
       sheetObject.appendRow([TextCellValue('Ongoing'), IntCellValue(ongoingBookings.value)]);
 
       excel.save(fileName: "Dashboard_Report_${DateTime.now().toIso8601String().split('T').first}.xlsx");
