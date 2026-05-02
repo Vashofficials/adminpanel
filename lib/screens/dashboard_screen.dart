@@ -454,12 +454,20 @@ class DashboardHome extends StatelessWidget {
   const DashboardHome({super.key, this.onNav});
 
   String _formatCurrency(double amount) {
-    if (amount >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(1)}L';
-    } else if (amount >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(1)}K';
+    // Show full number with Indian comma formatting (e.g. ₹1,20,947)
+    final int value = amount.toInt();
+    final String digits = value.toString();
+    if (digits.length <= 3) return '₹$digits';
+
+    // Indian numbering: last 3 digits, then groups of 2
+    final String last3 = digits.substring(digits.length - 3);
+    final String remaining = digits.substring(0, digits.length - 3);
+    final StringBuffer buf = StringBuffer();
+    for (int i = 0; i < remaining.length; i++) {
+      if (i > 0 && (remaining.length - i) % 2 == 0) buf.write(',');
+      buf.write(remaining[i]);
     }
-    return '₹${amount.toStringAsFixed(0)}';
+    return '₹${buf.toString()},$last3';
   }
 
   @override
@@ -577,6 +585,7 @@ class DashboardHome extends StatelessWidget {
                       subItems: [
                         _SubItem("Approved", controller.approvedProviders.value.toString(), itemColor: const Color(0xFF10B981)),
                         _SubItem("Un Approved", controller.unApprovedProviders.value.toString(), itemColor: const Color(0xFFEF4444)),
+                        _SubItem("Today Active", controller.todayActiveProviders.value.toString(), itemColor: const Color(0xFF10B981)),
                       ],
                     ),
                   ),

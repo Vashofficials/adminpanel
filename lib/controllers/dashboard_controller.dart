@@ -28,6 +28,7 @@ class DashboardController extends GetxController {
   var inactiveProviders = 0.obs;
   var approvedProviders = 0.obs;
   var unApprovedProviders = 0.obs;
+  var todayActiveProviders = 0.obs;
 
   // --- 4. PENDING BOOKINGS ---
   var totalPending = 0.obs;
@@ -210,10 +211,10 @@ class DashboardController extends GetxController {
         // --- Status counts ---
         if (status == 'pending') {
           pendingTotal++;
-          if (isTodayCreation) pendingToday++;
+          if (isTodayBooking) pendingToday++;
         } else if (status == 'cancelled' || status == 'canceled') {
           cancelledTotal++;
-          if (isTodayCreation) cancelledToday++;
+          if (isTodayBooking) cancelledToday++;
         } else if (status == 'completed') {
           completedCount++;
         } else if (status == 'ongoing') {
@@ -329,7 +330,7 @@ class DashboardController extends GetxController {
         } else {
           inactiveCount++;
         }
-        
+
         if (p.isAadharVerified) {
           approvedCount++;
         } else {
@@ -343,12 +344,61 @@ class DashboardController extends GetxController {
       approvedProviders.value = approvedCount;
       unApprovedProviders.value = unApprovedCount;
 
+      // --- TODAY ACTIVE PROVIDERS ---
+      // Eligible = status==1 (isActive) AND isAadharVerified==true
+      final eligibleProviders = providers.where((p) => p.isActive && p.isAadharVerified).toList();
+
+      // Fetch holidays for ALL eligible providers in parallel (avoids N+1)
+      final todayIST = _getTodayIST();
+      final holidayFutures = eligibleProviders.map((p) => _getProviderHolidaysForToday(p.id, todayIST));
+      final holidayResults = await Future.wait(holidayFutures);
+
+      // Count providers with NO holiday today
+      int todayActiveCount = 0;
+      for (final hasHolidayToday in holidayResults) {
+        if (!hasHolidayToday) todayActiveCount++;
+      }
+      todayActiveProviders.value = todayActiveCount;
+
       // Top providers by rating
       List<ProviderModel> sorted = List.from(providers);
       sorted.sort((a, b) => b.totalRating.compareTo(a.totalRating));
       topProviders.assignAll(sorted.take(5).toList());
     } catch (e) {
       debugPrint("❌ Error fetching provider data: $e");
+    }
+  }
+
+  /// Returns today's date string (YYYY-MM-DD) in IST timezone.
+  String _getTodayIST() {
+    final nowIST = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+    return '${nowIST.year.toString().padLeft(4, '0')}-'
+        '${nowIST.month.toString().padLeft(2, '0')}-'
+        '${nowIST.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Returns true if provider has an active holiday record for today.
+  /// Swallows errors silently (treats as no holiday) to keep the dashboard loading.
+  Future<bool> _getProviderHolidaysForToday(String providerId, String todayStr) async {
+    try {
+      final response = await _api.getHolidays(providerId);
+      final data = response.data;
+      List<dynamic> holidays = [];
+      if (data is Map && data['result'] is List) {
+        holidays = data['result'] as List;
+      } else if (data is List) {
+        holidays = data;
+      }
+      for (final h in holidays) {
+        final holidayDate = h['holidayDate']?.toString() ?? '';
+        // Normalize: take only the date part (strip time component)
+        final dateOnly = holidayDate.contains('T') ? holidayDate.split('T').first : holidayDate;
+        if (dateOnly == todayStr) return true;
+      }
+      return false;
+    } catch (_) {
+      // On error, assume provider is available (no holiday)
+      return false;
     }
   }
 
@@ -432,6 +482,7 @@ class DashboardController extends GetxController {
       sheetObject.appendRow([TextCellValue('Inactive Providers'), IntCellValue(inactiveProviders.value)]);
       sheetObject.appendRow([TextCellValue('Approved Providers'), IntCellValue(approvedProviders.value)]);
       sheetObject.appendRow([TextCellValue('Unapproved Providers'), IntCellValue(unApprovedProviders.value)]);
+      sheetObject.appendRow([TextCellValue('Today Active Providers'), IntCellValue(todayActiveProviders.value)]);
       sheetObject.appendRow([TextCellValue('Total Users'), IntCellValue(totalUsers.value)]);
       sheetObject.appendRow([TextCellValue('Active Users'), IntCellValue(activeUsers.value)]);
       sheetObject.appendRow([TextCellValue('Inactive Users'), IntCellValue(inactiveUsers.value)]);
