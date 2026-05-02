@@ -102,7 +102,7 @@ class _AllTransactionReportScreenState
 
     try {
       final response =
-          await _repo.fetchBookings(page: 0, size: 500);
+          await _repo.fetchBookings(page: 0, size: 10000);
 
       if (!mounted) return;
 
@@ -181,25 +181,11 @@ class _AllTransactionReportScreenState
         );
       }).toList();
     }
-
-    // 3. Status Filter
+// 3. Status Filter
     if (_selectedStatus != null) {
       final apiStatus = _statusApiMap[_selectedStatus] ?? '';
-      list = list.where((item) {
-        final st = item.status.toUpperCase().trim();
-        if (apiStatus == 'CANCELED' || apiStatus == 'CANCELLED') {
-          return st == 'CANCELED' || st == 'CANCELLED';
-        }
-        if (apiStatus == 'COMPLETED') {
-          return st == 'COMPLETED' || st == 'DELIVERED' || st == 'DONE';
-        }
-        if (apiStatus == 'ONGOING') {
-          return st == 'ONGOING' || st == 'IN PROGRESS' || st == 'PROGRESS' || st == 'ACCEPTED' || st == 'PROCESSING';
-        }
-        return st == apiStatus || st == apiStatus.replaceAll(' ', '');
-      }).toList();
+      list = list.where((item) => item.status.toUpperCase() == apiStatus).toList();
     }
-
     // 4. Schedule Date Filter — compare bookingDate in LOCAL timezone (IST)
     if (_startDate != null || _endDate != null) {
       list = list.where((item) {

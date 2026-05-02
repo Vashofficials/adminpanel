@@ -86,7 +86,7 @@ class _CancelledBookingScreenState extends State<CancelledBookingScreen> {
 
     try {
       // Fetch large page to get all records for client-side filtering/sorting
-      final response = await _repo.fetchBookings(page: 0, size: 500);
+      final response = await _repo.fetchBookings(page: 0, size: 10000);
 
       if (!mounted) return;
       if (response.content != null) {
