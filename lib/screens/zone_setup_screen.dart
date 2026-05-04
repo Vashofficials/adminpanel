@@ -54,95 +54,103 @@ class LocationManagementScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // --- 2. EDITOR SECTION (Map + Form) ---
-            Container(
+            Obx(() => Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(12),
               ),
               clipBehavior: Clip.antiAlias,
-              height: 550,
+              height: controller.isMapFullScreen.value ? 750 : 550,
               child: Row(
                 children: [
                   // LEFT: MAP (65% width)
                   Expanded(
-                    flex: 6,
-                    child: Stack(
+                    flex: controller.isMapFullScreen.value ? 12 : 6,
+                    child: Column(
                       children: [
-                        Obx(() {
-                          Set<Polygon> polygons = {};
-                          if (controller.polygonPoints.isNotEmpty) {
-                            polygons.add(Polygon(
-                              polygonId: const PolygonId("new_zone"),
-                              points: controller.polygonPoints,
-                              fillColor: primaryOrange.withOpacity(0.3),
-                              strokeColor: primaryOrange,
-                              strokeWidth: 2,
-                            ));
-                          }
-                          return GoogleMap(
-                            initialCameraPosition: const CameraPosition(
-                              target: LatLng(26.8467, 80.9462),
-                              zoom: 13,
-                            ),
-                            mapType: MapType.normal,
-                            polygons: polygons,
-                            markers: controller.mapMarkers.toSet(),
-                            onTap: controller.addPolygonPoint,
-                            onMapCreated: controller.onMapCreated,
-                            zoomControlsEnabled: false,
-                            myLocationButtonEnabled: false,
-                          );
-                        }),
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              Obx(() {
+                                Set<Polygon> polygons = {};
+                                if (controller.polygonPoints.isNotEmpty) {
+                                  polygons.add(Polygon(
+                                    polygonId: const PolygonId("new_zone"),
+                                    points: controller.polygonPoints,
+                                    fillColor: primaryOrange.withOpacity(0.3),
+                                    strokeColor: primaryOrange,
+                                    strokeWidth: 2,
+                                  ));
+                                }
+                                return GoogleMap(
+                                  initialCameraPosition: const CameraPosition(
+                                    target: LatLng(26.8467, 80.9462),
+                                    zoom: 13,
+                                  ),
+                                  mapType: MapType.normal,
+                                  polygons: polygons,
+                                  markers: controller.mapMarkers.toSet(),
+                                  onTap: controller.addPolygonPoint,
+                                  onMapCreated: controller.onMapCreated,
+                                  zoomControlsEnabled: false,
+                                  myLocationButtonEnabled: false,
+                                );
+                              }),
 
-                        // Floating Search Bar
-                        Positioned(
-                          top: 16,
-                          left: 16,
-                          right: 16,
-                          child: Container(
-                            height: 45,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black12, blurRadius: 10)
-                              ],
-                            ),
-                            child: TextField(
-                              controller: controller.searchCtrl,
-                              decoration: const InputDecoration(
-                                hintText: "Search Area by Name (e.g. Gomti Nagar)",
-                                prefixIcon: Icon(Icons.search),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              // Floating Search Bar
+                              Positioned(
+                                top: 16,
+                                left: 16,
+                                right: 16,
+                                child: Container(
+                                  height: 45,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black12, blurRadius: 10)
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: controller.searchCtrl,
+                                    decoration: const InputDecoration(
+                                      hintText: "Search Area by Name (e.g. Gomti Nagar)",
+                                      prefixIcon: Icon(Icons.search),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                                    ),
+                                    onSubmitted: (val) => controller.searchAndMoveCamera(val),
+                                  ),
+                                ),
                               ),
-                              onSubmitted: (val) => controller.searchAndMoveCamera(val),
-                            ),
+                            ],
                           ),
                         ),
 
-                        // Bottom Control Bar (Zoom +/-, Delete, Pin Info)
-                        Positioned(
-                          bottom: 16,
-                          left: 16,
-                          right: 16,
+                        // Bottom Control Bar (Now Below Map)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                          ),
                           child: Row(
                             children: [
                               // Pin Count Badge
                               Obx(() => Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.blue.shade50,
                                   borderRadius: BorderRadius.circular(8),
-                                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.push_pin, size: 16, color: Colors.blue),
+                                    const Icon(Icons.push_pin, size: 14, color: Colors.blue),
                                     const SizedBox(width: 6),
                                     Text(
                                       "${controller.polygonPoints.length} points",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blue),
                                     ),
                                   ],
                                 ),
@@ -153,10 +161,27 @@ class LocationManagementScreen extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
-                                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                  border: Border.all(color: Colors.grey.shade200),
                                 ),
                                 child: Row(
                                   children: [
+                                    // Full Screen Toggle
+                                    IconButton(
+                                      icon: Icon(
+                                        controller.isMapFullScreen.value 
+                                            ? Icons.fullscreen_exit 
+                                            : Icons.fullscreen,
+                                        size: 20,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: controller.toggleFullScreen,
+                                      tooltip: "Toggle Full Screen",
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 24,
+                                      color: Colors.grey.shade300,
+                                    ),
                                     // Zoom Out
                                     IconButton(
                                       icon: const Icon(Icons.remove, size: 20),
@@ -217,10 +242,10 @@ class LocationManagementScreen extends StatelessWidget {
                   ),
 
                   // RIGHT: FORM (35% width)
-   // RIGHT: FORM (35% width)
-Expanded(
-  flex: 4,
-  child: Container(
+                  if (!controller.isMapFullScreen.value)
+                    Expanded(
+                      flex: 4,
+                      child: Container(
     // remove padding from here if you want the scrollbar at the edge, 
     // but keeping it here is fine for this layout.
     padding: const EdgeInsets.all(24), 
@@ -376,11 +401,11 @@ Expanded(
         ),
       ),
     ),
-  ),
-),
+                        ),
+                      ),
                 ],
               ),
-            ),
+            )),
             const SizedBox(height: 40),
 
             // --- 3. LIST SECTION ---

@@ -35,6 +35,7 @@ class LocationController extends GetxController {
   // --- Map & Polygon Logic ---
   var polygonPoints = <LatLng>[].obs;
   var mapMarkers = <Marker>{}.obs;
+  var isMapFullScreen = false.obs; // NEW
   GoogleMapController? _mapController;
 
   @override
@@ -56,6 +57,10 @@ class LocationController extends GetxController {
 
   void onMapCreated(GoogleMapController controller) {
     _mapController = controller;
+  }
+
+  void toggleFullScreen() {
+    isMapFullScreen.value = !isMapFullScreen.value;
   }
 
   void fetchLocations() async {
