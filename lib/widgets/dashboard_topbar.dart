@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'custom_center_dialog.dart';
 import '../screens/login_screen.dart'; 
 import '../repositories/auth_repository.dart';
@@ -23,6 +24,25 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   List<NavItem> _searchResults = [];
+
+  String _adminName = "Admin";
+  String _adminEmail = "admin@admin.com";
+  String _adminRole = "super-admin";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIdentity();
+  }
+
+  Future<void> _loadIdentity() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _adminEmail = prefs.getString('admin_email') ?? 'admin@admin.com';
+      _adminName = prefs.getString('admin_name') ?? 'Admin';
+      _adminRole = prefs.getString('admin_role') ?? 'super-admin';
+    });
+  }
 
   @override
   void dispose() {
@@ -170,9 +190,9 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 4,
               tooltip: 'User Menu',
-              child: const CircleAvatar(
-                backgroundColor: Color(0xFFF59E0B),
-                child: Text("A", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: CircleAvatar(
+                backgroundColor: const Color(0xFFF59E0B),
+                child: Text(_adminName.isNotEmpty ? _adminName[0].toUpperCase() : "A", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
               itemBuilder: (context) => [
                 PopupMenuItem<String>(
@@ -184,18 +204,18 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
                     ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 18,
-                          backgroundColor: Color(0xFFF59E0B),
-                          child: Text("A", style: TextStyle(color: Colors.white, fontSize: 14)),
+                          backgroundColor: const Color(0xFFF59E0B),
+                          child: Text(_adminName.isNotEmpty ? _adminName[0].toUpperCase() : "A", style: const TextStyle(color: Colors.white, fontSize: 14)),
                         ),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Text("super-admin", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
-                            Text("admin@admin.com", style: TextStyle(color: Colors.grey, fontSize: 11)),
+                          children: [
+                            Text(_adminName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
+                            Text(_adminEmail, style: const TextStyle(color: Colors.grey, fontSize: 11)),
                           ],
                         ),
                       ],

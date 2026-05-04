@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'sidebar_widgets.dart';
 import '../screens/login_screen.dart'; 
 import '../repositories/auth_repository.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import '../services/permission_manager.dart';
-
-
-
-
-class DashboardSidebar extends StatefulWidget {
+import '../services/permission_manager.dart';class DashboardSidebar extends StatefulWidget {
   final bool collapsed;
   final String? currentRoute;
   final ValueChanged<String>? onNav;
@@ -48,10 +44,27 @@ class _DashboardSidebarState extends State<DashboardSidebar> {
   bool _can(String module) {
   return PermissionManager.can(module);
 }
+
+  String _adminName = "Admin";
+  String _adminEmail = "admin@admin.com";
+  String _adminRole = "super-admin";
+
 @override
 void initState() {
   super.initState();
   _ensurePermissionsLoaded();
+  _loadIdentity();
+}
+
+Future<void> _loadIdentity() async {
+  final prefs = await SharedPreferences.getInstance();
+  if (mounted) {
+    setState(() {
+      _adminEmail = prefs.getString('admin_email') ?? 'admin@admin.com';
+      _adminName = prefs.getString('admin_name') ?? 'Admin';
+      _adminRole = prefs.getString('admin_role') ?? 'super-admin';
+    });
+  }
 }
 
 void _ensurePermissionsLoaded() async {
@@ -128,7 +141,7 @@ void _ensurePermissionsLoaded() async {
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: const Color(0xFFFFE4B5),
-                  child: const Icon(Icons.person, color: Color(0xFF7C5200), size: 20),
+                  child: Text(_adminName.isNotEmpty ? _adminName[0].toUpperCase() : "A", style: const TextStyle(color: Color(0xFF7C5200), fontWeight: FontWeight.bold)),
                 ),
               ),
               secondChild: Container(
@@ -140,22 +153,22 @@ void _ensurePermissionsLoaded() async {
                 ),
                 child: Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 16,
-                      backgroundColor: Color(0xFFFFE4B5),
-                      child: Icon(Icons.person, color: Color(0xFF7C5200), size: 18),
+                      backgroundColor: const Color(0xFFFFE4B5),
+                      child: Text(_adminName.isNotEmpty ? _adminName[0].toUpperCase() : "A", style: const TextStyle(color: Color(0xFF7C5200), fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('admin@admin.com',
+                        children: [
+                          Text(_adminEmail,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12, color: Color(0xFF0F172A), fontWeight: FontWeight.w700)),
-                          SizedBox(height: 2),
-                          Text('super-admin', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A), fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(_adminRole, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
                         ],
                       ),
                     ),

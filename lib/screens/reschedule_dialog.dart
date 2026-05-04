@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/booking_models.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_center_dialog.dart'; // Ensure this exists
@@ -35,6 +36,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
   String? selectedProviderName;
 
   String? selectedAddressId;
+  String? initialSelectedAddressId;
   String? selectedLocationId;
 
   String? selectedReasonDropdown;
@@ -79,6 +81,32 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
     "07:00 PM"
   ];
 
+  List<String> getAvailableTimeSlots() {
+    final now = DateTime.now();
+    if (selectedDate.year != now.year ||
+        selectedDate.month != now.month ||
+        selectedDate.day != now.day) {
+      return timeSlots;
+    }
+
+    return timeSlots.where((time) {
+      try {
+        final format = DateFormat('hh:mm a');
+        final timeDateTime = format.parse(time);
+        final slotDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          timeDateTime.hour,
+          timeDateTime.minute,
+        );
+        return slotDateTime.isAfter(now);
+      } catch (e) {
+        return true; 
+      }
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +146,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
             orElse: () => addresses[0],
           );
           selectedAddressId = defaultAddr['id'];
+          initialSelectedAddressId = defaultAddr['id'];
           selectedLocationId = defaultAddr['locationId'];
         }
       });
@@ -246,6 +275,9 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
       formattedTime = DateFormat('HH:mm').format(parsedTime);
     } catch (_) {}
 
+    final prefs = await SharedPreferences.getInstance();
+    final adminName = prefs.getString('admin_name') ?? 'Admin';
+
     final payload = {
       "bookingId": widget.booking.id,
       "customerId": widget.booking.customerId,
@@ -254,6 +286,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
       "rescheduleDate": dateCtrl.text,
       "rescheduleTime": formattedTime,
       "rescheduleReason": reasonCtrl.text,
+      "adminName": adminName,
       // backward compat
       "bookingDate": dateCtrl.text,
       "bookingTime": formattedTime,
@@ -422,13 +455,46 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
                                   ),
                                   items: addresses
                                       .map<DropdownMenuItem<String>>((addr) {
+                                    String addressLine1 = addr['addressLine1'] ?? '';
+                                    String addressLine2 = addr['addressLine2'] ?? '';
+                                    String city = addr['city'] ?? '';
+                                    String state = addr['state'] ?? '';
+                                    String postcode = addr['postCode'] ?? addr['pincode'] ?? '';
+                                    String addressType = addr['addressType'] ?? '';
+
+                                    List<String> parts = [];
+                                    if (addressLine1.isNotEmpty) parts.add(addressLine1);
+                                    if (addressLine2.isNotEmpty) parts.add(addressLine2);
+                                    if (city.isNotEmpty) parts.add(city);
+                                    if (state.isNotEmpty) parts.add(state);
+                                    if (postcode.isNotEmpty) parts.add(postcode);
+
+                                    String fullAddress = parts.join(', ');
+                                    if (addressType.isNotEmpty) {
+                                      fullAddress += ' - $addressType';
+                                    }
+
                                     return DropdownMenuItem<String>(
                                       value: addr['id'],
-                                      child: Text(
-                                          "${addr['addressLine1']}, ${addr['city']} - ${addr['pincode']}"),
+                                      child: Tooltip(
+                                        message: fullAddress,
+                                        child: Text(
+                                          fullAddress,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                                   onChanged: (val) {
+                                    if (val != null && val != initialSelectedAddressId) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Warning: The booking address has been changed.'),
+                                          duration: Duration(seconds: 3),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                    }
                                     setState(() {
                                       selectedAddressId = val;
                                       final addr = addresses
@@ -446,7 +512,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        _buildSectionTitle("2", "Booking Date"),
+                                        _buildSectionTitle("2", "Reschedule Date"),
                                         const SizedBox(height: 12),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -477,7 +543,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         _buildSectionTitle(
-                                            "3", "Booking Time (24 Hours)"),
+                                            "3", "Reschedule Time"),
                                         const SizedBox(height: 12),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -768,9 +834,9 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
                                     crossAxisSpacing: 12,
                                     mainAxisSpacing: 12,
                                   ),
-                                  itemCount: timeSlots.length,
+                                  itemCount: getAvailableTimeSlots().length,
                                   itemBuilder: (context, index) {
-                                    String time = timeSlots[index];
+                                    String time = getAvailableTimeSlots()[index];
                                     bool isSelected = timeCtrl.text == time;
                                     return GestureDetector(
                                       onTap: () => _onTimeSelected(time),
