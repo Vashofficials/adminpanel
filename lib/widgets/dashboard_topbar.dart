@@ -246,7 +246,9 @@ class _DashboardTopBarState extends State<DashboardTopBar> {
                 ),
               ],
               onSelected: (value) {
-                if (value == 'logout') {
+                if (value == 'settings') {
+                  widget.onNav?.call('settings/personal');
+                } else if (value == 'logout') {
                   _handleLogoutRequest(context);
                 }
               },

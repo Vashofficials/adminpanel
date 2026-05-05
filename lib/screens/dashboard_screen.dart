@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:universal_html/html.dart' as html;
 import 'employee_role_setup_screen.dart';
 import 'employee_role_list_screen.dart';
 import 'add_employee_screen.dart';
@@ -61,6 +63,7 @@ import 'booking_overview_screen.dart';
 import 'module_permssion-screen.dart'; // <--- ADD THIS IMPORT
 import 'welcome_dashboard_screen.dart';
 import '../services/permission_manager.dart';
+import 'personal_details_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -80,7 +83,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Set when navigating from EmployeeListScreen → ModulePermissionScreen.
   EmployeeModel? _permissionEmployee;
 
-final ProviderController providerController = Get.put(ProviderController());
+  final ProviderController providerController = Get.put(ProviderController());
+
+  // Browser beforeunload listener reference
+  StreamSubscription? _beforeUnloadSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Register browser beforeunload to show native "Leave site?" dialog
+    _beforeUnloadSub = html.window.onBeforeUnload.listen((event) {
+      // The modern way: use preventDefault() to trigger the browser's
+      // built-in "Leave site?" confirmation dialog.
+      event.preventDefault();
+    });
+  }
+
+  @override
+  void dispose() {
+    _beforeUnloadSub?.cancel();
+    super.dispose();
+  }
+
+  /// Shows a confirmation dialog when the user tries to exit via in-app back.
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEA5800).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.exit_to_app_rounded, color: Color(0xFFEA5800), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text('Exit Admin Panel?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to leave the Admin Panel? Any unsaved changes will be lost.',
+          style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEA5800),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Yes, Exit'),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
+  }
 
 // Add this method to _DashboardScreenState
   void _viewBookingDetails(BookingModel booking) {
@@ -380,8 +457,9 @@ onEditCustomer: (customer) {
   case 'customer/refund':
   return const RefundRequestScreen();  
 
-    
-  
+  // --- SETTINGS ---
+  case 'settings/personal':
+    return const PersonalDetailsScreen();
 
       default:
         return const DashboardHome();
@@ -405,45 +483,55 @@ onEditCustomer: (customer) {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
-      body: Row(
-        children: [
-          DashboardSidebar(
-            collapsed: _collapsed,
-            currentRoute: _currentRoute, 
-            onNav: _handleNavigation,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                DashboardTopBar(
-                  onMenuTap: () => setState(() => _collapsed = !_collapsed),
-                  onNav: _handleNavigation,
-                 // onLogout: () => _handleNavigation('auth/login'),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(0), 
-                    child: Stack(
-                      children: [
-                        Offstage(
-                          offstage: _selectedBooking != null,
-                          child: _getBody(),
-                        ),
-                        if (_selectedBooking != null)
-                          BookingDetailsScreen(
-                            booking: _selectedBooking!,
-                            onBack: _closeBookingDetails,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _onWillPop();
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F9FC),
+        body: Row(
+          children: [
+            DashboardSidebar(
+              collapsed: _collapsed,
+              currentRoute: _currentRoute, 
+              onNav: _handleNavigation,
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  DashboardTopBar(
+                    onMenuTap: () => setState(() => _collapsed = !_collapsed),
+                    onNav: _handleNavigation,
+                   // onLogout: () => _handleNavigation('auth/login'),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(0), 
+                      child: Stack(
+                        children: [
+                          Offstage(
+                            offstage: _selectedBooking != null,
+                            child: _getBody(),
                           ),
-                      ],
+                          if (_selectedBooking != null)
+                            BookingDetailsScreen(
+                              booking: _selectedBooking!,
+                              onBack: _closeBookingDetails,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
