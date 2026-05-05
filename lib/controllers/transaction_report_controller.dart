@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/provider_model.dart';
 import '../services/api_service.dart';
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 class TransactionReportController extends GetxController {
   final ApiService _api = ApiService();

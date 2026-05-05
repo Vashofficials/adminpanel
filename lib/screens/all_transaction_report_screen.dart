@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:excel/excel.dart' as xl;

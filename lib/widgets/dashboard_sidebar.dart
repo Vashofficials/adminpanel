@@ -5,7 +5,7 @@ import '../screens/login_screen.dart';
 import '../repositories/auth_repository.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import '../services/permission_manager.dart';class DashboardSidebar extends StatefulWidget {
   final bool collapsed;
   final String? currentRoute;

@@ -7,7 +7,7 @@ import '../config/admin_navigation.dart'; // Ensure this points to your extracte
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/permission_manager.dart';
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 class DashboardTopBar extends StatefulWidget {
   final VoidCallback? onMenuTap;

@@ -101,16 +101,8 @@ bool _can(String module) {
   return PermissionManager.can(module);
 }
 
- Widget _getBody() {
+  Widget _getBody() {
     final hasAccess = _hasDashboardAccess();
-
-  // If a booking is selected, show the Details Screen
-  if (_selectedBooking != null) {
-    return BookingDetailsScreen(
-      booking: _selectedBooking!, // <--- Passing full BookingModel object
-      onBack: _closeBookingDetails,
-    );
-  }
 
     switch (_currentRoute) {
      case 'dashboard':
@@ -433,7 +425,19 @@ onEditCustomer: (customer) {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(0), 
-                    child: _getBody(),
+                    child: Stack(
+                      children: [
+                        Offstage(
+                          offstage: _selectedBooking != null,
+                          child: _getBody(),
+                        ),
+                        if (_selectedBooking != null)
+                          BookingDetailsScreen(
+                            booking: _selectedBooking!,
+                            onBack: _closeBookingDetails,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ],

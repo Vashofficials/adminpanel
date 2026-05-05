@@ -690,7 +690,7 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
                                 ),
                               const SizedBox(height: 24),
                               _buildSectionTitle(
-                                  "5", "Reason for Reschedule (Optional)"),
+                                  "5", "Reason for Reschedule*"),
                               const SizedBox(height: 12),
                               DropdownButtonFormField<String>(
                                 value: selectedReasonDropdown,

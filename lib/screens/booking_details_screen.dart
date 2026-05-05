@@ -1055,120 +1055,87 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   void _showCancelDialog(BookingModel booking) {
     _cancelReasonController.clear();
-    String? selectedReason;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            backgroundColor: Colors.white,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// 🔹 ICON
+                const Icon(Icons.cancel, size: 30, color: Colors.red),
+
+                const SizedBox(height: 18),
+
+                /// 🔹 TITLE
+                const Text(
+                  "Cancel Booking",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 22),
+
+                /// 🔹 REASON FIELD
+                TextField(
+                  controller: _cancelReasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: "Reason",
+                    prefixIcon: Icon(Icons.edit_note),
+                    border: OutlineInputBorder(),
+                    hintText: "Enter cancellation reason",
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                /// 🔹 ACTION BUTTONS
+                Row(
                   children: [
-                    /// 🔹 ICON
-                    const Icon(Icons.cancel, size: 30, color: Colors.red),
-
-                    const SizedBox(height: 18),
-
-                    /// 🔹 TITLE
-                    const Text(
-                      "Cancel Booking",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    /// 🔹 REASON DROPDOWN
-                    DropdownButtonFormField<String>(
-                      value: selectedReason,
-                      decoration: const InputDecoration(
-                        labelText: "Select Reason",
-                        prefixIcon: Icon(Icons.list_alt),
-                        border: OutlineInputBorder(),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Back"),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'Customer requested cancellation', child: Text('Customer requested cancellation')),
-                        DropdownMenuItem(value: 'Provider not available', child: Text('Provider not available')),
-                        DropdownMenuItem(value: 'Address not serviceable', child: Text('Address not serviceable')),
-                        DropdownMenuItem(value: 'Selected wrong service', child: Text('Selected wrong service')),
-                        DropdownMenuItem(value: 'Other', child: Text('Other')),
-                      ],
-                      onChanged: (val) {
-                        setState(() {
-                          selectedReason = val;
-                          if (val != 'Other') {
-                            _cancelReasonController.text = val ?? '';
-                          } else {
-                            _cancelReasonController.clear();
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        onPressed: () async {
+                          /// 🔴 VALIDATION
+                          if (_cancelReasonController.text.trim().isEmpty) {
+                            CustomCenterDialog.show(
+                              context,
+                              title: "Required",
+                              message: "Please enter a cancellation reason",
+                              type: DialogType.required,
+                            );
+                            return;
                           }
-                        });
-                      },
-                    ),
 
-                    if (selectedReason == 'Other') ...[
-                      const SizedBox(height: 16),
-                      /// 🔹 REASON FIELD
-                      TextField(
-                        controller: _cancelReasonController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: "Other Reason",
-                          prefixIcon: Icon(Icons.edit_note),
-                          border: OutlineInputBorder(),
-                          hintText: "Enter cancellation reason",
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 28),
-
-                    /// 🔹 ACTION BUTTONS
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Back"),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                            ),
-                            onPressed: () async {
-                              /// 🔴 VALIDATION
-                              if (_cancelReasonController.text.trim().isEmpty) {
-                                CustomCenterDialog.show(
-                                  context,
-                                  title: "Required",
-                                  message: "Please select or enter a cancellation reason",
-                                  type: DialogType.required,
-                                );
-                                return;
-                              }
-
-                              /// 🔥 CONFIRMATION DIALOG
-                              CustomCenterDialog.show(
-                                context,
-                                title: "Confirm Cancellation",
-                                message:
-                                    "Are you sure you want to cancel this booking?",
-                                type: DialogType.warning,
-                                confirmText: "Yes, Cancel",
-                                cancelText: "No",
-                                onConfirm: () async {
-                                  final payload = {
-                                    "bookingId": booking.id,
-                                    "reason": _cancelReasonController.text.trim(),
-                                  };
+                          /// 🔥 CONFIRMATION DIALOG
+                          CustomCenterDialog.show(
+                            context,
+                            title: "Confirm Cancellation",
+                            message:
+                                "Are you sure you want to cancel this booking?",
+                            type: DialogType.warning,
+                            confirmText: "Yes, Cancel",
+                            cancelText: "No",
+                            onConfirm: () async {
+                              final payload = {
+                                "bookingId": booking.id,
+                                "reason": _cancelReasonController.text.trim(),
+                              };
 
                               bool success =
                                   await _apiService.cancelBooking(payload);
