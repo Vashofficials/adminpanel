@@ -154,8 +154,21 @@ double get grandTotalPrice =>
     priceAfterDiscount + gstAmount;
 
 /// 5. Coupon (UI only — NEVER use in calculation)
-double get couponDiscountValue =>
-    coupon?.amount ?? 0.0;
+/// Returns the coupon discount amount:
+///   - If coupon.amount > 0, use flat amount
+///   - If coupon.discountPercentage > 0, calculate from originalPrice
+double get couponDiscountValue {
+  if (coupon == null) return 0.0;
+  if (coupon!.amount > 0) return coupon!.amount;
+  if ((coupon!.discountPercentage ?? 0) > 0) {
+    return (originalPrice * coupon!.discountPercentage!) / 100;
+  }
+  return 0.0;
+}
+
+/// Whether a coupon was applied to this booking
+bool get hasCoupon => coupon != null && coupon!.couponCode != null;
+
 double get serviceDiscount {
   return services.fold(0.0, (sum, item) {
     double serviceLevelDiscount =
@@ -325,9 +338,18 @@ class CouponModel {
   final String? couponCode;
   final double? discountPercentage;
   final String? couponType;
-  final double amount; // <--- ADD THIS FIELD
+  final double amount;
+  final double minPurchaseAmount;
+  final int sameUserLimit;
 
-  CouponModel({this.couponCode, this.discountPercentage, this.couponType,this.amount = 0.0, });
+  CouponModel({
+    this.couponCode,
+    this.discountPercentage,
+    this.couponType,
+    this.amount = 0.0,
+    this.minPurchaseAmount = 0.0,
+    this.sameUserLimit = 0,
+  });
 
   factory CouponModel.fromJson(Map<String, dynamic> json) {
     return CouponModel(
@@ -335,6 +357,25 @@ class CouponModel {
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
       couponType: json['couponType']?.toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      minPurchaseAmount: (json['minPurchaseAmount'] as num?)?.toDouble() ?? 0.0,
+      sameUserLimit: (json['sameUserLimit'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  /// Display-friendly discount label
+  String get discountLabel {
+    if (amount > 0) return '₹${amount.toStringAsFixed(0)} OFF';
+    if ((discountPercentage ?? 0) > 0) return '${discountPercentage!.toStringAsFixed(0)}% OFF';
+    return '';
+  }
+
+  /// Display-friendly coupon type
+  String get typeLabel {
+    switch (couponType?.toUpperCase()) {
+      case 'PROMO': return 'Promo Code';
+      case 'REFERRAL': return 'Referral';
+      case 'LOYALTY': return 'Loyalty';
+      default: return couponType ?? 'Coupon';
+    }
   }
 }

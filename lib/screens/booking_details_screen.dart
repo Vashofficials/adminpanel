@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/booking_models.dart';
-import 'package:flutter/services.dart'; // For loading SVG from assets
+import '../services/invoice_service.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_center_dialog.dart';
 import 'reschedule_dialog.dart';
@@ -33,234 +32,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String? _selectedAddressId; // To handle the "Change Address" logic
-// --- NEW: INVOICE GENERATION LOGIC ---
-  // --- NEW: DYNAMIC INVOICE GENERATION LOGIC ---
-  Future<void> _printInvoice(BookingModel booking) async {
-    final pdf = pw.Document();
-
-    // Load SVG Logo from Assets
-    String svgRaw = "";
-    try {
-      svgRaw = await rootBundle.loadString('assets/logo.svg');
-    } catch (e) {
-      debugPrint("SVG Logo not found: $e");
-    }
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Padding(
-            padding: const pw.EdgeInsets.all(30),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // 1. BRANDED HEADER
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        if (svgRaw.isNotEmpty)
-                          pw.SizedBox(
-                            width: 100,
-                            height: 50,
-                            child: pw.SvgImage(svg: svgRaw),
-                          ),
-                        pw.SizedBox(height: 5),
-                        pw.Text("Chayan Karo",
-                            style: pw.TextStyle(
-                                fontSize: 18,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.orange)),
-                      ],
-                    ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text("INVOICE",
-                            style: pw.TextStyle(
-                                fontSize: 28,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.grey800)),
-                        pw.Text("Booking Ref: ${booking.bookingRef}"),
-                        pw.Text(
-                            "Date: ${DateFormat('dd-MMM-yyyy').format(DateTime.now())}"),
-                      ],
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 15),
-                pw.Divider(thickness: 2, color: PdfColors.orange),
-                pw.SizedBox(height: 20),
-
-                // 2. CUSTOMER & BILLING DETAILS
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Expanded(
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text("BILL TO:",
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
-                                  color: PdfColors.grey700)),
-                          pw.SizedBox(height: 5),
-                          pw.Text(booking.customerName,
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 13)),
-                          pw.Text(booking.customerPhone),
-                          pw.SizedBox(height: 2),
-                          pw.Text(booking.address?.fullFormattedAddress ?? ""),
-                        ],
-                      ),
-                    ),
-                    pw.Expanded(
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
-                        children: [
-                          pw.Text("PAYMENT INFO:",
-                              style: pw.TextStyle(
-                                  fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
-                                  color: PdfColors.grey700)),
-                          pw.SizedBox(height: 5),
-                          pw.Text("Status: ${booking.paymentStatus}"),
-                          pw.Text("Method: ${booking.paymentMode}"),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 30),
-
-                // 3. SERVICE TABLE
-                pw.TableHelper.fromTextArray(
-                  border: null,
-                  headerStyle: pw.TextStyle(
-                      color: PdfColors.white, fontWeight: pw.FontWeight.bold),
-                  headerDecoration:
-                      const pw.BoxDecoration(color: PdfColors.orange),
-                  cellHeight: 30,
-                  cellAlignments: {
-                    0: pw.Alignment.centerLeft,
-                    1: pw.Alignment.center,
-                    2: pw.Alignment.centerRight,
-                  },
-                  headers: ['Service Description', 'Qty', 'Price (INR)'],
-                  data: booking.services.map((s) {
-                    return [
-                      s.serviceName,
-                      s.quantity.toString(),
-                      s.price.toStringAsFixed(2),
-                    ];
-                  }).toList(),
-                ),
-                pw.Divider(thickness: 0.5),
-
-                // 4. BILLING SUMMARY
-                pw.Container(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.SizedBox(height: 10),
-                      _pdfPriceRow("Service Subtotal:",
-                          "INR ${booking.originalPrice.toStringAsFixed(2)}"),
-                      if (booking.serviceDiscount > 0)
-                        _pdfPriceRow(
-                          "Service Discount:",
-                          "- INR ${booking.serviceDiscount.toStringAsFixed(2)}",
-                          color: PdfColors.green,
-                        ),
-                      if (booking.couponDiscountValue > 0)
-                        _pdfPriceRow(
-                          "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}:",
-                          "- INR ${booking.couponDiscountValue.toStringAsFixed(2)}",
-                          color: PdfColors.green,
-                        ),
-                      _pdfPriceRow("GST (${booking.gstPercentage}%):",
-                          "+ INR ${booking.gstAmount.toStringAsFixed(2)}"),
-                      pw.SizedBox(height: 10),
-                      pw.Container(
-                        width: 210,
-                        padding: const pw.EdgeInsets.all(10),
-                        decoration:
-                            const pw.BoxDecoration(color: PdfColors.orange100),
-                        child: pw.Row(
-                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                          children: [
-                            pw.Text("Grand Total:",
-                                style: pw.TextStyle(
-                                    fontWeight: pw.FontWeight.bold,
-                                    fontSize: 14)),
-                            pw.Text(
-                                "INR ${booking.grandTotalPrice.toStringAsFixed(2)}",
-                                style: pw.TextStyle(
-                                    fontWeight: pw.FontWeight.bold,
-                                    fontSize: 14,
-                                    color: PdfColors.blue800)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                pw.Spacer(),
-                // 5. FOOTER
-                pw.Center(
-                  child: pw.Column(
-                    children: [
-                      pw.Text("Thank you for choosing Chayan Karo!",
-                          style: pw.TextStyle(
-                              fontStyle: pw.FontStyle.italic,
-                              color: PdfColors.grey700)),
-                      pw.SizedBox(height: 5),
-                      pw.Text(
-                          "This is a computer-generated document. No signature required.",
-                          style: const pw.TextStyle(
-                              fontSize: 8, color: PdfColors.grey500)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Invoice_${booking.bookingRef}',
-    );
-  }
-
-  // PDF Row Helper
-  pw.Widget _pdfPriceRow(String label, String value, {PdfColor? color}) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
-      child: pw.Row(
-        mainAxisSize: pw.MainAxisSize.min,
-        children: [
-          pw.Text(label, style: const pw.TextStyle(fontSize: 10)),
-          pw.SizedBox(width: 20),
-          pw.SizedBox(
-            width: 90,
-            child: pw.Text(value,
-                textAlign: pw.TextAlign.right,
-                style: pw.TextStyle(
-                    fontSize: 10, color: color ?? PdfColors.black)),
-          ),
-        ],
-      ),
-    );
-  }
+// Invoice generation is handled by InvoiceService
 
   // Helper: Status Color
   Color _getStatusColor(String status) {
@@ -455,20 +227,84 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 const SizedBox(width: 12),
 
                 /// RIGHT SIDE (BUTTON)
-                ElevatedButton.icon(
-                  onPressed: () => _printInvoice(booking),
-                  icon: const Icon(Icons.description, size: 18),
-                  label: const Text("Invoice"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                if (booking.status.toUpperCase() == 'COMPLETED')
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'platform') {
+                        InvoiceService.printPlatformInvoice(booking);
+                      } else if (value == 'provider') {
+                        InvoiceService.printProviderInvoice(booking);
+                      }
+                    },
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(8)),
+                    offset: const Offset(0, 44),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'platform',
+                        child: Row(
+                          children: [
+                            Container(
+                              height: 18,
+                              width: 18,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                              ),
+                              clipBehavior: Clip.hardEdge,
+                              child: SvgPicture.asset(
+                                'assets/logo.svg',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text('Platform Invoice'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'provider',
+                        child: Row(
+                          children: [
+                            Container(
+                              height: 18,
+                              width: 18,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                              ),
+                              clipBehavior: Clip.hardEdge,
+                              child: SvgPicture.asset(
+                                'assets/logo.svg',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text('Provider Invoice'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.description,
+                              size: 18, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text('Invoice',
+                              style: TextStyle(color: Colors.white)),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down,
+                              size: 18, color: Colors.white),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
 
@@ -744,10 +580,11 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Text("No services listed")),
 
               ...booking.services.map((s) {
+                final double unitPrice = s.quantity > 0 ? s.price / s.quantity : s.price;
                 return _buildSummaryRow(
                     s.serviceName,
                     "Original Price",
-                    "₹${s.price.toStringAsFixed(2)}",
+                    "₹${unitPrice.toStringAsFixed(2)}",
                     s.quantity.toString(), // ✅ real quantity
                     "₹${s.price.toStringAsFixed(2)}");
               }),
@@ -932,8 +769,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         color: Color(0xFFD97706), fontSize: 13, height: 1.4)),
               ),
               const SizedBox(height: 15),
-              const Text("Address:",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Address:",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  if (booking.address?.fullFormattedAddress != null)
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(
+                            text: booking.address!.fullFormattedAddress));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Address copied to clipboard")));
+                      },
+                      child: const Icon(Icons.copy, size: 16, color: Colors.grey),
+                    ),
+                ],
+              ),
               const SizedBox(height: 5),
               Text(
                 booking.address?.fullFormattedAddress ?? "No Address Provided",
@@ -962,21 +814,32 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                           : "P"),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            "${booking.provider!.firstName} ${booking.provider!.lastName}",
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Color(0xFF2563EB))),
-                        const SizedBox(height: 4),
-                        Text(booking.provider!.mobile,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 12)),
-                      ],
-                    )
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              "${booking.provider!.firstName} ${booking.provider!.lastName}",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: Color(0xFF2563EB))),
+                          const SizedBox(height: 4),
+                          Text(booking.provider!.mobile,
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(
+                            text: "${booking.provider!.firstName} ${booking.provider!.lastName} - ${booking.provider!.mobile}"));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text("Provider details copied to clipboard")));
+                      },
+                    ),
                   ],
                 ),
         ),
@@ -997,22 +860,130 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     : "C"),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(booking.customerName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF2563EB))),
-                  const SizedBox(height: 4),
-                  Text(booking.customerPhone,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              )
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(booking.customerName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF2563EB))),
+                    const SizedBox(height: 4),
+                    Text(booking.customerPhone,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(
+                      text: "${booking.customerName} - ${booking.customerPhone}"));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Customer details copied to clipboard")));
+                },
+              ),
             ],
           ),
         ),
+        const SizedBox(height: 24),
+
+        // Coupon Applied
+        if (booking.hasCoupon)
+          _buildCard(
+            title: "Coupon Applied",
+            titleIcon: Icons.local_offer,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Coupon Code Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFEF7822).withOpacity(0.12),
+                        const Color(0xFFEF7822).withOpacity(0.04),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFEF7822).withOpacity(0.3),
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.confirmation_number, 
+                          size: 20, color: Color(0xFFEF7822)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              booking.coupon!.couponCode ?? "N/A",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFEF7822),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              booking.coupon!.typeLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          booking.coupon!.discountLabel,
+                          style: const TextStyle(
+                            color: Color(0xFF10B981),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 14),
+                
+                // Coupon details rows
+                _buildCouponInfoRow(
+                  "Discount Applied",
+                  "- ₹${booking.couponDiscountValue.toStringAsFixed(2)}",
+                  valueColor: const Color(0xFF10B981),
+                ),
+                if (booking.coupon!.minPurchaseAmount > 0)
+                  _buildCouponInfoRow(
+                    "Min Purchase Amount",
+                    "₹${booking.coupon!.minPurchaseAmount.toStringAsFixed(0)}",
+                  ),
+                if (booking.coupon!.sameUserLimit > 0)
+                  _buildCouponInfoRow(
+                    "Usage Limit / User",
+                    "${booking.coupon!.sameUserLimit} time(s)",
+                  ),
+              ],
+            ),
+          ),
+
         const SizedBox(height: 24),
         if (booking.status.toLowerCase() != 'canceled' &&
             booking.status.toLowerCase() != 'cancelled')
@@ -1230,7 +1201,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       color: Colors.grey))),
           Expanded(
               flex: 2,
-              child: Text("TOTAL PRICE",
+              child: Text("PER UNIT PRICE",
                   style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -1300,4 +1271,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       ),
     );
   } */
+
+  Widget _buildCouponInfoRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? Colors.black87,
+              )),
+        ],
+      ),
+    );
+  }
 }

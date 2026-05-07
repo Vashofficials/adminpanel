@@ -291,6 +291,7 @@ class _AllTransactionReportScreenState
         'City',
         'Pincode',
         'Service Discount (₹)',
+        'Coupon Code',
         'Coupon Discount (₹)',
         'Tax / GST (₹)',
         'Total Amount (₹)',
@@ -357,6 +358,7 @@ class _AllTransactionReportScreenState
           xl.TextCellValue(b.address?.city ?? ''),       // City
           xl.TextCellValue(b.address?.postCode ?? ''),   // Pincode
           xl.DoubleCellValue(serviceDiscount),           // Service Discount
+          xl.TextCellValue(b.coupon?.couponCode ?? ''),  // Coupon Code
           xl.DoubleCellValue(couponDiscount),            // Coupon Discount
           xl.DoubleCellValue(tax),                       // Tax / GST
           xl.DoubleCellValue(totalAmount),               // Total Amount
@@ -395,16 +397,17 @@ class _AllTransactionReportScreenState
       sheet.setColumnWidth(10, 14); // City
       sheet.setColumnWidth(11, 10); // Pincode
       sheet.setColumnWidth(12, 20); // Svc Discount
-      sheet.setColumnWidth(13, 18); // Coupon Discount
-      sheet.setColumnWidth(14, 14); // Tax
-      sheet.setColumnWidth(15, 16); // Total Amount
-      sheet.setColumnWidth(16, 14); // Payment Mode
-      sheet.setColumnWidth(17, 14); // Payment Status
-      sheet.setColumnWidth(18, 14); // Schedule Date
-      sheet.setColumnWidth(19, 12); // Schedule Time
-      sheet.setColumnWidth(20, 14); // Booking Date
-      sheet.setColumnWidth(21, 12); // Booking Time
-      sheet.setColumnWidth(22, 12); // Status
+      sheet.setColumnWidth(13, 16); // Coupon Code
+      sheet.setColumnWidth(14, 18); // Coupon Discount
+      sheet.setColumnWidth(15, 14); // Tax
+      sheet.setColumnWidth(16, 16); // Total Amount
+      sheet.setColumnWidth(17, 14); // Payment Mode
+      sheet.setColumnWidth(18, 14); // Payment Status
+      sheet.setColumnWidth(19, 14); // Schedule Date
+      sheet.setColumnWidth(20, 12); // Schedule Time
+      sheet.setColumnWidth(21, 14); // Booking Date
+      sheet.setColumnWidth(22, 12); // Booking Time
+      sheet.setColumnWidth(23, 12); // Status
 
       // Delete default "Sheet1"
       excel.delete('Sheet1');
@@ -1163,11 +1166,32 @@ class _AllTransactionReportScreenState
                                                     style: _cellStyle())),
 
                                                 // Coupon Discount
-                                                DataCell(Text(
-  data.couponDiscountValue > 0
-      ? "-₹${data.couponDiscountValue.toStringAsFixed(2)}"
-      : "—",
-                                                    style: _cellStyle())),
+                                                DataCell(
+                                                  data.hasCoupon && data.couponDiscountValue > 0
+                                                    ? Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            "-₹${data.couponDiscountValue.toStringAsFixed(2)}",
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: const Color(0xFF10B981),
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            data.coupon!.couponCode ?? '',
+                                                            style: GoogleFonts.inter(
+                                                              fontSize: 10,
+                                                              color: const Color(0xFFEF7822),
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : Text("—", style: _subStyle()),
+                                                ),
 
                                                 // Tax (GST)
                                                 DataCell(Text(
