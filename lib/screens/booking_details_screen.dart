@@ -580,13 +580,14 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Text("No services listed")),
 
               ...booking.services.map((s) {
-                final double unitPrice = s.quantity > 0 ? s.price / s.quantity : s.price;
+                final double unitPrice = s.price;
+                final double totalPrice = s.price * s.quantity;
                 return _buildSummaryRow(
                     s.serviceName,
                     "Original Price",
                     "₹${unitPrice.toStringAsFixed(2)}",
                     s.quantity.toString(), // ✅ real quantity
-                    "₹${s.price.toStringAsFixed(2)}");
+                    "₹${totalPrice.toStringAsFixed(2)}");
               }),
 
               const SizedBox(height: 16),
@@ -597,15 +598,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
               _buildTotalRow("Service Total",
                   "₹${booking.originalPrice.toStringAsFixed(2)}"),
 
-              // 1. Service Discount (NEW)
-              if (booking.serviceDiscount > 0)
-                _buildTotalRow(
-                  "Service Discount",
-                  "- ₹${booking.serviceDiscount.toStringAsFixed(2)}",
-                  color: Colors.green,
-                ),
-
-// 2. Coupon Discount (UI ONLY)
               if (booking.couponDiscountValue > 0)
                 _buildTotalRow(
                   "Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}",
@@ -613,34 +605,27 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   color: Colors.green,
                 ),
 
-              _buildTotalRow("GST (${booking.gstPercentage}%)",
-                  "+ ₹${booking.gstAmount.toStringAsFixed(2)}"),
+              if (booking.totalDiscount > booking.couponDiscountValue)
+                _buildTotalRow(
+                  "Service Discount",
+                  "- ₹${(booking.totalDiscount - booking.couponDiscountValue).toStringAsFixed(2)}",
+                  color: Colors.green,
+                ),
 
-              // Platform Fee shown but noted as (Excluded from Total)
               _buildTotalRow(
-                  "Platform Fee", "₹${booking.platformFee.toStringAsFixed(2)}",
-                  color: Colors.grey,
-                  isNote:
-                      true // Added a flag for small "Excluded" text if you want
-                  ),
+                  "Platform Fee", "₹${booking.platformFee.toStringAsFixed(2)}", isNote: true),
+
+              _buildTotalRow("GST (${booking.gstPercentage.toStringAsFixed(0)}%)",
+                  "₹${booking.gstAmount.toStringAsFixed(2)}"),
 
               const SizedBox(height: 8),
               const Divider(thickness: 1.2),
               const SizedBox(height: 8),
 
-              // Final Grand Total (Total - Coupon + GST)
+              // Final Grand Total
               _buildTotalRow("Grand Total",
                   "₹${booking.grandTotalPrice.toStringAsFixed(2)}",
                   isBold: true, color: const Color(0xFF2563EB)),
-
-              const SizedBox(height: 10),
-              const Text(
-                "*Platform fee is not included in the grand total.",
-                style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic),
-              )
             ],
           ),
         ),

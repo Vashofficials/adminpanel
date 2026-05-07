@@ -137,13 +137,13 @@ class BookingModel {
   }
 
   // --- Getters for UI Compatibility ---
-/// 1. Original total price
+/// 1. Original total price (Service Total)
 double get originalPrice =>
-    services.fold(0.0, (sum, item) => sum + item.price);
+    services.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
 /// 2. Total discount (service + coupon already combined)
 double get totalDiscount =>
-    services.fold(0.0, (sum, item) => sum + item.discountPrice);
+    services.fold(0.0, (sum, item) => sum + (item.discountPrice * item.quantity));
 
 /// 3. Final price before GST
 double get priceAfterDiscount =>

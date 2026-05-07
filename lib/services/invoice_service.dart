@@ -71,11 +71,10 @@ class InvoiceService {
     final now = DateTime.now();
     final invoiceNo = _invoiceNumber('CKIPL', booking.bookingRef);
 
-    final grandTotal = booking.actualAmount;
-    final platformAmount = grandTotal * 0.20;
-    final cgst = platformAmount * 0.09;
-    final sgst = platformAmount * 0.09;
-    final invoiceTotal = platformAmount + cgst + sgst;
+    final platformAmount = booking.platformFee;
+    final cgst = booking.gstAmount / 2;
+    final sgst = booking.gstAmount / 2;
+    final invoiceTotal = platformAmount + booking.gstAmount;
 
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -131,8 +130,7 @@ class InvoiceService {
     final now = DateTime.now();
     final invoiceNo = _invoiceNumber('SP', booking.bookingRef);
 
-    final grandTotal = booking.actualAmount;
-    final providerAmount = grandTotal * 0.80;
+    final providerAmount = booking.actualAmount;
 
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -164,9 +162,18 @@ class InvoiceService {
           pw.SizedBox(height: 12),
           _buildAmountSummary([
             _SummaryRow('Sub Total (Provider Share 80%)', providerAmount),
-          ], providerAmount),
+            if (booking.couponDiscountValue > 0)
+              _SummaryRow(
+                  'Coupon Discount ${booking.coupon?.couponCode != null ? '(${booking.coupon!.couponCode})' : ''}',
+                  -booking.couponDiscountValue,
+                  textColor: PdfColors.green),
+            if (booking.totalDiscount > booking.couponDiscountValue)
+              _SummaryRow('Service Discount',
+                  -(booking.totalDiscount - booking.couponDiscountValue),
+                  textColor: PdfColors.green),
+          ], providerAmount - booking.totalDiscount),
           pw.SizedBox(height: 6),
-          _amountInWords(providerAmount),
+          _amountInWords(providerAmount - booking.totalDiscount),
           pw.Spacer(),
           _sectionDivider(),
           pw.SizedBox(height: 12),
@@ -413,15 +420,14 @@ class InvoiceService {
       },
       headers: ['Service', 'HSN/SAC', 'Per Unit Price', 'Qty', 'Total'],
       data: booking.services.map((s) {
-        final double unitPrice = s.quantity > 0 ? s.price / s.quantity : s.price;
-        final double providerUnitPrice = unitPrice * 0.80;
-        final double providerTotal = s.price * 0.80;
+        final double unitPrice = s.price;
+        final double total = s.price * s.quantity;
         return [
           s.serviceName,
           _hsnCode,
-          _fmt(providerUnitPrice),
+          _fmt(unitPrice),
           s.quantity.toString(),
-          _fmt(providerTotal),
+          _fmt(total),
         ];
       }).toList(),
     );
@@ -442,12 +448,12 @@ class InvoiceService {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(r.label,
-                          style: const pw.TextStyle(fontSize: 9)),
+                          style: pw.TextStyle(fontSize: 9, color: r.textColor)),
                       pw.SizedBox(
                         width: 90,
                         child: pw.Text(_fmt(r.amount),
                             textAlign: pw.TextAlign.right,
-                            style: const pw.TextStyle(fontSize: 9)),
+                            style: pw.TextStyle(fontSize: 9, color: r.textColor)),
                       ),
                     ],
                   ),
@@ -637,5 +643,6 @@ class InvoiceService {
 class _SummaryRow {
   final String label;
   final double amount;
-  _SummaryRow(this.label, this.amount);
+  final PdfColor? textColor;
+  _SummaryRow(this.label, this.amount, {this.textColor});
 }
