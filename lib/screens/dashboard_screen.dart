@@ -64,6 +64,8 @@ import 'module_permssion-screen.dart'; // <--- ADD THIS IMPORT
 import 'welcome_dashboard_screen.dart';
 import '../services/permission_manager.dart';
 import 'personal_details_screen.dart';
+import 'provider_dashboard_screen.dart';
+import 'individual_provider_dashboard_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -399,6 +401,24 @@ onEditCustomer: (customer) {
         return const BufferConfigScreen();
 
       // --- PROVIDERS ---
+      case 'provider/dashboard':
+    return ProviderDashboardScreen(
+      onNav: (route) {
+        setState(() {
+          _currentRoute = route;
+        });
+      },
+    );
+
+      case 'provider/individual_dashboard':
+    return IndividualProviderDashboardScreen(
+      onBack: () {
+        setState(() {
+          _currentRoute = 'provider/list';
+        });
+      },
+    );
+
       case 'provider/list': 
     return ProviderListScreen(
       // This creates the link! When 'onNav' is called inside ProviderListScreen,

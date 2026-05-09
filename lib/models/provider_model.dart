@@ -33,6 +33,7 @@ class ProviderModel {
   final int totalReview;    // 👈 NEW
   bool isActive; 
   bool isHoldBooking;
+  final DateTime? createdAt;
 
   ProviderModel({
     required this.id,
@@ -55,6 +56,7 @@ class ProviderModel {
     this.totalRating = 0.0,
     this.totalReview = 0,
     this.isHoldBooking = false,
+    this.createdAt,
   });
 
   factory ProviderModel.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,8 @@ class ProviderModel {
                        json['isAadharVerified'] == 1 || 
                        json['isAadharVerified']?.toString() == 'true' ||
                        json['isAadharVerified']?.toString() == '1'),
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : 
+                 json['createdDate'] != null ? DateTime.tryParse(json['createdDate'].toString()) : null,
     );
   }
 

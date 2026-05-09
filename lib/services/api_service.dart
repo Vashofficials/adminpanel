@@ -132,16 +132,18 @@ Future<bool> addCategory({
 }) async {
   try {
     FormData formData = FormData.fromMap({
+      "name": name,                                                             // ✅ name as form field
       "file": await _prepareFile(iconBytes, iconName ?? "icon.png"),
-      "banner": await _prepareFile(bannerBytes, bannerName ?? "banner.png"), // 👈 Added banner
+      "banner": await _prepareFile(bannerBytes, bannerName ?? "banner.png"),
     });
 
-    await _dio.post(
+    final response = await _dio.post(
       '/admin/addCategories',
-      queryParameters: {"request": '{"name": "$name"}'}, // Note: Swagger shows 'request' object
       data: formData,
+      options: Options(contentType: 'multipart/form-data'),
     );
-    return true;
+    print("✅ addCategory response: ${response.statusCode} | ${response.data}");
+    return response.statusCode == 200 || response.statusCode == 201;
   } on DioException catch (e) {
     print("❌ Add category failed: ${e.response?.data}");
     return false;
@@ -1463,6 +1465,18 @@ Future<List<BookingReview>> getBookingRatings(String customerId) async {
   } catch (e) {
     debugPrint("❌ Error fetching reviews: $e");
     return [];
+  }
+}
+
+Future<Response> getProviderRatings(String providerId) async {
+  try {
+    return await _dio.get(
+      '/admin/getProviderRatingByCustomer',
+      queryParameters: {'serviceProviderId': providerId},
+    );
+  } catch (e) {
+    debugPrint("❌ Error fetching provider ratings: $e");
+    rethrow;
   }
 }
 

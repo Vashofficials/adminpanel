@@ -453,6 +453,14 @@ void _ensurePermissionsLoaded() async {
                   secondChild: Column(
                     children: [
                       NavTile(
+                        icon: Icons.dashboard_outlined,
+                        label: 'Provider Dashboard',
+                        collapsed: collapsed,
+                        isChild: true,
+                        isActive: _isActive('provider/dashboard'),
+                        onTap: () => widget.onNav?.call('provider/dashboard'),
+                      ),
+                      NavTile(
                         icon: Icons.format_list_bulleted_rounded,
                         label: 'Provider List',
                         collapsed: collapsed,

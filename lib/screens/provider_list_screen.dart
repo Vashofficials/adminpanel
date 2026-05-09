@@ -6,6 +6,8 @@ import '../controllers/provider_controller.dart';
 import '../controllers/add_provider_controller.dart'; 
 // Import your AddProviderScreen if you use direct navigation fallback
 import 'provider_add_screen.dart'; 
+import '../controllers/individual_provider_dashboard_controller.dart';
+import 'individual_provider_dashboard_screen.dart';
 
 class ProviderListScreen extends StatelessWidget {
   final ProviderController controller = Get.put(ProviderController());
@@ -438,6 +440,17 @@ DataCell(
                                         onNav!('provider/add'); 
                                       } else {
                                         Get.to(() => AddProviderScreen());
+                                      }
+                                    }),
+                                    const SizedBox(width: 8),
+                                    // Individual Dashboard Button
+                                    _buildActionBtn(Icons.dashboard_outlined, Colors.purple, () {
+                                      IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+                                      indCtrl.loadProvider(provider.id, provider);
+                                      if (onNav != null) {
+                                        onNav!('provider/individual_dashboard');
+                                      } else {
+                                        Get.to(() => IndividualProviderDashboardScreen());
                                       }
                                     }),
                                     const SizedBox(width: 8),
