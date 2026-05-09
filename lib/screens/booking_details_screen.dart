@@ -580,8 +580,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Text("No services listed")),
 
               ...booking.services.map((s) {
-                final double unitPrice = s.price;
-                final double totalPrice = s.price * s.quantity;
+                final double unitPrice =
+      s.quantity > 0 ? s.price / s.quantity : s.price;
+
+  final double totalPrice = unitPrice * s.quantity;
                 return _buildSummaryRow(
                     s.serviceName,
                     "Original Price",

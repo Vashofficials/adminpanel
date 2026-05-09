@@ -138,12 +138,37 @@ class BookingModel {
 
   // --- Getters for UI Compatibility ---
 /// 1. Original total price (Service Total)
+/// 1. Original total price (Service Total)
 double get originalPrice =>
-    services.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+    services.fold(0.0, (sum, item) {
+      final unitPrice =
+          item.quantity > 0 ? item.price / item.quantity : item.price;
+
+      return sum + (unitPrice * item.quantity);
+    });
 
 /// 2. Total discount (service + coupon already combined)
 double get totalDiscount =>
-    services.fold(0.0, (sum, item) => sum + (item.discountPrice * item.quantity));
+    services.fold(0.0, (sum, item) {
+      final unitDiscount =
+          item.quantity > 0
+              ? item.discountPrice / item.quantity
+              : item.discountPrice;
+
+      return sum + (unitDiscount * item.quantity);
+    });
+
+double get serviceDiscount {
+  return services.fold(0.0, (sum, item) {
+    final unitPrice =
+        item.quantity > 0 ? item.price / item.quantity : item.price;
+
+    double serviceLevelDiscount =
+        (unitPrice * item.discountPercentage / 100) * item.quantity;
+
+    return sum + serviceLevelDiscount;
+  });
+}
 
 /// 3. Final price before GST
 double get priceAfterDiscount =>
@@ -169,13 +194,7 @@ double get couponDiscountValue {
 /// Whether a coupon was applied to this booking
 bool get hasCoupon => coupon != null && coupon!.couponCode != null;
 
-double get serviceDiscount {
-  return services.fold(0.0, (sum, item) {
-    double serviceLevelDiscount =
-        (item.price * item.discountPercentage) / 100;
-    return sum + serviceLevelDiscount;
-  });
-}    
+
 
   /*double get totalCouponDiscountAmount {
     return 0.0; // Placeholder until integrated with real API data
