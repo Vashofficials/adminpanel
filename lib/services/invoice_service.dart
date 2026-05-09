@@ -420,8 +420,10 @@ class InvoiceService {
       },
       headers: ['Service', 'HSN/SAC', 'Per Unit Price', 'Qty', 'Total'],
       data: booking.services.map((s) {
-        final double unitPrice = s.price;
-        final double total = s.price * s.quantity;
+final double unitPrice =
+    s.quantity > 0 ? s.price / s.quantity : s.price;
+
+final double total = unitPrice * s.quantity;
         return [
           s.serviceName,
           _hsnCode,
