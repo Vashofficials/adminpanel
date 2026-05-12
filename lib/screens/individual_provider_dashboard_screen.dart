@@ -13,31 +13,12 @@ const Color _kOrange = Color(0xFFFF7E1D);
 const Color _kGreen = Color(0xFF10B981);
 const Color _kRed = Color(0xFFEF4444);
 
-class IndividualProviderDashboardScreen extends StatefulWidget {
+class IndividualProviderDashboardScreen extends StatelessWidget {
   final VoidCallback? onBack;
-  const IndividualProviderDashboardScreen({Key? key, this.onBack}) : super(key: key);
 
-  @override
-  State<IndividualProviderDashboardScreen> createState() => _IndividualProviderDashboardScreenState();
-}
+  IndividualProviderDashboardScreen({Key? key, this.onBack}) : super(key: key);
 
-class _IndividualProviderDashboardScreenState extends State<IndividualProviderDashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late final IndividualProviderDashboardController ctrl;
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    ctrl = Get.find<IndividualProviderDashboardController>();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  final IndividualProviderDashboardController ctrl = Get.find<IndividualProviderDashboardController>();
 
   @override
   Widget build(BuildContext context) {
@@ -46,99 +27,56 @@ class _IndividualProviderDashboardScreenState extends State<IndividualProviderDa
       body: Obx(() {
         final provider = ctrl.providerModel.value;
         if (provider == null) {
-          return const Center(child: CircularProgressIndicator(color: _kOrange));
+          return const Center(child: Text("Provider data not loaded."));
         }
 
         return Stack(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ─────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
-                  child: _buildHeader(context,
-                      provider.firstName.isNotEmpty ? provider.firstName : provider.fullName),
-                ),
-                const SizedBox(height: 16),
-                // ── Tab bar ────────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: _kCardBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _kBorderColor),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      labelColor: _kOrange,
-                      unselectedLabelColor: _kTextMuted,
-                      labelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
-                      unselectedLabelStyle: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500),
-                      indicator: BoxDecoration(
-                        color: _kOrange.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      tabs: const [
-                        Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: "Overview"),
-                        Tab(icon: Icon(Icons.event_available_outlined, size: 18), text: "7-Day Availability"),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // ── Tab views ──────────────────────────────────────────────
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context, provider.firstName.isNotEmpty ? provider.firstName : provider.fullName),
+                  const SizedBox(height: 24),
+                  _buildTopStats(),
+                  const SizedBox(height: 24),
+                  _buildHolidaysCard(),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tab 1 – Overview
-                      SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTopStats(),
-                            const SizedBox(height: 24),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(flex: 4, child: _buildTodaysSchedule()),
-                                const SizedBox(width: 24),
-                                Expanded(flex: 6, child: _buildEarningsOverview()),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: _buildRecentBookings()),
-                                const SizedBox(width: 24),
-                                Expanded(child: _buildRatingsReviews()),
-                                const SizedBox(width: 24),
-                                Expanded(child: _buildProfileCompletion()),
-                              ],
-                            ),
-                          ],
-                        ),
+                      Expanded(
+                        flex: 4,
+                        child: _buildTodaysSchedule(),
                       ),
-                      // Tab 2 – 7-Day Availability
-                      SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
-                        child: _SevenDayAvailability(ctrl: ctrl),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 6,
+                        child: _buildEarningsOverview(),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildRecentBookings()),
+                      const SizedBox(width: 24),
+                      Expanded(child: _buildRatingsReviews()),
+                      const SizedBox(width: 24),
+                      Expanded(child: _buildProfileCompletion()),
+                    ],
+                  ),
+                ],
+              ),
             ),
             if (ctrl.isLoading.value)
               Container(
                 color: Colors.white.withOpacity(0.5),
-                child: const Center(child: CircularProgressIndicator(color: _kOrange)),
+                child: const Center(
+                  child: CircularProgressIndicator(color: _kOrange),
+                ),
               ),
           ],
         );
@@ -152,9 +90,9 @@ class _IndividualProviderDashboardScreenState extends State<IndividualProviderDa
       children: [
         Row(
           children: [
-            if (widget.onBack != null) ...[
+            if (onBack != null) ...[
               InkWell(
-                onTap: widget.onBack,
+                onTap: onBack,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -979,6 +917,145 @@ class _IndividualProviderDashboardScreenState extends State<IndividualProviderDa
     );
   }
 
+  Widget _buildHolidaysCard() {
+    return _buildCardWrapper(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    "7-Day Availability",
+                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: _kTextDark),
+                  ),
+                  const SizedBox(width: 12),
+                  if (ctrl.isOnHoliday.value)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _kRed.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _kRed.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info, size: 12, color: _kRed),
+                          const SizedBox(width: 4),
+                          Text(
+                            "On Holiday Today",
+                            style: GoogleFonts.poppins(fontSize: 10, color: _kRed, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _kBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_available, size: 14, color: _kGreen),
+                    const SizedBox(width: 4),
+                    Text("Available", style: GoogleFonts.poppins(fontSize: 11, color: _kTextMuted)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.event_busy, size: 14, color: _kRed),
+                    const SizedBox(width: 4),
+                    Text("Holiday", style: GoogleFonts.poppins(fontSize: 11, color: _kTextMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: ctrl.availability7Days.map((day) {
+              final DateTime date = day['date'];
+              final bool isHoliday = day['isHoliday'];
+              final bool isToday = date.day == DateTime.now().day && 
+                                  date.month == DateTime.now().month && 
+                                  date.year == DateTime.now().year;
+              
+              String dayName;
+              if (isToday) {
+                dayName = "Today";
+              } else {
+                const days = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                dayName = days[date.weekday];
+              }
+
+              return Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isToday ? _kOrange.withOpacity(0.05) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isToday ? Border.all(color: _kOrange.withOpacity(0.2)) : null,
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        dayName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12, 
+                          fontWeight: isToday ? FontWeight.w600 : FontWeight.w500,
+                          color: isToday ? _kOrange : _kTextMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isHoliday ? _kRed.withOpacity(0.1) : _kGreen.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            if (isToday)
+                              BoxShadow(
+                                color: (isHoliday ? _kRed : _kGreen).withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                          ],
+                        ),
+                        child: Icon(
+                          isHoliday ? Icons.event_busy : Icons.event_available,
+                          color: isHoliday ? _kRed : _kGreen,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "${date.day} ${_getMonthName(date.month)}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 11, 
+                          fontWeight: FontWeight.w600, 
+                          color: _kTextDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months[month];
+  }
+
   Widget _buildCardWrapper({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -994,246 +1071,3 @@ class _IndividualProviderDashboardScreenState extends State<IndividualProviderDa
     );
   }
 }
-
-// =============================================================================
-// 7-Day Availability Widget
-// =============================================================================
-class _SevenDayAvailability extends StatelessWidget {
-  final IndividualProviderDashboardController ctrl;
-  const _SevenDayAvailability({required this.ctrl});
-
-  static const List<String> _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  static const List<String> _fullDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-  String _fmt(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final days = List.generate(7, (i) => today.add(Duration(days: i)));
-
-    return Obx(() {
-      final holidaySet = ctrl.allHolidayDates.toSet();
-
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: _kCardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _kBorderColor),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Title row ──────────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "7-Day Availability",
-                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: _kTextDark),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Based on holiday schedule from API",
-                      style: GoogleFonts.poppins(fontSize: 13, color: _kTextMuted),
-                    ),
-                  ],
-                ),
-                // Legend
-                Row(children: [
-                  _LegendDot(color: _kGreen, label: "Available"),
-                  const SizedBox(width: 16),
-                  _LegendDot(color: _kRed, label: "Holiday / Off"),
-                ]),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // ── Status banner for today ─────────────────────────────────────
-            Obx(() {
-              final isOff = ctrl.isOnHoliday.value;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                decoration: BoxDecoration(
-                  color: isOff ? _kRed.withOpacity(0.08) : _kGreen.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isOff ? _kRed.withOpacity(0.3) : _kGreen.withOpacity(0.3)),
-                ),
-                child: Row(children: [
-                  Icon(
-                    isOff ? Icons.event_busy_outlined : Icons.event_available_outlined,
-                    color: isOff ? _kRed : _kGreen,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    isOff
-                        ? "Provider is ON HOLIDAY today — no bookings accepted"
-                        : "Provider is AVAILABLE today — accepting bookings",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isOff ? _kRed : _kGreen,
-                    ),
-                  ),
-                ]),
-              );
-            }),
-            const SizedBox(height: 24),
-
-            // ── 7-day grid ─────────────────────────────────────────────────
-            ...days.asMap().entries.map((entry) {
-              final i = entry.key;
-              final day = entry.value;
-              final dateStr = _fmt(day);
-              final isHoliday = holidaySet.contains(dateStr);
-              final isToday = i == 0;
-              final weekdayIndex = day.weekday - 1; // 0=Mon … 6=Sun
-
-              return Column(
-                children: [
-                  _DayAvailabilityRow(
-                    dayShort: _dayNames[weekdayIndex],
-                    dayFull: _fullDays[weekdayIndex],
-                    date: '${day.day.toString().padLeft(2, '0')} / ${day.month.toString().padLeft(2, '0')} / ${day.year}',
-                    isHoliday: isHoliday,
-                    isToday: isToday,
-                  ),
-                  if (i < 6)
-                    const Divider(color: _kBorderColor, height: 1),
-                ],
-              );
-            }),
-          ],
-        ),
-      );
-    });
-  }
-}
-
-class _DayAvailabilityRow extends StatelessWidget {
-  final String dayShort;
-  final String dayFull;
-  final String date;
-  final bool isHoliday;
-  final bool isToday;
-
-  const _DayAvailabilityRow({
-    required this.dayShort,
-    required this.dayFull,
-    required this.date,
-    required this.isHoliday,
-    required this.isToday,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final statusColor = isHoliday ? _kRed : _kGreen;
-    final statusBg = isHoliday ? _kRed.withOpacity(0.08) : _kGreen.withOpacity(0.08);
-    final statusLabel = isHoliday ? "Holiday / Off" : "Available";
-    final statusIcon = isHoliday ? Icons.event_busy_outlined : Icons.check_circle_outline;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-      decoration: BoxDecoration(
-        color: isToday ? const Color(0xFFFFF7ED) : Colors.transparent,
-        borderRadius: isToday ? BorderRadius.circular(10) : null,
-      ),
-      child: Row(
-        children: [
-          // Day pill
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: isToday ? _kOrange : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  dayShort,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isToday ? Colors.white : _kTextMuted,
-                  ),
-                ),
-                if (isToday)
-                  Text(
-                    "Today",
-                    style: GoogleFonts.poppins(fontSize: 9, color: Colors.white.withOpacity(0.85)),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Date label
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  dayFull,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _kTextDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  date,
-                  style: GoogleFonts.poppins(fontSize: 12, color: _kTextMuted),
-                ),
-              ],
-            ),
-          ),
-          // Status chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(20)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, size: 14, color: statusColor),
-                const SizedBox(width: 6),
-                Text(
-                  statusLabel,
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _LegendDot({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text(label, style: GoogleFonts.poppins(fontSize: 12, color: _kTextMuted, fontWeight: FontWeight.w500)),
-    ]);
-  }
-}
-

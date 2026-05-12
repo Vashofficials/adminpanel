@@ -13,12 +13,22 @@ import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 import '../services/booking_notification_service.dart';
 import 'reschedule_dialog.dart';
+import '../models/customer_models.dart';
+import '../models/provider_model.dart';
+
 
 class AllTransactionReportScreen extends StatefulWidget {
   // Navigation Callback
   final Function(BookingModel) onViewDetails;
+  final Function(Customer)? onViewCustomer;
+  final Function(ProviderModel)? onViewProvider;
 
-  const AllTransactionReportScreen({super.key, required this.onViewDetails});
+  const AllTransactionReportScreen({
+    super.key,
+    required this.onViewDetails,
+    this.onViewCustomer,
+    this.onViewProvider,
+  });
 
   @override
   State<AllTransactionReportScreen> createState() =>
@@ -1117,22 +1127,40 @@ class _AllTransactionReportScreenState
                                                 )),
 
                                                 // Customer Info
-                                                DataCell(Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .center,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .start,
-                                                  children: [
-                                                    Text(data.customerName,
-                                                        style: _cellStyle(
-                                                            bold: true)),
-                                                    Text(
-                                                        data.customerPhone,
-                                                        style:
-                                                            _subStyle()),
-                                                  ],
+                                                DataCell(InkWell(
+                                                  onTap: () {
+                                                    if (widget.onViewCustomer != null && data.customerDetails != null) {
+                                                      widget.onViewCustomer!(Customer(
+                                                        id: data.customerId,
+                                                        name: data.customerName,
+                                                        email: '',
+                                                        phone: data.customerPhone,
+                                                        bookings: 0,
+                                                        joinedDate: 'N/A',
+                                                        location: data.address?.city ?? 'Lucknow',
+                                                        isActive: true,
+                                                        avatarColor: '0xFFE3F2FD',
+                                                      ));
+                                                    }
+                                                  },
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(data.customerName,
+                                                          style: _cellStyle(
+                                                              bold: true,
+                                                              color: const Color(0xFFEA5800))),
+                                                      Text(
+                                                          data.customerPhone,
+                                                          style:
+                                                              _subStyle()),
+                                                    ],
+                                                  ),
                                                 )),
 
                                                 // Provider Info
@@ -1146,19 +1174,34 @@ class _AllTransactionReportScreenState
                                                       child: Text("Not Assigned",
                                                         style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8))),
                                                     )
-                                                  : Column(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text(
-                                                          "${data.provider!.firstName} ${data.provider!.lastName}".trim(),
-                                                          style: _cellStyle(bold: true),
-                                                        ),
-                                                        Text(
-                                                          data.provider!.mobile,
-                                                          style: _subStyle(),
-                                                        ),
-                                                      ],
+                                                  : InkWell(
+                                                      onTap: () {
+                                                        if (widget.onViewProvider != null && data.provider != null) {
+                                                          widget.onViewProvider!(ProviderModel(
+                                                            id: data.provider!.id,
+                                                            firstName: data.provider!.firstName,
+                                                            lastName: data.provider!.lastName,
+                                                            mobileNo: data.provider!.mobile,
+                                                            gender: data.provider!.gender,
+                                                            aadharNo: '',
+                                                            isAadharVerified: true,
+                                                          ));
+                                                        }
+                                                      },
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            "${data.provider!.firstName} ${data.provider!.lastName}".trim(),
+                                                            style: _cellStyle(bold: true, color: const Color(0xFFEA5800)),
+                                                          ),
+                                                          Text(
+                                                            data.provider!.mobile,
+                                                            style: _subStyle(),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     )),
 
                                                 // Service Discount
@@ -1342,8 +1385,7 @@ class _AllTransactionReportScreenState
                                                         icon: Icons.visibility_outlined,
                                                         onTap: () => widget.onViewDetails(data),
                                                       ),
-                                                      if (data.status.toLowerCase() == 'completed' ||
-                                                          data.status.toLowerCase() == 'pending') ...[
+                                                      if (data.status.toLowerCase().trim() == 'pending') ...[
                                                         const SizedBox(width: 6),
                                                         _ActionButton(
                                                           icon: Icons.calendar_month,
@@ -1506,11 +1548,11 @@ class _AllTransactionReportScreenState
     );
   }
 
-  static TextStyle _cellStyle({bool bold = false, double size = 13}) {
+  static TextStyle _cellStyle({bool bold = false, double size = 13, Color? color}) {
     return GoogleFonts.inter(
       fontSize: size,
       fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-      color: const Color(0xFF334155),
+      color: color ?? const Color(0xFF334155),
     );
   }
 

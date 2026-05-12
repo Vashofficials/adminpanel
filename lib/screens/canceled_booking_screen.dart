@@ -10,12 +10,21 @@ import 'package:intl/intl.dart';
 // --- IMPORTS ---
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
+import '../models/provider_model.dart';
+import '../models/customer_models.dart';
 
 class CancelledBookingScreen extends StatefulWidget {
   // Navigation Callback
   final Function(BookingModel) onViewDetails;
+  final Function(Customer)? onViewCustomer;
+  final Function(ProviderModel provider)? onViewProvider;
 
-  const CancelledBookingScreen({super.key, required this.onViewDetails});
+  const CancelledBookingScreen({
+    super.key, 
+    required this.onViewDetails,
+    this.onViewCustomer,
+    this.onViewProvider,
+  });
 
   @override
   State<CancelledBookingScreen> createState() => _CancelledBookingScreenState();
@@ -934,14 +943,34 @@ class _CancelledBookingScreenState extends State<CancelledBookingScreen> {
                                                         style: _subStyle()),
                                                   ],
                                                 )),
-                                                DataCell(Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(data.customerName, style: _cellStyle(bold: true)),
-                                                    Text(data.customerPhone, style: _subStyle()),
-                                                  ],
-                                                )),
+                                                DataCell(
+                                                  InkWell(
+                                                    onTap: () {
+                                                      if (widget.onViewCustomer != null) {
+                                                        final cust = Customer(
+                                                          id: data.customerId,
+                                                          name: data.customerName,
+                                                          email: '',
+                                                          phone: data.customerPhone,
+                                                          bookings: 0,
+                                                          joinedDate: 'N/A',
+                                                          location: data.address?.city ?? 'Lucknow',
+                                                          isActive: true,
+                                                          avatarColor: '0xFFE3F2FD',
+                                                        );
+                                                        widget.onViewCustomer!(cust);
+                                                      }
+                                                    },
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(data.customerName, style: _cellStyle(bold: true, color: const Color(0xFFEF7822))),
+                                                        Text(data.customerPhone, style: _subStyle()),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
                                                 DataCell(data.provider == null
                                                   ? Container(
                                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -952,14 +981,31 @@ class _CancelledBookingScreenState extends State<CancelledBookingScreen> {
                                                       child: Text("Not Assigned",
                                                         style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8))),
                                                     )
-                                                  : Column(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text("${data.provider!.firstName} ${data.provider!.lastName}".trim(),
-                                                            style: _cellStyle(bold: true)),
-                                                        Text(data.provider!.mobile, style: _subStyle()),
-                                                      ],
+                                                  : InkWell(
+                                                      onTap: () {
+                                                        if (widget.onViewProvider != null) {
+                                                          final p = data.provider!;
+                                                          final model = ProviderModel(
+                                                            id: p.id,
+                                                            firstName: p.firstName,
+                                                            lastName: p.lastName,
+                                                            mobileNo: p.mobile,
+                                                            gender: p.gender,
+                                                            aadharNo: '',
+                                                            isAadharVerified: false,
+                                                          );
+                                                          widget.onViewProvider!(model);
+                                                        }
+                                                      },
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text("${data.provider!.firstName} ${data.provider!.lastName}".trim(),
+                                                              style: _cellStyle(bold: true, color: const Color(0xFFEF7822))),
+                                                          Text(data.provider!.mobile, style: _subStyle()),
+                                                        ],
+                                                      ),
                                                     )),
                                                 DataCell(Text("-₹${data.serviceDiscount.toStringAsFixed(2)}", style: _cellStyle())),
                                                 DataCell(Text(data.couponDiscountValue > 0
@@ -1202,11 +1248,11 @@ class _CancelledBookingScreenState extends State<CancelledBookingScreen> {
     );
   }
 
-  static TextStyle _cellStyle({bool bold = false, double size = 13}) {
+  static TextStyle _cellStyle({bool bold = false, double size = 13, Color? color}) {
     return GoogleFonts.inter(
       fontSize: size,
       fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-      color: const Color(0xFF334155),
+      color: color ?? const Color(0xFF334155),
     );
   }
 

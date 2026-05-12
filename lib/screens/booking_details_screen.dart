@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../models/booking_models.dart';
+import '../models/customer_models.dart'; // <--- Added import for Customer
+import '../models/provider_model.dart';
 import '../services/invoice_service.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_center_dialog.dart';
@@ -11,11 +13,15 @@ import 'reschedule_dialog.dart';
 class BookingDetailsScreen extends StatefulWidget {
   final BookingModel booking; // <--- Changed: Accept Full Object
   final VoidCallback onBack;
+  final Function(Customer)? onViewCustomer; // <--- Added for Customer Navigation
+  final Function(ProviderModel)? onViewProvider;
 
   const BookingDetailsScreen({
     super.key,
     required this.booking,
     required this.onBack,
+    this.onViewCustomer,
+    this.onViewProvider,
   });
 
   @override
@@ -801,43 +807,58 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           child: booking.provider == null
               ? const Text("No Provider Assigned",
                   style: TextStyle(color: Colors.red))
-              : Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Colors.orange[100],
-                      child: Text(booking.provider!.firstName.isNotEmpty
-                          ? booking.provider!.firstName[0]
-                          : "P"),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                              "${booking.provider!.firstName} ${booking.provider!.lastName}",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Color(0xFF2563EB))),
-                          const SizedBox(height: 4),
-                          Text(booking.provider!.mobile,
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 12)),
-                        ],
+              : InkWell(
+                  onTap: () {
+                    if (widget.onViewProvider != null) {
+                      widget.onViewProvider!(ProviderModel(
+                        id: booking.provider!.id,
+                        firstName: booking.provider!.firstName,
+                        lastName: booking.provider!.lastName,
+                        mobileNo: booking.provider!.mobile,
+                        gender: booking.provider!.gender,
+                        aadharNo: '',
+                        isAadharVerified: true,
+                      ));
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.orange[100],
+                        child: Text(booking.provider!.firstName.isNotEmpty
+                            ? booking.provider!.firstName[0]
+                            : "P"),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(
-                            text: "${booking.provider!.firstName} ${booking.provider!.lastName} - ${booking.provider!.mobile}"));
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text("Provider details copied to clipboard")));
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                "${booking.provider!.firstName} ${booking.provider!.lastName}",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Color(0xFF2563EB))),
+                            const SizedBox(height: 4),
+                            Text(booking.provider!.mobile,
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(
+                              text: "${booking.provider!.firstName} ${booking.provider!.lastName} - ${booking.provider!.mobile}"));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text("Provider details copied to clipboard")));
+                        },
+                      ),
+                    ],
+                  ),
                 ),
         ),
 
@@ -847,41 +868,59 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         _buildCard(
           title: "Customer Information",
           titleIcon: Icons.person,
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.blue[100],
-                child: Text(booking.customerName.isNotEmpty
-                    ? booking.customerName[0]
-                    : "C"),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(booking.customerName,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Color(0xFF2563EB))),
-                    const SizedBox(height: 4),
-                    Text(booking.customerPhone,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
+          child: InkWell(
+            onTap: () {
+              if (widget.onViewCustomer != null) {
+                widget.onViewCustomer!(Customer(
+                  id: booking.customerId,
+                  name: booking.customerName,
+                  email: '',
+                  phone: booking.customerPhone,
+                  bookings: 0,
+                  joinedDate: '',
+                  location: '',
+                  isActive: true,
+                  avatarColor: '#000000',
+                  imgLink: null,
+                ));
+              }
+            },
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.blue[100],
+                  child: Text(booking.customerName.isNotEmpty
+                      ? booking.customerName[0]
+                      : "C"),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(
-                      text: "${booking.customerName} - ${booking.customerPhone}"));
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Customer details copied to clipboard")));
-                },
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(booking.customerName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Color(0xFF2563EB))),
+                      const SizedBox(height: 4),
+                      Text(booking.customerPhone,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(
+                        text: "${booking.customerName} - ${booking.customerPhone}"));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text("Customer details copied to clipboard")));
+                  },
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -982,8 +1021,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           ),
 
         const SizedBox(height: 24),
-        if (booking.status.toLowerCase() != 'canceled' &&
-            booking.status.toLowerCase() != 'cancelled')
+        if (booking.status.toLowerCase().trim() == 'pending')
           Row(
             children: [
               Expanded(

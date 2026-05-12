@@ -114,43 +114,164 @@ class TabPersonalDetails extends GetView<AddProviderController> {
                   // --- 3. PROFILE PICTURE UPLOAD ---
                   Expanded(
                     flex: 2,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (!controller.isViewOnly.value) {
-                          controller.pickProfileImage();
-                        }
-                      },
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 140, 
-                            decoration: BoxDecoration(
-                              border: Border.all(color: borderGrey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.grey.shade50,
-                              // Show Image logic
-                              image: _buildProfileImageProvider(controller),
-                            ),
-                            alignment: Alignment.center,
-                            child: _buildProfileChild(controller, textGrey),
-                          ),
-                          // Edit Icon Badge (Hide if view-only)
-                          if (!controller.isViewOnly.value)
-                            Positioned(
-                              bottom: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (!controller.isViewOnly.value) {
+                              controller.pickProfileImage();
+                            }
+                          },
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  height: 180,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: borderGrey),
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: Colors.grey.shade50,
+                                  ),
+                                  child: Obx(() {
+                                    // New file picked
+                                    if (controller.profileImageFile.value != null) {
+                                      if (kIsWeb) {
+                                        return Image.memory(
+                                          controller.profileImageFile.value!.bytes!,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: 180,
+                                        );
+                                      } else {
+                                        return Image.file(
+                                          File(controller.profileImageFile.value!.path!),
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: 180,
+                                        );
+                                      }
+                                    }
+                                    // Existing network URL
+                                    if (controller.profileImageUrl.value != null &&
+                                        controller.profileImageUrl.value!.isNotEmpty) {
+                                      return Image.network(
+                                        controller.profileImageUrl.value!,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        height: 180,
+                                        errorBuilder: (_, __, ___) => _noImagePlaceholder(textGrey),
+                                        loadingBuilder: (_, child, progress) => progress == null
+                                            ? child
+                                            : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      );
+                                    }
+                                    // No image — show placeholder
+                                    return _noImagePlaceholder(textGrey);
+                                  }),
                                 ),
-                                child: const Icon(Icons.camera_alt, size: 16, color: primaryOrange),
                               ),
-                            )
-                        ],
-                      ),
+                              // Edit Icon Badge
+                              if (!controller.isViewOnly.value)
+                                Positioned(
+                                  bottom: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]
+                                    ),
+                                    child: const Icon(Icons.camera_alt, size: 16, color: primaryOrange),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // --- UUID Display with Copy ---
+                        Obx(() {
+                          final id = controller.selectedProviderId.value;
+                          if (id == null || id.isEmpty) return const SizedBox.shrink();
+                          return Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: primaryOrange.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: primaryOrange.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.badge, size: 14, color: primaryOrange),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "PROVIDER UUID",
+                                        style: TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryOrange,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      Text(
+                                        id,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.black87,
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Tooltip(
+                                  message: "Copy UUID",
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(4),
+                                    onTap: () {
+                                      Clipboard.setData(ClipboardData(text: id));
+                                      Get.snackbar(
+                                        "Copied",
+                                        "Provider UUID copied to clipboard",
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: Colors.black87,
+                                        colorText: Colors.white,
+                                        margin: const EdgeInsets.all(16),
+                                        borderRadius: 8,
+                                        duration: const Duration(seconds: 2),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: primaryOrange.withOpacity(0.1),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.copy_all_rounded, size: 16, color: primaryOrange),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 20),
@@ -196,42 +317,14 @@ class TabPersonalDetails extends GetView<AddProviderController> {
     );
   }
 
-  // --- Helper: Determine Image Provider ---
-  DecorationImage? _buildProfileImageProvider(AddProviderController controller) {
-    if (controller.profileImageFile.value != null) {
-      if (kIsWeb) {
-        return DecorationImage(
-          image: MemoryImage(controller.profileImageFile.value!.bytes!),
-          fit: BoxFit.cover,
-        );
-      } else {
-        return DecorationImage(
-          image: FileImage(File(controller.profileImageFile.value!.path!)),
-          fit: BoxFit.cover,
-        );
-      }
-    } else if (controller.profileImageUrl.value != null && controller.profileImageUrl.value!.isNotEmpty) {
-      // 2. Show Existing Network URL (S3)
-      return DecorationImage(
-        image: NetworkImage(controller.profileImageUrl.value!),
-        fit: BoxFit.cover,
-      );
-    }
-    return null;
-  }
-
-  // --- Helper: Show Icon/Text if no image ---
-  Widget? _buildProfileChild(AddProviderController controller, Color textGrey) {
-    if (controller.profileImageFile.value != null || 
-       (controller.profileImageUrl.value != null && controller.profileImageUrl.value!.isNotEmpty)) {
-      return null; // Don't show child if image exists
-    }
+  // --- Helper: No-image placeholder ---
+  Widget _noImagePlaceholder(Color textGrey) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.person, size: 40, color: textGrey.withOpacity(0.5)),
+        Icon(Icons.person, size: 48, color: textGrey.withOpacity(0.4)),
         const SizedBox(height: 8),
-        Text("Upload\nPhoto", textAlign: TextAlign.center, style: TextStyle(color: textGrey, fontSize: 11)),
+        Text('Upload\nPhoto', textAlign: TextAlign.center, style: TextStyle(color: textGrey, fontSize: 11)),
       ],
     );
   }

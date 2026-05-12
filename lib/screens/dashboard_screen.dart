@@ -66,6 +66,8 @@ import '../services/permission_manager.dart';
 import 'personal_details_screen.dart';
 import 'provider_dashboard_screen.dart';
 import 'individual_provider_dashboard_screen.dart';
+import '../models/provider_model.dart';
+import '../controllers/individual_provider_dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -78,7 +80,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _collapsed = false;
   String _currentRoute = 'dashboard';
   Customer? _selectedCustomer; // <--- ADD THIS VARIABLE
- // Map<String, String>? _selectedBooking; 
+  Customer? _selectedCustomerForOverview; // Stacked overview
+  ProviderModel? _selectedProviderForOverview; // Stacked provider overview
   BookingModel? _selectedBooking;
 
   /// Holds the employee whose permissions are being viewed/edited.
@@ -173,6 +176,19 @@ void _closeBookingDetails() {
     _selectedBooking = null;
   });
 }
+
+void _closeCustomerOverview() {
+  setState(() {
+    _selectedCustomerForOverview = null;
+  });
+}
+
+void _closeProviderOverview() {
+  setState(() {
+    _selectedProviderForOverview = null;
+  });
+}
+
 bool _hasDashboardAccess() {
   return _can('dashboard_screen');
 }
@@ -189,38 +205,118 @@ bool _can(String module) {
     return const WelcomeDashboardScreen();
   }
   return DashboardHome(onNav: _handleNavigation); 
-      case 'booking/overview':
         return BookingOverviewScreen(
           onNav: _handleNavigation,
           onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
         );
 
       case 'booking/all':
         return AllTransactionReportScreen(
           onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
         );
 
       case 'booking/pending':
         return PendingBookingScreen(
           onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
         );
 
       case 'booking/ongoing':
         return OngoingBookingScreen(
-onViewDetails: (booking) => _viewBookingDetails(booking),        );  
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
+        );
         
 
       case 'booking/canceled':
         return CancelledBookingScreen(
-onViewDetails: (booking) => _viewBookingDetails(booking),        );  
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
+        );
 
       case 'booking/completed':
         return CompletedBookingScreen(
-onViewDetails: (booking) => _viewBookingDetails(booking),        );
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
+        );
 
       case 'booking/offline':
         return OfflinePaymentScreen(
-         onViewDetails: (booking) => _viewBookingDetails(booking),        );
+          onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
+        );
         
       case 'booking/customized':
         return const CustomizedBookingScreen();
@@ -312,6 +408,18 @@ onEditCustomer: (customer) {
       case 'report/all-transactions':
         return AllTransactionReportScreen(
           onViewDetails: (booking) => _viewBookingDetails(booking),
+          onViewCustomer: (customer) {
+            setState(() {
+              _selectedCustomerForOverview = customer;
+            });
+          },
+          onViewProvider: (provider) {
+            setState(() {
+              _selectedProviderForOverview = provider;
+            });
+            IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+            indCtrl.loadProvider(provider.id, provider);
+          },
         );
       case 'report/booking':
         return BookingReportScreen();
@@ -497,6 +605,8 @@ onEditCustomer: (customer) {
         _currentRoute = route;
         _selectedBooking = null; 
         _selectedCustomer = null; // Clear selections when navigating via search
+        _selectedCustomerForOverview = null;
+        _selectedProviderForOverview = null;
       });
     }
   }
@@ -535,13 +645,41 @@ onEditCustomer: (customer) {
                       child: Stack(
                         children: [
                           Offstage(
-                            offstage: _selectedBooking != null,
+                            offstage: _selectedBooking != null || _selectedCustomerForOverview != null || _selectedProviderForOverview != null,
                             child: _getBody(),
                           ),
-                          if (_selectedBooking != null)
+                          if (_selectedBooking != null && _selectedCustomerForOverview == null && _selectedProviderForOverview == null)
                             BookingDetailsScreen(
                               booking: _selectedBooking!,
                               onBack: _closeBookingDetails,
+                              onViewCustomer: (customer) {
+                                setState(() {
+                                  _selectedCustomerForOverview = customer;
+                                });
+                              },
+                              onViewProvider: (provider) {
+                                setState(() {
+                                  _selectedProviderForOverview = provider;
+                                });
+                                IndividualProviderDashboardController indCtrl = Get.put(IndividualProviderDashboardController());
+                                indCtrl.loadProvider(provider.id, provider);
+                              },
+                            ),
+                          if (_selectedCustomerForOverview != null)
+                            CustomerOverviewScreen(
+                              customer: _selectedCustomerForOverview!,
+                              onBack: _closeCustomerOverview,
+                              onViewBooking: (booking) {
+                                setState(() {
+                                  // Close customer overview and show the clicked booking details
+                                  _selectedCustomerForOverview = null;
+                                  _viewBookingDetails(booking);
+                                });
+                              },
+                            ),
+                          if (_selectedProviderForOverview != null)
+                            IndividualProviderDashboardScreen(
+                              onBack: _closeProviderOverview,
                             ),
                         ],
                       ),

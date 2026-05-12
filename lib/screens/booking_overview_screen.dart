@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../controllers/booking_overview_controller.dart';
 import '../models/booking_models.dart';
+import '../models/customer_models.dart';
 // =============================================================================
 // BOOKING OVERVIEW SCREEN
 // =============================================================================
@@ -14,11 +15,13 @@ import '../models/booking_models.dart';
 class BookingOverviewScreen extends StatefulWidget {
   final ValueChanged<String> onNav;
   final Function(BookingModel) onViewDetails;
+  final Function(Customer)? onViewCustomer;
 
   const BookingOverviewScreen({
     super.key,
     required this.onNav,
     required this.onViewDetails,
+    this.onViewCustomer,
   });
 
   @override
@@ -1081,13 +1084,31 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
         // Booking ID
         DataCell(Text(b.bookingRef, style: _ts(bold: true))),
         // Customer
-        DataCell(Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(b.customerName, style: _ts(bold: true)),
-            Text(b.customerPhone, style: _sub()),
-          ],
+        DataCell(InkWell(
+          onTap: () {
+            if (widget.onViewCustomer != null && b.customerId.isNotEmpty) {
+              final cust = Customer(
+                id: b.customerId,
+                name: b.customerName,
+                email: '',
+                phone: b.customerPhone,
+                bookings: 0,
+                joinedDate: 'N/A',
+                location: b.address?.city ?? 'Lucknow',
+                isActive: true,
+                avatarColor: '0xFFE3F2FD',
+              );
+              widget.onViewCustomer!(cust);
+            }
+          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(b.customerName, style: _ts(bold: true, color: const Color(0xFFEF7822))),
+              Text(b.customerPhone, style: _sub()),
+            ],
+          ),
         )),
         // Service
         DataCell(Text(b.mainServiceName, style: _ts())),
@@ -1224,10 +1245,10 @@ class _BookingOverviewScreenState extends State<BookingOverviewScreen> {
   }
 
   // Style helpers
-  static TextStyle _ts({bool bold = false}) => GoogleFonts.inter(
+  static TextStyle _ts({bool bold = false, Color? color}) => GoogleFonts.inter(
       fontSize: 13,
       fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-      color: const Color(0xFF334155));
+      color: color ?? const Color(0xFF334155));
 
   static TextStyle _sub() =>
       GoogleFonts.inter(fontSize: 11, color: const Color(0xFF94A3B8));

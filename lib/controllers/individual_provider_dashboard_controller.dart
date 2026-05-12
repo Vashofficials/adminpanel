@@ -58,7 +58,7 @@ class IndividualProviderDashboardController extends GetxController {
   // Holiday info
   var isOnHoliday = false.obs;
   var upcomingHolidays = <String>[].obs;
-  var allHolidayDates = <String>[].obs; // full set for 7-day availability grid
+  var availability7Days = <Map<String, dynamic>>[].obs; // {date: DateTime, isHoliday: bool}
 
   Timer? _refreshTimer;
 
@@ -298,17 +298,15 @@ class IndividualProviderDashboardController extends GetxController {
         final now = DateTime.now();
         final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-        List<String> allDates = [];
         List<String> upcoming = [];
         bool todayIsHoliday = false;
 
+        // Set of holiday dates for easy lookup
+        Set<String> holidayDates = {};
         for (var h in holidays) {
-          final bool active = h['isActive'] == true || h['is_active'] == true;
-          String date = h['holidayDate']?.toString() ?? '';
-          // Normalize: strip time component if present
-          if (date.contains('T')) date = date.split('T').first;
-          if (date.isNotEmpty && active) {
-            allDates.add(date);
+          String date = h['holidayDate']?.toString().split('T').first ?? '';
+          if (date.isNotEmpty) {
+            holidayDates.add(date);
             if (date == todayStr) {
               todayIsHoliday = true;
             }
@@ -321,9 +319,20 @@ class IndividualProviderDashboardController extends GetxController {
           }
         }
 
+        // Calculate 7 days availability
+        List<Map<String, dynamic>> availability = [];
+        for (int i = 0; i < 7; i++) {
+          DateTime date = now.add(Duration(days: i));
+          String dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+          availability.add({
+            'date': date,
+            'isHoliday': holidayDates.contains(dateStr),
+          });
+        }
+
         isOnHoliday.value = todayIsHoliday;
         upcomingHolidays.value = upcoming.take(5).toList();
-        allHolidayDates.assignAll(allDates);
+        availability7Days.value = availability;
       }
     } catch (e) {
       debugPrint("⚠️ Holiday fetch failed: $e");

@@ -15,7 +15,6 @@ const Color _kGreen = Color(0xFF10B981);
 const Color _kBlue = Color(0xFF3B82F6);
 const Color _kRed = Color(0xFFEF4444);
 const Color _kPurple = Color(0xFFA855F7);
-const Color _kAmber = Color(0xFFF59E0B);
 const Color _kChartLine = Color(0xFFF97316);
 const Color _kDonutActive = Color(0xFF10B981);
 const Color _kDonutPending = Color(0xFFF59E0B);
@@ -59,7 +58,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     child: LinearProgressIndicator(color: _kOrange, backgroundColor: _kOrange.withOpacity(0.1)),
                   ),
                 const SizedBox(height: 24),
-                _buildKpiCards(),
+                _buildProviderKpiCards(),
+                const SizedBox(height: 16),
+                _buildBookingEarningsCards(),
                 const SizedBox(height: 24),
                 LayoutBuilder(builder: (context, constraints) {
                   if (constraints.maxWidth > 900) {
@@ -88,7 +89,6 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Skeleton ──────────────────────────────────────────────────────────────
   Widget _buildSkeletonLoading() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -99,14 +99,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           const SizedBox(height: 8),
           _shimmerBox(300, 16),
           const SizedBox(height: 24),
-          Row(children: List.generate(3, (_) => Expanded(child: Padding(
+          Row(children: List.generate(4, (_) => Expanded(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: _shimmerBox(double.infinity, 120, radius: 16),
+            child: _shimmerBox(double.infinity, 100, radius: 16),
           )))),
           const SizedBox(height: 16),
-          Row(children: List.generate(3, (_) => Expanded(child: Padding(
+          Row(children: List.generate(4, (_) => Expanded(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: _shimmerBox(double.infinity, 120, radius: 16),
+            child: _shimmerBox(double.infinity, 100, radius: 16),
           )))),
           const SizedBox(height: 24),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -130,7 +130,6 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -142,27 +141,6 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           Text("Real-time overview of your service providers", style: GoogleFonts.poppins(fontSize: 14, color: _kTextMuted)),
         ]),
         Row(children: [
-          // Manual Refresh
-          Obx(() => Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: _ctrl.isRefreshing.value ? null : () => _ctrl.refreshData(),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: _kBlue.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _kBlue.withOpacity(0.25)),
-                ),
-                child: _ctrl.isRefreshing.value
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _kBlue))
-                    : const Icon(Icons.refresh, size: 20, color: _kBlue),
-              ),
-            ),
-          )),
-          const SizedBox(width: 12),
-          // Date range chip
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(color: _kCardBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: _kBorderColor)),
@@ -173,7 +151,6 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             ]),
           ),
           const SizedBox(width: 12),
-          // Export
           PopupMenuButton<String>(
             onSelected: _ctrl.exportData,
             itemBuilder: (context) => [
@@ -196,69 +173,38 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  // ── KPI Cards (UpgradedStatCard style) ─────────────────────────────────────
-  Widget _buildKpiCards() {
+  Widget _buildProviderKpiCards() {
     return LayoutBuilder(builder: (context, constraints) {
-      const double spacing = 16;
-      int crossCount = constraints.maxWidth > 1200 ? 3 : (constraints.maxWidth > 800 ? 2 : 1);
-      final double width = (constraints.maxWidth - (spacing * (crossCount - 1))) / crossCount;
-
-      return Obx(() => Wrap(
-        spacing: spacing,
-        runSpacing: spacing,
-        children: [
-          // 1. Total Providers
-          SizedBox(
-            width: width,
-            child: _UpgradedStatCard(
-              title: "Total Providers",
-              mainValue: "${_ctrl.totalProviders.value}",
-              icon: Icons.handyman_outlined,
-              color: _kAmber,
-              subItems: [
-                _SubItem("Approved", "${_ctrl.activeProviders.value}", itemColor: _kGreen),
-                _SubItem("Un Approved", "${_ctrl.pendingApproval.value}", itemColor: _kRed),
-                _SubItem("Today Active", "${_ctrl.newRegistrationsToday.value}", itemColor: _kGreen),
-              ],
-            ),
-          ),
-
-          // 2. Total Bookings
-          SizedBox(
-            width: width,
-            child: _UpgradedStatCard(
-              title: "Total Bookings",
-              mainValue: "${_ctrl.totalBookings.value}",
-              icon: Icons.shopping_cart_outlined,
-              color: _kGreen,
-              subItems: [
-                _SubItem("Today", "${_ctrl.todayBookings.value}"),
-                _SubItem("Completed", "${_ctrl.completedBookings.value}", itemColor: _kGreen),
-                _SubItem("Cancelled", "${_ctrl.cancelledBookings.value}", itemColor: _kRed),
-              ],
-            ),
-          ),
-
-          // 3. Earnings
-          SizedBox(
-            width: width,
-            child: _UpgradedStatCard(
-              title: "All Time Collection",
-              mainValue: "₹${_ctrl.totalEarnings.value.toStringAsFixed(0)}",
-              icon: Icons.currency_rupee_outlined,
-              color: _kBlue,
-              isPrimary: true,
-              subItems: [
-                _SubItem("Today", "₹${_ctrl.todayEarnings.value.toStringAsFixed(0)}"),
-              ],
-            ),
-          ),
-        ],
-      ));
+      final double spacing = 16;
+      int crossCount = 4;
+      if (constraints.maxWidth < 1000) crossCount = 2;
+      if (constraints.maxWidth < 600) crossCount = 1;
+      final double cardWidth = (constraints.maxWidth - (spacing * (crossCount - 1))) / crossCount;
+      return Wrap(spacing: spacing, runSpacing: spacing, children: [
+        _KpiCard(width: cardWidth, title: "Total Providers", value: "${_ctrl.totalProviders.value}", subtitle: "All Time", icon: Icons.group_outlined, color: _kBlue),
+        _KpiCard(width: cardWidth, title: "Active Providers", value: "${_ctrl.activeProviders.value}", subtitle: "Working Today", icon: Icons.check_circle_outline, color: _kGreen),
+        _KpiCard(width: cardWidth, title: "New Registration", value: "${_ctrl.newRegistrationsToday.value}", subtitle: "Registered Today", icon: Icons.person_add_outlined, color: _kOrange),
+        _KpiCard(width: cardWidth, title: "Pending Approval", value: "${_ctrl.pendingApproval.value}", subtitle: "Status: 0", icon: Icons.hourglass_empty_outlined, color: _kRed),
+      ]);
     });
   }
 
-  // ── Top Rated Providers ───────────────────────────────────────────────────
+  Widget _buildBookingEarningsCards() {
+    return LayoutBuilder(builder: (context, constraints) {
+      final double spacing = 16;
+      int crossCount = 4;
+      if (constraints.maxWidth < 1000) crossCount = 2;
+      if (constraints.maxWidth < 600) crossCount = 1;
+      final double cardWidth = (constraints.maxWidth - (spacing * (crossCount - 1))) / crossCount;
+      return Wrap(spacing: spacing, runSpacing: spacing, children: [
+        _KpiCard(width: cardWidth, title: "Today's Bookings", value: "${_ctrl.todayBookings.value}", subtitle: "From API", icon: Icons.calendar_today, color: _kPurple),
+        _KpiCard(width: cardWidth, title: "Completed Bookings", value: "${_ctrl.completedBookings.value}", subtitle: "All Time", icon: Icons.task_alt, color: _kGreen),
+        _KpiCard(width: cardWidth, title: "Today's Earnings", value: "₹${_ctrl.todayEarnings.value.toStringAsFixed(0)}", subtitle: "Completed Today", icon: Icons.currency_rupee, color: _kOrange),
+        _KpiCard(width: cardWidth, title: "Total Earnings", value: "₹${_ctrl.totalEarnings.value.toStringAsFixed(0)}", subtitle: "This Year", icon: Icons.account_balance_wallet, color: _kBlue),
+      ]);
+    });
+  }
+
   Widget _buildTopRatedProviders() {
     return Obx(() {
       if (_ctrl.topRatedProviders.isEmpty) return const SizedBox.shrink();
@@ -285,7 +231,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 Text("${p['reviews'] ?? 0} reviews", style: GoogleFonts.poppins(fontSize: 11, color: _kTextMuted)),
               ])),
               Row(children: [
-                const Icon(Icons.star, color: _kAmber, size: 16),
+                const Icon(Icons.star, color: Color(0xFFF59E0B), size: 16),
                 const SizedBox(width: 4),
                 Text("${(p['rating'] as double).toStringAsFixed(1)}", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: _kTextDark)),
               ]),
@@ -297,153 +243,38 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   }
 }
 
-// =============================================================================
-// _SubItem helper
-// =============================================================================
-class _SubItem {
-  final String label;
-  final String value;
-  final Color? itemColor;
-  const _SubItem(this.label, this.value, {this.itemColor});
-}
-
-// =============================================================================
-// _UpgradedStatCard — matches dashboard_screen.dart style exactly
-// =============================================================================
-class _UpgradedStatCard extends StatelessWidget {
-  final String title;
-  final String mainValue;
+class _KpiCard extends StatelessWidget {
+  final double width;
+  final String title, value, subtitle;
   final IconData icon;
   final Color color;
-  final bool isPrimary;
-  final List<_SubItem> subItems;
-
-  const _UpgradedStatCard({
-    required this.title,
-    required this.mainValue,
-    required this.icon,
-    required this.color,
-    this.isPrimary = false,
-    required this.subItems,
-  });
+  const _KpiCard({required this.width, required this.title, required this.value, required this.subtitle, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: width,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isPrimary ? color : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isPrimary ? null : Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: isPrimary ? color.withOpacity(0.3) : Colors.black.withOpacity(0.04),
-            blurRadius: isPrimary ? 12 : 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Title + Icon row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: isPrimary ? Colors.white.withOpacity(0.9) : const Color(0xFF64748B),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isPrimary ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: isPrimary ? Colors.white : color, size: 20),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Big main value
-          Text(
-            mainValue,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: isPrimary ? Colors.white : const Color(0xFF1E293B),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Divider
-          Divider(
-            color: isPrimary ? Colors.white.withOpacity(0.2) : Colors.grey.shade200,
-            height: 1,
-          ),
-          const SizedBox(height: 12),
-
-          // Sub items
-          Row(
-            children: subItems.map((item) {
-              return Expanded(
-                child: Row(
-                  children: [
-                    if (item != subItems.first)
-                      Container(
-                        width: 1,
-                        height: 28,
-                        margin: const EdgeInsets.only(right: 12),
-                        color: isPrimary ? Colors.white.withOpacity(0.2) : Colors.grey.shade200,
-                      ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              color: isPrimary ? Colors.white.withOpacity(0.7) : Colors.grey.shade500,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.value,
-                            style: TextStyle(
-                              color: isPrimary ? Colors.white : (item.itemColor ?? color),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: _kCardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: _kBorderColor)),
+      child: Row(children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(width: 16),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: GoogleFonts.poppins(fontSize: 13, color: _kTextMuted)),
+          const SizedBox(height: 4),
+          Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: _kTextDark)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: GoogleFonts.poppins(fontSize: 11, color: _kTextMuted)),
+        ])),
+      ]),
     );
   }
 }
 
-// =============================================================================
-// Provider Growth Line Chart
-// =============================================================================
 class _ProviderGrowthChart extends StatelessWidget {
   final ProviderDashboardController ctrl;
   const _ProviderGrowthChart({required this.ctrl});
@@ -470,9 +301,7 @@ class _ProviderGrowthChart extends StatelessWidget {
         ]),
         const SizedBox(height: 24),
         SizedBox(height: 280, child: Obx(() {
-          if (ctrl.dailyProviderCounts.isEmpty) {
-            return Center(child: Text("No data available", style: GoogleFonts.poppins(color: _kTextMuted)));
-          }
+          if (ctrl.dailyProviderCounts.isEmpty) return Center(child: Text("No data available", style: GoogleFonts.poppins(color: _kTextMuted)));
           final data = ctrl.dailyProviderCounts;
           double minY = data.map((d) => d.count.toDouble()).reduce((a, b) => a < b ? a : b);
           double maxY = data.map((d) => d.count.toDouble()).reduce((a, b) => a > b ? a : b);
@@ -519,9 +348,6 @@ class _ProviderGrowthChart extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// Provider Status Donut Chart
-// =============================================================================
 class _ProviderStatusDonut extends StatelessWidget {
   final ProviderDashboardController ctrl;
   const _ProviderStatusDonut({required this.ctrl});

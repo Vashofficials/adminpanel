@@ -8,7 +8,6 @@ class OnboardingRequestModel {
   final String name;
   final String phone;
   final String email;
-  final String? imageUrl;
   final String requestType; // e.g. "New Registration", "Bank Update"
   final DateTime requestDate;
   final String status; // "Pending", "Approved", "Rejected"
@@ -19,7 +18,6 @@ class OnboardingRequestModel {
     required this.name,
     required this.phone,
     required this.email,
-    this.imageUrl,
     required this.requestType,
     required this.requestDate,
     required this.status,
@@ -52,7 +50,6 @@ class OnboardingRequestController extends GetxController {
       name: p.fullName,
       phone: p.mobileNo,
       email: p.emailId ?? "No Email",
-      imageUrl: p.imageUrl,
       requestType: "New Registration",
       requestDate: DateTime.now(), 
       status: approvedIds.contains(p.id) ? "Approved" : "Pending",
