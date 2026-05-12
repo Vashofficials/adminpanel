@@ -12,6 +12,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../models/booking_models.dart';
 import '../repositories/booking_repository.dart';
 import '../services/booking_notification_service.dart';
+import 'reschedule_dialog.dart';
 
 class AllTransactionReportScreen extends StatefulWidget {
   // Navigation Callback
@@ -1333,13 +1334,35 @@ class _AllTransactionReportScreenState
                                                 )),
 
                                                 // Action
-                                                DataCell(_ActionButton(
-                                                  icon: Icons
-                                                      .visibility_outlined,
-                                                  onTap: () =>
-                                                      widget.onViewDetails(
-                                                          data),
-                                                )),
+                                                DataCell(
+                                                  Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      _ActionButton(
+                                                        icon: Icons.visibility_outlined,
+                                                        onTap: () => widget.onViewDetails(data),
+                                                      ),
+                                                      if (data.status.toLowerCase() == 'completed' ||
+                                                          data.status.toLowerCase() == 'pending') ...[
+                                                        const SizedBox(width: 6),
+                                                        _ActionButton(
+                                                          icon: Icons.calendar_month,
+                                                          onTap: () {
+                                                            showDialog(
+                                                              context: context,
+                                                              builder: (ctx) => RescheduleBookingDialog(
+                                                                booking: data,
+                                                                onBack: () {
+                                                                  _fetchData();
+                                                                },
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
                                               ],
                                             );
                                           }),
