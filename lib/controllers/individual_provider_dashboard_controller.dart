@@ -23,7 +23,7 @@ class IndividualProviderDashboardController extends GetxController {
 
   // Metrics
   var todayBookings = 0.obs;
-  var completedBookings = 0.obs; // This month or overall, let's say total
+  var completedBookings = 0.obs;
   var todayEarnings = 0.0.obs;
   var totalEarnings = 0.0.obs;
 
@@ -48,11 +48,17 @@ class IndividualProviderDashboardController extends GetxController {
     1: 0,
   }.obs;
 
-  // Profile
+  // Profile Completion - dynamic fields
   var profileCompletion = 0.0.obs;
+  var profileFields = <String, bool>{}.obs;
 
   // Exporting status
   var isExporting = false.obs;
+
+  // Holiday info
+  var isOnHoliday = false.obs;
+  var upcomingHolidays = <String>[].obs;
+  var allHolidayDates = <String>[].obs; // full set for 7-day availability grid
 
   Timer? _refreshTimer;
 
@@ -77,21 +83,25 @@ class IndividualProviderDashboardController extends GetxController {
   }
 
   void _calculateProfileCompletion(ProviderModel model) {
-    int totalFields = 10;
-    int filledFields = 0;
+    Map<String, bool> fields = {};
+    
+    fields['First Name'] = model.firstName.isNotEmpty;
+    fields['Last Name'] = model.lastName != null && model.lastName!.isNotEmpty;
+    fields['Mobile'] = model.mobileNo.isNotEmpty;
+    fields['Email'] = model.emailId != null && model.emailId!.isNotEmpty;
+    fields['Aadhaar'] = model.aadharNo.isNotEmpty;
+    fields['Aadhaar Verified'] = model.isAadharVerified;
+    fields['Profile Image'] = model.imageUrl != null && model.imageUrl!.isNotEmpty;
+    fields['City'] = model.city != null && model.city!.isNotEmpty;
+    fields['State'] = model.state != null && model.state!.isNotEmpty;
+    fields['Zip Code'] = model.zipCode != null && model.zipCode!.isNotEmpty;
 
-    if (model.firstName.isNotEmpty) filledFields++;
-    if (model.lastName != null && model.lastName!.isNotEmpty) filledFields++;
-    if (model.mobileNo.isNotEmpty) filledFields++;
-    if (model.emailId != null && model.emailId!.isNotEmpty) filledFields++;
-    if (model.aadharNo.isNotEmpty) filledFields++;
-    if (model.isAadharVerified) filledFields++;
-    if (model.imageUrl != null && model.imageUrl!.isNotEmpty) filledFields++;
-    if (model.city != null && model.city!.isNotEmpty) filledFields++;
-    if (model.state != null && model.state!.isNotEmpty) filledFields++;
-    if (model.zipCode != null && model.zipCode!.isNotEmpty) filledFields++;
+    profileFields.value = fields;
+    
+    int filledFields = fields.values.where((v) => v).length;
+    int totalFields = fields.length;
 
-    profileCompletion.value = (filledFields / totalFields) * 100;
+    profileCompletion.value = totalFields > 0 ? (filledFields / totalFields) * 100 : 0;
   }
 
   Future<void> _fetchDashboardData() async {
@@ -101,6 +111,7 @@ class IndividualProviderDashboardController extends GetxController {
         _fetchBookings(),
         _fetchEarnings(),
         _fetchRatings(),
+        _fetchHolidays(),
       ]);
     } catch (e) {
       debugPrint("Error fetching individual provider stats: $e");
@@ -111,7 +122,7 @@ class IndividualProviderDashboardController extends GetxController {
 
   Future<void> _fetchBookings() async {
     try {
-      final res = await _api.getBookings(page: 1, size: 100);
+      final res = await _api.getBookings(page: 1, size: 500);
       if (res['statusCode'] == 200 && res['result'] != null) {
         List<dynamic> allBookings = res['result']['data'] ?? [];
         
@@ -167,37 +178,10 @@ class IndividualProviderDashboardController extends GetxController {
   Future<void> _fetchEarnings() async {
     try {
       final now = DateTime.now();
-      
-      // Calculate earnings for the last 7 days
-      final sevenDaysAgo = now.subtract(const Duration(days: 6));
-      final fromDateStr = "${sevenDaysAgo.year}-${sevenDaysAgo.month.toString().padLeft(2, '0')}-${sevenDaysAgo.day.toString().padLeft(2, '0')}";
       final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-      final paymentData = await _api.getProviderBookingPayment(fromDateStr, todayStr);
-      
-      double tEarn = 0.0;
-      double todayEarn = 0.0;
-      List<double> weekEarn = List.filled(7, 0.0);
-
-      if (paymentData != null) {
-        var pData = paymentData.firstWhere(
-          (p) => (p['providerId'] ?? p['serviceProviderId']) == providerId.value, 
-          orElse: () => null
-        );
-
-        if (pData != null) {
-          tEarn = (pData['totalPayment'] ?? 0.0).toDouble();
-          
-          // Assuming the API gives daily breakdown, or we calculate it. 
-          // If the API doesn't give daily breakdown in getProviderBookingPayment, we might need to parse bookings.
-          // For now, let's just use the totals from this API if they provide them, or fallback to 0.
-        }
-      }
-
-      // To accurately get daily earnings, we'll parse the bookings we already fetched in recentBookings
-      // Wait, _fetchBookings already populated provider bookings. Let's re-fetch them or use them if we save them globally.
-      // Since it's easier to just fetch all time here:
-      final res = await _api.getBookings(page: 1, size: 500); // Need more to calculate total earnings
+      // Fetch all completed bookings for this provider to calculate earnings
+      final res = await _api.getBookings(page: 1, size: 500);
       if (res['statusCode'] == 200 && res['result'] != null) {
          List<dynamic> allBookings = res['result']['data'] ?? [];
          var providerBookings = allBookings.where((b) {
@@ -225,12 +209,38 @@ class IndividualProviderDashboardController extends GetxController {
              if (diff >= 0 && diff < 7) {
                calcWeekEarn[6 - diff] += amt;
              }
-          } catch(e) {}
+          } catch(e) {
+            // Skip invalid dates
+          }
         }
         
         todayEarnings.value = calcTodayEarn;
         totalEarnings.value = calcTotalEarn;
         weeklyEarnings.value = calcWeekEarn;
+      }
+
+      // Also try the payment API for more accurate data
+      final sevenDaysAgo = now.subtract(const Duration(days: 6));
+      final fromDateStr = "${sevenDaysAgo.year}-${sevenDaysAgo.month.toString().padLeft(2, '0')}-${sevenDaysAgo.day.toString().padLeft(2, '0')}";
+      
+      try {
+        final paymentData = await _api.getProviderBookingPayment(fromDateStr, todayStr);
+        if (paymentData != null) {
+          var pData = paymentData.firstWhere(
+            (p) => (p['providerId'] ?? p['serviceProviderId']) == providerId.value, 
+            orElse: () => null
+          );
+
+          if (pData != null) {
+            // Use payment API total if available (more accurate)
+            double apiTotal = (pData['totalPayment'] ?? 0.0).toDouble();
+            if (apiTotal > 0) {
+              totalEarnings.value = apiTotal;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("⚠️ Payment API fallback: $e");
       }
     } catch (e) {
       debugPrint("Error fetching earnings: $e");
@@ -239,13 +249,26 @@ class IndividualProviderDashboardController extends GetxController {
 
   Future<void> _fetchRatings() async {
     try {
-      final Response? resAvg = await _api.getServiceProviderRating(providerId.value);
-      if (resAvg != null && resAvg.statusCode == 200) {
-        averageRating.value = (resAvg.data['result']?['averageRating'] ?? 0.0).toDouble();
+      // Get average rating
+      final Response resAvg = await _api.getServiceProviderRating(providerId.value);
+      if (resAvg.statusCode == 200 && resAvg.data != null) {
+        final result = resAvg.data['result'];
+        if (result != null) {
+          averageRating.value = (result['averageRating'] ?? result['totalRating'] ?? 0.0).toDouble();
+        }
       }
+    } catch (e) {
+      debugPrint("⚠️ Average rating fetch failed: $e");
+      // Fallback to provider model rating
+      if (providerModel.value != null) {
+        averageRating.value = providerModel.value!.totalRating;
+      }
+    }
 
-      final Response? resCust = await _api.getProviderRatings(providerId.value);
-      if (resCust != null && resCust.statusCode == 200) {
+    try {
+      // Get customer ratings (distribution)
+      final Response resCust = await _api.getProviderRatings(providerId.value);
+      if (resCust.statusCode == 200 && resCust.data != null) {
         List<dynamic> ratingsData = resCust.data['result'] ?? [];
         totalReviews.value = ratingsData.length;
 
@@ -259,7 +282,51 @@ class IndividualProviderDashboardController extends GetxController {
         ratingDistribution.value = dist;
       }
     } catch (e) {
-      debugPrint("Error fetching ratings: $e");
+      debugPrint("⚠️ Rating distribution fetch failed: $e");
+      // Fallback to provider model
+      if (providerModel.value != null) {
+        totalReviews.value = providerModel.value!.totalReview;
+      }
+    }
+  }
+
+  Future<void> _fetchHolidays() async {
+    try {
+      final Response res = await _api.getHolidays(providerId.value);
+      if (res.statusCode == 200 && res.data != null) {
+        List<dynamic> holidays = res.data['result'] ?? [];
+        final now = DateTime.now();
+        final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+        List<String> allDates = [];
+        List<String> upcoming = [];
+        bool todayIsHoliday = false;
+
+        for (var h in holidays) {
+          final bool active = h['isActive'] == true || h['is_active'] == true;
+          String date = h['holidayDate']?.toString() ?? '';
+          // Normalize: strip time component if present
+          if (date.contains('T')) date = date.split('T').first;
+          if (date.isNotEmpty && active) {
+            allDates.add(date);
+            if (date == todayStr) {
+              todayIsHoliday = true;
+            }
+            try {
+              DateTime hDate = DateTime.parse(date);
+              if (hDate.isAfter(now.subtract(const Duration(days: 1)))) {
+                upcoming.add(date);
+              }
+            } catch (_) {}
+          }
+        }
+
+        isOnHoliday.value = todayIsHoliday;
+        upcomingHolidays.value = upcoming.take(5).toList();
+        allHolidayDates.assignAll(allDates);
+      }
+    } catch (e) {
+      debugPrint("⚠️ Holiday fetch failed: $e");
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:dio/dio.dart';
 import '../models/provider_model.dart';
 import 'package:intl/intl.dart';
 import 'package:excel/excel.dart';
@@ -20,11 +21,26 @@ class ProviderDashboardController extends GetxController {
   var pendingApproval = 0.obs;
   var inactiveProviders = 0.obs;
 
+  // --- Booking Stats (from API) ---
+  var totalBookings = 0.obs;
+  var todayBookings = 0.obs;
+  var completedBookings = 0.obs;
+  var cancelledBookings = 0.obs;
+  var pendingBookings = 0.obs;
+
+  // --- Earnings (from API) ---
+  var totalEarnings = 0.0.obs;
+  var todayEarnings = 0.0.obs;
+  var monthlyEarnings = 0.0.obs;
+
   // --- Chart data ---
   var dailyProviderCounts = <DailyProviderData>[].obs;
   
   // --- Donut data ---
   var statusCounts = <String, int>{}.obs;
+
+  // --- Booking Status Donut ---
+  var bookingStatusCounts = <String, int>{}.obs;
 
   // --- Date range ---
   var startDate = DateTime.now().subtract(const Duration(days: 6)).obs;
@@ -40,6 +56,9 @@ class ProviderDashboardController extends GetxController {
   // --- All providers cache ---
   List<ProviderModel> _allProviders = [];
   final Map<String, List<String>> _providerHolidays = {}; // providerId -> list of holiday dates
+
+  // --- Top providers by rating ---
+  var topRatedProviders = <Map<String, dynamic>>[].obs;
 
   @override
   void onInit() {
@@ -81,15 +100,117 @@ class ProviderDashboardController extends GetxController {
   }
 
   Future<void> _loadData() async {
-    final data = await _api.getAllServiceProviders();
-    final resp = ProviderResponse.fromJson(data);
-    _allProviders = resp.result;
+    await Future.wait([
+      _loadProviders(),
+      _loadBookings(),
+      _loadEarnings(),
+    ]);
+  }
 
-    // Fetch holidays for potential active providers (status == 1)
-    await _fetchHolidaysForActiveOnes();
-    
-    _computeStats();
-    _computeChartData();
+  Future<void> _loadProviders() async {
+    try {
+      final data = await _api.getAllServiceProviders();
+      final resp = ProviderResponse.fromJson(data);
+      _allProviders = resp.result;
+
+      // Fetch holidays for potential active providers (status == 1)
+      await _fetchHolidaysForActiveOnes();
+      
+      _computeStats();
+      _computeChartData();
+      _computeTopRatedProviders();
+    } catch (e) {
+      debugPrint("❌ Load Providers Error: $e");
+    }
+  }
+
+  Future<void> _loadBookings() async {
+    try {
+      final res = await _api.getBookings(page: 1, size: 500);
+      if (res['statusCode'] == 200 && res['result'] != null) {
+        List<dynamic> allBookings = res['result']['data'] ?? [];
+        
+        final now = DateTime.now();
+        final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+        int tToday = 0;
+        int tCompleted = 0;
+        int tCancelled = 0;
+        int tPending = 0;
+
+        for (var b in allBookings) {
+          final String status = b['status']?.toString().toUpperCase() ?? '';
+          final String bookingDate = b['bookingDate']?.toString().split('T').first ?? '';
+
+          if (bookingDate == todayStr) tToday++;
+          if (status == 'COMPLETED') tCompleted++;
+          if (status == 'CANCELLED') tCancelled++;
+          if (status == 'PENDING' || status == 'CONFIRMED') tPending++;
+        }
+
+        totalBookings.value = allBookings.length;
+        todayBookings.value = tToday;
+        completedBookings.value = tCompleted;
+        cancelledBookings.value = tCancelled;
+        pendingBookings.value = tPending;
+
+        bookingStatusCounts.value = {
+          'Completed': tCompleted,
+          'Pending': tPending,
+          'Cancelled': tCancelled,
+        };
+      }
+    } catch (e) {
+      debugPrint("❌ Load Bookings Error: $e");
+    }
+  }
+
+  Future<void> _loadEarnings() async {
+    try {
+      final now = DateTime.now();
+      final monthStart = DateTime(now.year, now.month, 1);
+      final todayStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final monthStartStr = "${monthStart.year}-${monthStart.month.toString().padLeft(2, '0')}-${monthStart.day.toString().padLeft(2, '0')}";
+      // Use a wide range for total
+      final yearStartStr = "${now.year}-01-01";
+
+      // Fetch monthly earnings
+      final monthlyData = await _api.getProviderBookingPayment(monthStartStr, todayStr);
+      double mEarn = 0.0;
+      if (monthlyData != null) {
+        for (var item in monthlyData) {
+          mEarn += (item['totalPayment'] ?? 0.0).toDouble();
+        }
+      }
+      monthlyEarnings.value = mEarn;
+
+      // Fetch total yearly earnings
+      final yearData = await _api.getProviderBookingPayment(yearStartStr, todayStr);
+      double tEarn = 0.0;
+      double tToday = 0.0;
+      if (yearData != null) {
+        for (var item in yearData) {
+          tEarn += (item['totalPayment'] ?? 0.0).toDouble();
+        }
+      }
+      totalEarnings.value = tEarn;
+
+      // Today's earnings from bookings
+      final res = await _api.getBookings(page: 1, size: 100);
+      if (res['statusCode'] == 200 && res['result'] != null) {
+        List<dynamic> allBookings = res['result']['data'] ?? [];
+        for (var b in allBookings) {
+          final String bookingDate = b['bookingDate']?.toString().split('T').first ?? '';
+          final String status = b['status']?.toString().toUpperCase() ?? '';
+          if (bookingDate == todayStr && status == 'COMPLETED') {
+            tToday += (b['totalAmount'] ?? 0.0).toDouble();
+          }
+        }
+      }
+      todayEarnings.value = tToday;
+    } catch (e) {
+      debugPrint("❌ Load Earnings Error: $e");
+    }
   }
 
   Future<void> _fetchHolidaysForActiveOnes() async {
@@ -103,13 +224,18 @@ class ProviderDashboardController extends GetxController {
 
     for (var id in limitedIds) {
       if (!_providerHolidays.containsKey(id)) {
-        final holidayData = await _api.getHolidays(id);
-        if (holidayData != null && holidayData.data['result'] is List) {
-          final dates = (holidayData.data['result'] as List)
-              .map((h) => h['holidayDate']?.toString() ?? '')
-              .where((d) => d.isNotEmpty)
-              .toList();
-          _providerHolidays[id] = dates;
+        try {
+          final holidayData = await _api.getHolidays(id);
+          if (holidayData.data != null && holidayData.data['result'] is List) {
+            final dates = (holidayData.data['result'] as List)
+                .map((h) => h['holidayDate']?.toString() ?? '')
+                .where((d) => d.isNotEmpty)
+                .toList();
+            _providerHolidays[id] = dates;
+          }
+        } catch (e) {
+          debugPrint("⚠️ Holiday fetch failed for $id: $e");
+          _providerHolidays[id] = [];
         }
       }
     }
@@ -192,19 +318,26 @@ class ProviderDashboardController extends GetxController {
     });
     data.sort((a, b) => a.date.compareTo(b.date));
 
-    // For the line chart, we want cumulative or daily? 
-    // Request says "daily provider growth", so we can show daily or cumulative. 
-    // Usually growth charts are cumulative. Let's do cumulative.
-    int runningTotal = _allProviders.length; // Start from current total and go backwards if we don't have full history
-    // Actually let's just show daily count for "growth" or cumulative for "total growth".
-    // I'll show cumulative.
-    
     dailyProviderCounts.assignAll(data);
     
     if (data.isNotEmpty) {
       startDate.value = data.first.date;
       endDate.value = data.last.date;
     }
+  }
+
+  void _computeTopRatedProviders() {
+    // Sort by rating, take top 5
+    final sorted = List<ProviderModel>.from(_allProviders)
+      ..sort((a, b) => b.totalRating.compareTo(a.totalRating));
+    
+    topRatedProviders.value = sorted.take(5).map((p) => {
+      'name': p.fullName,
+      'rating': p.totalRating,
+      'reviews': p.totalReview,
+      'imageUrl': p.imageUrl ?? '',
+      'isActive': p.isActive,
+    }).toList();
   }
 
   void setFilter(String filter) {
@@ -239,6 +372,10 @@ class ProviderDashboardController extends GetxController {
     csv += "Active Providers,${activeProviders.value}\n";
     csv += "New Registrations Today,${newRegistrationsToday.value}\n";
     csv += "Pending Approval,${pendingApproval.value}\n";
+    csv += "Total Bookings,${totalBookings.value}\n";
+    csv += "Today's Bookings,${todayBookings.value}\n";
+    csv += "Completed Bookings,${completedBookings.value}\n";
+    csv += "Total Earnings,${totalEarnings.value}\n";
     csv += "\nStatus Distribution\n";
     csv += "Active %,${activePercent.toStringAsFixed(1)}%\n";
     csv += "Pending %,${pendingPercent.toStringAsFixed(1)}%\n";
@@ -256,6 +393,9 @@ class ProviderDashboardController extends GetxController {
     sheetObject.appendRow([TextCellValue('Active Providers'), IntCellValue(activeProviders.value)]);
     sheetObject.appendRow([TextCellValue('New Registrations Today'), IntCellValue(newRegistrationsToday.value)]);
     sheetObject.appendRow([TextCellValue('Pending Approval'), IntCellValue(pendingApproval.value)]);
+    sheetObject.appendRow([TextCellValue('Total Bookings'), IntCellValue(totalBookings.value)]);
+    sheetObject.appendRow([TextCellValue('Completed Bookings'), IntCellValue(completedBookings.value)]);
+    sheetObject.appendRow([TextCellValue('Total Earnings'), DoubleCellValue(totalEarnings.value)]);
 
     final bytes = excel.save();
     if (bytes != null) {
@@ -284,6 +424,9 @@ class ProviderDashboardController extends GetxController {
                   ['Active Providers', activeProviders.value.toString()],
                   ['New Registrations Today', newRegistrationsToday.value.toString()],
                   ['Pending Approval', pendingApproval.value.toString()],
+                  ['Total Bookings', totalBookings.value.toString()],
+                  ['Completed Bookings', completedBookings.value.toString()],
+                  ['Total Earnings', '₹${totalEarnings.value.toStringAsFixed(2)}'],
                 ],
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/onboarding_request_controller.dart';
 import '../controllers/add_provider_controller.dart';
@@ -108,10 +109,18 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                       // 1. Details
                       Expanded(flex: 3, child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.blue.shade50,
-                            child: Text(req.name.substring(0, 1), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                          // Provider image — full visible, clipped to rounded rect
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: (req.imageUrl != null && req.imageUrl!.isNotEmpty)
+                              ? Image.network(
+                                  req.imageUrl!,
+                                  width: 56,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _avatarFallback(req.name),
+                                )
+                              : _avatarFallback(req.name),
                           ),
                           const SizedBox(width: 12),
                           Column(
@@ -120,6 +129,38 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
                               Text(req.name, style: TextStyle(fontWeight: FontWeight.bold, color: textDark)),
                               Text(req.phone, style: TextStyle(fontSize: 12, color: textGrey)),
                               Text(req.email, style: TextStyle(fontSize: 12, color: textGrey)),
+                              const SizedBox(height: 4),
+                              // UUID row with copy icon
+                              Row(
+                                children: [
+                                  Text(
+                                    req.id.length > 14 ? '${req.id.substring(0, 14)}…' : req.id,
+                                    style: TextStyle(fontSize: 10, color: textGrey, fontFamily: 'monospace'),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  InkWell(
+                                    onTap: () {
+                                      Clipboard.setData(ClipboardData(text: req.id));
+                                      Get.snackbar(
+                                        'Copied',
+                                        'Provider UUID copied to clipboard',
+                                        snackPosition: SnackPosition.BOTTOM,
+                                        backgroundColor: const Color(0xFF1E293B),
+                                        colorText: Colors.white,
+                                        maxWidth: 320,
+                                        duration: const Duration(seconds: 2),
+                                        margin: const EdgeInsets.all(16),
+                                        borderRadius: 8,
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Icon(Icons.copy_outlined, size: 13, color: primaryOrange),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ],
@@ -265,6 +306,23 @@ class ProviderOnboardingRequestScreen extends StatelessWidget {
   TextStyle _headerStyle() {
     return TextStyle(fontWeight: FontWeight.bold, color: textDark, fontSize: 13);
   }
+
+  Widget _avatarFallback(String name) {
+    return Container(
+      width: 56,
+      height: 64,
+      decoration: BoxDecoration(
+        color: primaryOrange.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primaryOrange),
+      ),
+    );
+  }
+
 
   Widget _buildTab(String text, int count, bool isActive) {
     return InkWell(
