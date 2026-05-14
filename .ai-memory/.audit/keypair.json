@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "algorithm": "ed25519",
+  "createdAt": "2026-05-14T17:00:12.187Z",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmVGZCqoPhWXS4zOivGu2ejCt60y0F95520SQpjOjTxM=\n-----END PUBLIC KEY-----\n",
+  "privateKeyPem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIFpZ4Gcrf+5bE4I8Xav2GGAU2/UDNbJLddIbLcL1Qlpv\n-----END PRIVATE KEY-----\n"
+}

@@ -1,0 +1,937 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-14T17:00:03.104Z",
+  "files": [
+    {
+      "path": "android/app/build.gradle.kts",
+      "bytes": 1400,
+      "mtimeMs": 1772892539516.5022,
+      "sha256": "423d3411aad3247716ab3247be3136a703302bdd58dfc73829ca5c254697ba7a"
+    },
+    {
+      "path": "android/app/src/debug/AndroidManifest.xml",
+      "bytes": 378,
+      "mtimeMs": 1772892539532.1052,
+      "sha256": "30b0832ed8b92dfbd6ae2abfa939ccf26333d37600056b1572bd4a397a18a74b"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 2202,
+      "mtimeMs": 1772892539543.218,
+      "sha256": "4200937b3bc04fc1b66b607dbd7ecd5acd9938c20a9c3b83506c7193497bf7bf"
+    },
+    {
+      "path": "android/app/src/profile/AndroidManifest.xml",
+      "bytes": 378,
+      "mtimeMs": 1772892539663.2942,
+      "sha256": "30b0832ed8b92dfbd6ae2abfa939ccf26333d37600056b1572bd4a397a18a74b"
+    },
+    {
+      "path": "android/build.gradle.kts",
+      "bytes": 537,
+      "mtimeMs": 1772892539484.422,
+      "sha256": "6a26dba2cb8dfba1e74f540b0d17a89d96c1301d3c3bfda14348bed257fddcba"
+    },
+    {
+      "path": "android/gradle.properties",
+      "bytes": 166,
+      "mtimeMs": 1772892539500.449,
+      "sha256": "20c411ebbe5162992d16d170656ee19a9ffe0571e6c4d4c5a5314bb06da0a672"
+    },
+    {
+      "path": "android/settings.gradle.kts",
+      "bytes": 770,
+      "mtimeMs": 1772892539500.449,
+      "sha256": "f822f8653a25b632ea3334473d8e9964e7d7da73e3ec33448f17e8600834b063"
+    },
+    {
+      "path": "assets/1.mp3",
+      "bytes": 76904,
+      "mtimeMs": 1777284696436.506,
+      "sha256": "1431ec6e48e69d0be46b272cb32b81be59b831bfff9b5cd8af342a94089ff1ee"
+    },
+    {
+      "path": "assets/alert.mp3",
+      "bytes": 124551,
+      "mtimeMs": 1777207221017.6597,
+      "sha256": "eb7af2af836a1b6bb1601690659eacd2042e9d14606e248a0f54a808f5bcaa11"
+    },
+    {
+      "path": "ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md",
+      "bytes": 336,
+      "mtimeMs": 1772892539982.4812,
+      "sha256": "a985b626c4f7546a8ba392d135e9226c3547c8e2b46895f5f2bdf40d7b14ef9f"
+    },
+    {
+      "path": "ios/Runner/GeneratedPluginRegistrant.h",
+      "bytes": 378,
+      "mtimeMs": 1772896106162.5857,
+      "sha256": "a5f88cc6415d2e639d2cb549348b84e02a7fdd0261603b0063abef6fa11f075a"
+    },
+    {
+      "path": "ios/Runner/Info.plist",
+      "bytes": 1655,
+      "mtimeMs": 1772892539865.727,
+      "sha256": "ff62a0a3807f4ed73f237fb529e97a7186339884504638550cbc25a216bd26f6"
+    },
+    {
+      "path": "ios/Runner/Runner-Bridging-Header.h",
+      "bytes": 38,
+      "mtimeMs": 1772892539878.025,
+      "sha256": "1a8d11d01d1cc92c650c9c9ed35299240052d4683a15a719a2315ef44185e074"
+    },
+    {
+      "path": "lib/config/admin_navigation.dart",
+      "bytes": 6258,
+      "mtimeMs": 1777202746781.074,
+      "sha256": "a322cd7cc34897738ef98940d3bfba0660821008de76f32b40b165b2f1c540eb"
+    },
+    {
+      "path": "lib/controllers/add_provider_controller.dart",
+      "bytes": 42616,
+      "mtimeMs": 1777549242065.1729,
+      "sha256": "1df7da7e3fa8b2a6deb797cc9d6083ef7689732cbf3a2d442ed752d5e92fdf1b"
+    },
+    {
+      "path": "lib/controllers/auth_controller.dart",
+      "bytes": 819,
+      "mtimeMs": 1772892540047.682,
+      "sha256": "f5b8a5dc325bbcdbaf40afff21f7af5faf7dfa2f6bd741f88ab2560d290d1e11"
+    },
+    {
+      "path": "lib/controllers/banking_controller.dart",
+      "bytes": 3451,
+      "mtimeMs": 1772892540051.7166,
+      "sha256": "59c27e2283d353b0dec7936bc199648017adfcc515d1716bfb704174403c0696"
+    },
+    {
+      "path": "lib/controllers/booking_overview_controller.dart",
+      "bytes": 8538,
+      "mtimeMs": 1777711985756.143,
+      "sha256": "da10b92e911618c5eaf4cbc2c21f86dd639761b59b53d3861db8b9c53e2e1881"
+    },
+    {
+      "path": "lib/controllers/booking_report_controller.dart",
+      "bytes": 842,
+      "mtimeMs": 1775140910771.1584,
+      "sha256": "8a5fa58574bbb94977c9f66bdaf5a1eb4541f515d606038e1746f29807ed1fce"
+    },
+    {
+      "path": "lib/controllers/dashboard_controller.dart",
+      "bytes": 18982,
+      "mtimeMs": 1777729803774.0493,
+      "sha256": "674dda7e3a6ceaf83e42868a32055a308578c0428685613c403e0b243e312d52"
+    },
+    {
+      "path": "lib/controllers/document_controller.dart",
+      "bytes": 9712,
+      "mtimeMs": 1772892540055.8274,
+      "sha256": "799ef7968be3fb961089c0c91fa5b1eb3084b2f8f177945dbcc072226086ded0"
+    },
+    {
+      "path": "lib/controllers/holiday_controller.dart",
+      "bytes": 6325,
+      "mtimeMs": 1778771619542.561,
+      "sha256": "8a1c23239211bcca4d6506e24a3b4cc1a59a4a5e4afc2a41c90772b188354a61"
+    },
+    {
+      "path": "lib/controllers/individual_provider_dashboard_controller.dart",
+      "bytes": 18664,
+      "mtimeMs": 1778594906032.1277,
+      "sha256": "70eef716b52364a6b2f02be2f175349b4d8ee225fabec4782048da5efb734008"
+    },
+    {
+      "path": "lib/controllers/location_controller.dart",
+      "bytes": 20023,
+      "mtimeMs": 1777791199410.0945,
+      "sha256": "154073085887675b7840b54ac5e57317d4f844467986edcaf6456868fb6735fc"
+    },
+    {
+      "path": "lib/controllers/onboarding_request_controller.dart",
+      "bytes": 3331,
+      "mtimeMs": 1778580750275.9324,
+      "sha256": "0606b7fa2118a8892c178379d36f5bd0c1a678fd19055a57463cd1c21a0da018"
+    },
+    {
+      "path": "lib/controllers/provider_controller.dart",
+      "bytes": 7145,
+      "mtimeMs": 1777552121411.292,
+      "sha256": "47bdf98d601a555926d3692df39f5c7067242bb4ceac586a565a3924549dc659"
+    },
+    {
+      "path": "lib/controllers/provider_dashboard_controller.dart",
+      "bytes": 14880,
+      "mtimeMs": 1778578412179.8965,
+      "sha256": "9b8c1d588f04696bd92996c49015a4762cbf8d71ce4087bb61a3747dd5a2f1d8"
+    },
+    {
+      "path": "lib/controllers/provider_rating_controller.dart",
+      "bytes": 1662,
+      "mtimeMs": 1775153256651.521,
+      "sha256": "cb77eea32e1b53f5c96dbe7b2a34a77514650191479ff212b1dd973deb284e9a"
+    },
+    {
+      "path": "lib/controllers/refund_controller.dart",
+      "bytes": 1764,
+      "mtimeMs": 1776666026105.605,
+      "sha256": "61b44f5645c3e361119f7632b5b023341c14dd81d46c1466719a6af24ce8c130"
+    },
+    {
+      "path": "lib/controllers/transaction_report_controller.dart",
+      "bytes": 3413,
+      "mtimeMs": 1777901271641.6545,
+      "sha256": "6fbc577e829d4db69672e0ff37a88c36c5f2b3771450f58ea95c285a3ebbfa22"
+    },
+    {
+      "path": "lib/controllers/withdraw_controller.dart",
+      "bytes": 3710,
+      "mtimeMs": 1775222862423.2566,
+      "sha256": "e8654ee367d5b8f3923774772eb083ac0f5beb832e026dde37f37cd0191b9272"
+    },
+    {
+      "path": "lib/main.dart",
+      "bytes": 1470,
+      "mtimeMs": 1777369812115.4744,
+      "sha256": "5442b2ab7c08f42c8d5c0b681d6afb7ff811e076375d850cac225e02c9e9963f"
+    },
+    {
+      "path": "lib/models/bank_model.dart",
+      "bytes": 1839,
+      "mtimeMs": 1775140910774.6003,
+      "sha256": "4524fb794af8331329c573c6c79cab9a683178d2e7f73df5f6d619295b758917"
+    },
+    {
+      "path": "lib/models/booking_models.dart",
+      "bytes": 12619,
+      "mtimeMs": 1778396722740.29,
+      "sha256": "39432b5b21bf3d32981c6446f04b791ca8f2b997642da5f9277b46a1fbd8ed8e"
+    },
+    {
+      "path": "lib/models/booking_report_model.dart",
+      "bytes": 1905,
+      "mtimeMs": 1774358174294.0413,
+      "sha256": "e34a040f9de078510c534e5464ca14bc5ccdba2dbad0dca30b480153c9ddb3ae"
+    },
+    {
+      "path": "lib/models/buffer_time_model.dart",
+      "bytes": 727,
+      "mtimeMs": 1772892540109.091,
+      "sha256": "14277935d022d22cbc26fafb3e7fa909aa043559867477004f74fdc6d1fda893"
+    },
+    {
+      "path": "lib/models/coupon_model.dart",
+      "bytes": 2420,
+      "mtimeMs": 1773128929170.9905,
+      "sha256": "6809ba2ad52414b09fdb15c467251e5cc0b1a02a816a471a7a9bc0e3d7b0e613"
+    },
+    {
+      "path": "lib/models/customer_models.dart",
+      "bytes": 4199,
+      "mtimeMs": 1775153247851.0676,
+      "sha256": "5627dc1194628b7a15f593121d8b84f06174b4e78722ce7202ca7a6c0c53fa93"
+    },
+    {
+      "path": "lib/models/customer_refundbank.dart",
+      "bytes": 1337,
+      "mtimeMs": 1773128929171.5195,
+      "sha256": "9b48c2ed12d2f4c94518ee455e620394f5b9cc4215d195a2953e2894da03ba9c"
+    },
+    {
+      "path": "lib/models/data_models.dart",
+      "bytes": 4074,
+      "mtimeMs": 1775031731453.007,
+      "sha256": "5a56d93e38a700bedd3b421b2d65fbdff46d46fded2d9608cc4c516f36946e1f"
+    },
+    {
+      "path": "lib/models/discount_model.dart",
+      "bytes": 843,
+      "mtimeMs": 1772892540131.6816,
+      "sha256": "0572145b87612560a198f3d172106a84f187b2094eb7ef5d784bd45aa1f1db6c"
+    },
+    {
+      "path": "lib/models/document_type_model.dart",
+      "bytes": 553,
+      "mtimeMs": 1772892540138.7278,
+      "sha256": "a11b4ab531d98b2f512d38d10d922e366fd44dd9a36f102f99b5034cd6ef506a"
+    },
+    {
+      "path": "lib/models/employee_model.dart",
+      "bytes": 874,
+      "mtimeMs": 1777120626626.9946,
+      "sha256": "6413aa397bf0928e9bd51b4d106fc59bb46b6f9cf80d8afaa5fd42a513d98bc7"
+    },
+    {
+      "path": "lib/models/location_model.dart",
+      "bytes": 1419,
+      "mtimeMs": 1772892540144.762,
+      "sha256": "bbf36c3f6681576442c7435f57459a4236393e4a99e37a84004b89ae8c869ed8"
+    },
+    {
+      "path": "lib/models/module_model.dart",
+      "bytes": 550,
+      "mtimeMs": 1777120626629.0542,
+      "sha256": "1fe345381c16fdb5f518852fca61e9bbfe50b59d4075579a7f094fca2a881621"
+    },
+    {
+      "path": "lib/models/nav_item.dart",
+      "bytes": 325,
+      "mtimeMs": 1774179228473.1958,
+      "sha256": "77b613e9688d57e6565d385d3eeaaecadbcdde59baf969c9de6474618131d70a"
+    },
+    {
+      "path": "lib/models/permission_module.dart",
+      "bytes": 708,
+      "mtimeMs": 1777381586812.5396,
+      "sha256": "c38d26c6aff8f14405254531e4f544c98ee413af61f9fcbee02fd17ae301dc78"
+    },
+    {
+      "path": "lib/models/provider_model.dart",
+      "bytes": 4490,
+      "mtimeMs": 1778244646464.545,
+      "sha256": "809133269cca4664ee2883a4d15ebb3bc05b66a601a562a729f37c317124fca1"
+    },
+    {
+      "path": "lib/models/service_provider_location.dart",
+      "bytes": 799,
+      "mtimeMs": 1772892540156.5735,
+      "sha256": "acc8a69f3fc93e992415df662fc4cd0c5dc2e51605840d3b1e14101c238f42e9"
+    },
+    {
+      "path": "lib/models/service_provider_service.dart",
+      "bytes": 1015,
+      "mtimeMs": 1772892540162.2163,
+      "sha256": "edb0fd3da134cab0d87f8b8335c39825914bff8358d53ae3b958a7ef5e4f13d2"
+    },
+    {
+      "path": "lib/models/slider_banner_model.dart",
+      "bytes": 1721,
+      "mtimeMs": 1772892540166.2402,
+      "sha256": "e2d71c9a7020ccb5daea8a2094e9c61c203ab373a2d7df36a369df264b41ca15"
+    },
+    {
+      "path": "lib/repositories/auth_repository.dart",
+      "bytes": 2262,
+      "mtimeMs": 1777899901994.833,
+      "sha256": "3548cf65730fd34fc8b4c0714a0ce02033b6531e22282a025ffc9ede64e25fee"
+    },
+    {
+      "path": "lib/repositories/booking_repository.dart",
+      "bytes": 1428,
+      "mtimeMs": 1777711985817.2825,
+      "sha256": "6ba50885d29a538eb1a0b9f604beaedec5f9b5044a459f54a06a5ff87b8c555f"
+    },
+    {
+      "path": "lib/repositories/buffer_repository.dart",
+      "bytes": 2367,
+      "mtimeMs": 1772892540190.2852,
+      "sha256": "276007e90bbe55350ab328e5c1e0739661e1923516b65faf7b6183fe15982453"
+    },
+    {
+      "path": "lib/repositories/customer_repository.dart",
+      "bytes": 1025,
+      "mtimeMs": 1774179228474.7026,
+      "sha256": "db5e9a3dbf97aeb9a151165412a68a43d663b2a88842c1e332923058bd51e8b7"
+    },
+    {
+      "path": "lib/repositories/provider_repository.dart",
+      "bytes": 2027,
+      "mtimeMs": 1777550626283.059,
+      "sha256": "4135d2e3d8906b41530438d2b2be0ddde8b09a65d7e4004aa94d713780da5653"
+    },
+    {
+      "path": "lib/screens/add_coupon_screen.dart",
+      "bytes": 14904,
+      "mtimeMs": 1773128929172.5898,
+      "sha256": "293b7c71d483a37bf77ad3b1f5705411c4bdabefc7336769b8644baee44111c5"
+    },
+    {
+      "path": "lib/screens/add_employee_screen.dart",
+      "bytes": 8018,
+      "mtimeMs": 1777120626633.5637,
+      "sha256": "c6e770df7e9a942bc161d734e226705f50423e1df0695825a0d50bd46d51f52a"
+    },
+    {
+      "path": "lib/screens/add_service_screen.dart",
+      "bytes": 16371,
+      "mtimeMs": 1774179228479.2688,
+      "sha256": "80b1dc754d6d9156c17065c15ac7f6d6406003cf8e522371289de39c442bb56d"
+    },
+    {
+      "path": "lib/screens/addprovider/common_widgets.dart",
+      "bytes": 6080,
+      "mtimeMs": 1772892540501.3813,
+      "sha256": "96422238f028df705b09a193209382f75b12d2a29e1998bfbe35f57e4484b0d4"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_address.dart",
+      "bytes": 2721,
+      "mtimeMs": 1775042532581.0732,
+      "sha256": "98b7ca2b072a2e7295e71d284e4716010fbcf5790b865003f81832ef84f0c562"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_documents.dart",
+      "bytes": 11473,
+      "mtimeMs": 1772976125471.1377,
+      "sha256": "248fee6da6bbef9ccbb21a672ef26d282b2293fc4a1be4984f91ad6d8e26e531"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_financials.dart",
+      "bytes": 16320,
+      "mtimeMs": 1775044389862.161,
+      "sha256": "75dada0a60ca252c18dfb35ed30ffbc3ec3e978a49ee48c40b1989dca4ac2d3f"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_location.dart",
+      "bytes": 12078,
+      "mtimeMs": 1775042532569.0298,
+      "sha256": "a34ecaa7eedf6a3a451cb3ebc55fcc9902d66a8d68b91b51a33e9be4a9294c29"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_personal.dart",
+      "bytes": 21320,
+      "mtimeMs": 1778592135831.423,
+      "sha256": "adc0dbcd28dfc375565b9e9d6ebf5d8663250487f4cd9583df05d08cb9183ec7"
+    },
+    {
+      "path": "lib/screens/addprovider/tab_services.dart",
+      "bytes": 8785,
+      "mtimeMs": 1775044012332.0757,
+      "sha256": "1e984f782f2e3c1bc339e4c489e2e94b9132c02df0f75217c7750242ab64c752"
+    },
+    {
+      "path": "lib/screens/all_transaction_report_screen.dart",
+      "bytes": 84341,
+      "mtimeMs": 1778592460101.4087,
+      "sha256": "cd1c168f414f11bc9feac5c4a1eeb449ec72e7cc1f77e130440e37c514118e96"
+    },
+    {
+      "path": "lib/screens/booking_details_screen.dart",
+      "bytes": 55326,
+      "mtimeMs": 1778773332102.8955,
+      "sha256": "5eed34665837d0a7291ee515a04277a7e040a0aae2431efa8adfca5a45b39ef8"
+    },
+    {
+      "path": "lib/screens/booking_overview_screen.dart",
+      "bytes": 55281,
+      "mtimeMs": 1778595456468.1655,
+      "sha256": "9229807f520e635df9be3977eb15283fb4b2900b3836efa32117dc7399f96a53"
+    },
+    {
+      "path": "lib/screens/booking_report_screen.dart",
+      "bytes": 27131,
+      "mtimeMs": 1777202746761.3076,
+      "sha256": "899f284a918fea901c7118096a745675451ee8f6af2eeb034bad3461239563ce"
+    },
+    {
+      "path": "lib/screens/buffer_config_screen.dart",
+      "bytes": 16162,
+      "mtimeMs": 1772892540261.6055,
+      "sha256": "df3ad1e99b38c3511efabccaa774f95037ad4cbdd27d3d5885939246901774b9"
+    },
+    {
+      "path": "lib/screens/canceled_booking_screen.dart",
+      "bytes": 60872,
+      "mtimeMs": 1778589436704.6965,
+      "sha256": "d82b86211ee64431b0a0dd2448bb82aa7c38d5714829fc15f2321ec85c0d06a4"
+    },
+    {
+      "path": "lib/screens/CategoryScreen.dart",
+      "bytes": 30768,
+      "mtimeMs": 1776596046370.863,
+      "sha256": "8468b3d28cfe3256566c95b621cda43de5a65a75a8bd6af3ba2d15e86696e9d7"
+    },
+    {
+      "path": "lib/screens/completed_booking_screen.dart",
+      "bytes": 58648,
+      "mtimeMs": 1778589458723.3215,
+      "sha256": "4997b8aa5714cf2b0b93ceee7914fb291a9f4c2ce85c956180f6a978cc73c9c1"
+    },
+    {
+      "path": "lib/screens/coupon_list_screen.dart",
+      "bytes": 16837,
+      "mtimeMs": 1773128929173.6738,
+      "sha256": "b69070f6971c8d4eeb830f9266bc2433e8295208598795fea6e3bb5dd3685f56"
+    },
+    {
+      "path": "lib/screens/customer_list.dart",
+      "bytes": 38866,
+      "mtimeMs": 1777901271934.354,
+      "sha256": "ac9478e480cbfc339d65f1ea99f8075f84e2a6922269bd9b093148faafe73a87"
+    },
+    {
+      "path": "lib/screens/customer_overview_screen.dart",
+      "bytes": 34006,
+      "mtimeMs": 1775140798529.267,
+      "sha256": "6b1d7e247e3aae3e0475f3d93ad5e5b7a652da65a969c5c66e46fe6aab63151a"
+    },
+    {
+      "path": "lib/screens/customer_update_screen.dart",
+      "bytes": 22335,
+      "mtimeMs": 1772892540292.7888,
+      "sha256": "03d391a569a9c901e1d389b7e0a0f499b464325e3f36747e417a81a4322b0f9a"
+    },
+    {
+      "path": "lib/screens/customized_booking_screen.dart",
+      "bytes": 21443,
+      "mtimeMs": 1777354259970.4202,
+      "sha256": "ccb2a48f6b5bc77121af8309a1e8da171e832081c4c8720c0af2b032b2ac013a"
+    },
+    {
+      "path": "lib/screens/dashboard_screen.dart",
+      "bytes": 57438,
+      "mtimeMs": 1778595245565.852,
+      "sha256": "b6f5c0afca9cdd73450dae1503f7cebb0fca5267fb4db8c213423be27e8d6b31"
+    },
+    {
+      "path": "lib/screens/discount_add_screen.dart",
+      "bytes": 20536,
+      "mtimeMs": 1776596046371.91,
+      "sha256": "49858749d0b24322153f7162ae2b01787fab612ba0718cfcf1763e7658d20692"
+    },
+    {
+      "path": "lib/screens/discount_list_screen.dart",
+      "bytes": 17586,
+      "mtimeMs": 1772892540324.709,
+      "sha256": "b59d8cba7fe262c194e50ccce931eedbb8cdc0c9f2749e13761f260c324ff181"
+    },
+    {
+      "path": "lib/screens/employee_list_screen.dart",
+      "bytes": 9599,
+      "mtimeMs": 1777382731621.2114,
+      "sha256": "086b3f43036f02ba01f1285615ed5e766113c2fe2f906175008003f55b4a0fbe"
+    },
+    {
+      "path": "lib/screens/employee_role_list_screen.dart",
+      "bytes": 9924,
+      "mtimeMs": 1777120626645.4744,
+      "sha256": "aaa7c4e1f230f8eed18492e5cb09c3b2fd7b0a15f043b011aa32f328b621bd11"
+    },
+    {
+      "path": "lib/screens/employee_role_setup_screen.dart",
+      "bytes": 16786,
+      "mtimeMs": 1777202746768.9204,
+      "sha256": "f8d2e0d73f4f745fc1bda5d5cbeb67a2dbfc0bbf7f0a6d5bf8a9b9996d536a9e"
+    },
+    {
+      "path": "lib/screens/holiday_management_screen.dart",
+      "bytes": 19893,
+      "mtimeMs": 1778768489633.7375,
+      "sha256": "5c3f9313864de4caf912154e3734d85d77d0ba6e46b720865099b2d83624f1a3"
+    },
+    {
+      "path": "lib/screens/individual_provider_dashboard_screen.dart",
+      "bytes": 40686,
+      "mtimeMs": 1778591983341.334,
+      "sha256": "f511c8e9a59c0d5aea644e04a74fd31404cf66d775571936ccf8f2f00d762cfb"
+    },
+    {
+      "path": "lib/screens/keyword_analytics_screen.dart",
+      "bytes": 14802,
+      "mtimeMs": 1772892540382.4163,
+      "sha256": "a49d910bcb94195c66a19dd4eb45e3495633d3aa352f40e2f43228044e4d5d73"
+    },
+    {
+      "path": "lib/screens/login_screen.dart",
+      "bytes": 15030,
+      "mtimeMs": 1777349021777.5933,
+      "sha256": "43e96f71b72deb547839477d0accec623f017667098078f0ea9ff60b7cbb34c1"
+    },
+    {
+      "path": "lib/screens/MasterSetupScreen.dart",
+      "bytes": 16573,
+      "mtimeMs": 1772892540221.0366,
+      "sha256": "46f671543b9bae14c805b9c7f176fe58b26967f7756dedf0845ff3fb12ab0743"
+    },
+    {
+      "path": "lib/screens/module_permssion-screen.dart",
+      "bytes": 10492,
+      "mtimeMs": 1777382693029.9521,
+      "sha256": "fc9999b0add0ca886d1535d6842d549023799a9caede08db3654280c26f5e0a6"
+    },
+    {
+      "path": "lib/screens/offline_payment_screen.dart",
+      "bytes": 61236,
+      "mtimeMs": 1778589468036.5586,
+      "sha256": "5036a3ce38409d8eff33aedda31ae549ec7a859780ba68a0df1014e3165b6919"
+    },
+    {
+      "path": "lib/screens/ongoing_booking_screen.dart",
+      "bytes": 61176,
+      "mtimeMs": 1778589426350.6775,
+      "sha256": "16df4114eceaab5d5ad8346f60c0026de797fc8c5b533eaa19de456358d6b75a"
+    },
+    {
+      "path": "lib/screens/pending_booking_screen.dart",
+      "bytes": 60751,
+      "mtimeMs": 1778589417015.003,
+      "sha256": "9046b6a08c4aa949e673137450b22cef13ba58147eb2b9c03eb53049c2f52877"
+    },
+    {
+      "path": "lib/screens/personal_details_screen.dart",
+      "bytes": 12760,
+      "mtimeMs": 1777964765835.039,
+      "sha256": "d2bfe4618925a388cd58ff6890fed367b6b0dd931b8d7cf23e8f8eeba1c3494d"
+    },
+    {
+      "path": "lib/screens/promotional_banners_screen.dart",
+      "bytes": 26924,
+      "mtimeMs": 1773128929175.855,
+      "sha256": "50e2b494af822efba0db636078faa485212d33dc61b98c9f7d0f0139c7f1b85a"
+    },
+    {
+      "path": "lib/screens/provider_add_screen.dart",
+      "bytes": 6384,
+      "mtimeMs": 1772976125477.402,
+      "sha256": "b7eefaa1029956d2502362fe7fbe63d954fdbdd06eb3b6ed023e59e32e1b14cc"
+    },
+    {
+      "path": "lib/screens/provider_dashboard_screen.dart",
+      "bytes": 20884,
+      "mtimeMs": 1778580750272.6697,
+      "sha256": "de94829e88a929317d782981e548dd025a24f23672ffb2b5e53319f16fb39b96"
+    },
+    {
+      "path": "lib/screens/provider_list_screen.dart",
+      "bytes": 29430,
+      "mtimeMs": 1778237054683.7405,
+      "sha256": "24e12aba01332a9a92a40d06e7468989f26b836003b66273619ae276f7083585"
+    },
+    {
+      "path": "lib/screens/provider_onboarding_request_screen.dart",
+      "bytes": 14019,
+      "mtimeMs": 1778580750274.8042,
+      "sha256": "4193bf3ae4489a9c9410528d7bac7eae91f63ce5f9f894e961e41590a4208131"
+    },
+    {
+      "path": "lib/screens/provider_rating_screen.dart",
+      "bytes": 9691,
+      "mtimeMs": 1775153274651.439,
+      "sha256": "a62e15560bcfbf47a97abb2c98b057f804afd8c970aafdf78263ea4937616c51"
+    },
+    {
+      "path": "lib/screens/provider_report_screen.dart",
+      "bytes": 26168,
+      "mtimeMs": 1777901272137.4033,
+      "sha256": "7bff72c9eb38ab80b6d4a4373388bed079d4a5126ebcb7c95ddd124a09492fba"
+    },
+    {
+      "path": "lib/screens/referral_management_screen.dart",
+      "bytes": 18220,
+      "mtimeMs": 1774379635887.618,
+      "sha256": "1be4433e2128ee0c1b3ae87cf6e5e158a7d3a15236e37aab377adf0381de15c4"
+    },
+    {
+      "path": "lib/screens/refund_management_screen.dart",
+      "bytes": 28305,
+      "mtimeMs": 1776666026111.3867,
+      "sha256": "1aee14d44e950839103d19f7918ec07a61ec4352dca5e5b8e2336603e61d6ac6"
+    },
+    {
+      "path": "lib/screens/reschedule_dialog.dart",
+      "bytes": 43628,
+      "mtimeMs": 1777901710294.148,
+      "sha256": "3a0916ef0f01770361f8e0385555d100d3e4c02bde8286cccbc7a8efaeea907b"
+    },
+    {
+      "path": "lib/screens/role_update_screen.dart",
+      "bytes": 14346,
+      "mtimeMs": 1772892540447.8152,
+      "sha256": "1501da2b9f9347c644d5986a89763c4b651d95bde27385a60e67b68c4624a067"
+    },
+    {
+      "path": "lib/screens/send_notification_screen.dart",
+      "bytes": 33245,
+      "mtimeMs": 1778766181728.9258,
+      "sha256": "b26a5a7b0381d4aeed7434fdd38ce47bc8bdb0c7c8baf6a71b446e07bc5c009e"
+    },
+    {
+      "path": "lib/screens/service_timing_management_screen.dart",
+      "bytes": 29767,
+      "mtimeMs": 1774872873615.7634,
+      "sha256": "5813d3298b22f1e64fe4e628d919d1c8ae4054ac788af86b49685037e13257b1"
+    },
+    {
+      "path": "lib/screens/ServiceCategoryScreen.dart",
+      "bytes": 30918,
+      "mtimeMs": 1774359504473.6238,
+      "sha256": "26c520eaa093e359dd49a093e6025f2f20c2bf45a61fd9d5b75e5133d0369fa3"
+    },
+    {
+      "path": "lib/screens/ServiceScreen.dart",
+      "bytes": 36771,
+      "mtimeMs": 1777453816196.784,
+      "sha256": "d3f4577548f22732dac444174e37b87b60fabfaf846c453b37aafc7e30c157dc"
+    },
+    {
+      "path": "lib/screens/transaction_report_screen.dart",
+      "bytes": 19977,
+      "mtimeMs": 1775158231079.1152,
+      "sha256": "8f23f17ca53996218ada7d4481798a6e28e03eede97c1874e4767a9a01928e03"
+    },
+    {
+      "path": "lib/screens/update_coupon_screen.dart",
+      "bytes": 12259,
+      "mtimeMs": 1772892540468.1538,
+      "sha256": "9895d515366cd21ee7199d661b16f1b82ae7da6d2468b22c9c3f4f1343601d97"
+    },
+    {
+      "path": "lib/screens/update_discount_screen.dart",
+      "bytes": 10824,
+      "mtimeMs": 1772892540468.1538,
+      "sha256": "4d748f0c768b911b8fc210e0d0e6a385feca814e11718ae0ff057264ce2e7b54"
+    },
+    {
+      "path": "lib/screens/update_promotional_banner_screen.dart",
+      "bytes": 13870,
+      "mtimeMs": 1772892540480.3818,
+      "sha256": "d3f6c1948c8007dcdc66ea874cb7735f4d06d27d8f43c3c3d54c35622cbbd8e8"
+    },
+    {
+      "path": "lib/screens/welcome_dashboard_screen.dart",
+      "bytes": 3775,
+      "mtimeMs": 1777369812111.9436,
+      "sha256": "13fbbdfdde8cf49178ddab38ab5a1de0d12f4a0aac053d714f0955783740ea10"
+    },
+    {
+      "path": "lib/screens/withdraw_request_screen.dart",
+      "bytes": 34143,
+      "mtimeMs": 1775222862428.1282,
+      "sha256": "8df1f75ae98cc467c46a923f9ccd6c442744c9620988d0c70647f468e097abd8"
+    },
+    {
+      "path": "lib/screens/zone_setup_screen.dart",
+      "bytes": 32131,
+      "mtimeMs": 1777791283747.3652,
+      "sha256": "a7746d6065785551918ff3a6fb9c2da493b7de9cf4b9da7a165c952ee98f2bbd"
+    },
+    {
+      "path": "lib/services/api_service.dart",
+      "bytes": 57392,
+      "mtimeMs": 1778770990182.344,
+      "sha256": "e6e462968191d1f8e414f79bf364b74dd8f4f38b58a1c40bc8a0b8f57181e99b"
+    },
+    {
+      "path": "lib/services/booking_notification_service.dart",
+      "bytes": 2832,
+      "mtimeMs": 1777289660205.9297,
+      "sha256": "c2d30eadf7bec5b29e75839fb55014b0e88005cbd18ed94723aa7b8e70bd65b9"
+    },
+    {
+      "path": "lib/services/invoice_service.dart",
+      "bytes": 25438,
+      "mtimeMs": 1778396722743.5237,
+      "sha256": "b838efb1b56114cdc3cfced563886b25a1c7e177d8df0e3466692a5284972217"
+    },
+    {
+      "path": "lib/services/permission_manager.dart",
+      "bytes": 2754,
+      "mtimeMs": 1777120626657.8364,
+      "sha256": "761765dfccb89eb76000032e58803c5335bcdf7542c53529e939e86ef8b66b14"
+    },
+    {
+      "path": "lib/widgets/custom_center_dialog.dart",
+      "bytes": 6620,
+      "mtimeMs": 1772892540546.9958,
+      "sha256": "8532ab8936ed938102800070899d51ec9deadb2aad3ab14985d03ac8b31b43f6"
+    },
+    {
+      "path": "lib/widgets/dashboard_sidebar.dart",
+      "bytes": 41835,
+      "mtimeMs": 1778227898485.8943,
+      "sha256": "69ea0773cb53e92559c58fa082c016766fbd54af735e3f99a6dd4cab73c56360"
+    },
+    {
+      "path": "lib/widgets/dashboard_topbar.dart",
+      "bytes": 10559,
+      "mtimeMs": 1777964790276.0947,
+      "sha256": "3930fbba109d12ec287232baf0ee333f2e5de6a647b4f2feb82acfec6ad1e336"
+    },
+    {
+      "path": "lib/widgets/image_preview_dialog.dart",
+      "bytes": 3629,
+      "mtimeMs": 1772892540573.1953,
+      "sha256": "6a44b37ea835a29210d6d9ae469536e577f3043051e132d738b44220d04b596e"
+    },
+    {
+      "path": "lib/widgets/searchable_selection_sheet.dart",
+      "bytes": 9940,
+      "mtimeMs": 1775042532817.8157,
+      "sha256": "fc6bc8907abf41153ad580e6a07895be917704ac4a366b98c511f5e94fa0364f"
+    },
+    {
+      "path": "lib/widgets/sidebar_widgets.dart",
+      "bytes": 3936,
+      "mtimeMs": 1772892540588.7463,
+      "sha256": "4cd63d28dfa15cca91cb34b0af8eb01818d35ad84b6ab8d9d313c3ff85c42d51"
+    },
+    {
+      "path": "linux/CMakeLists.txt",
+      "bytes": 4767,
+      "mtimeMs": 1772892540602.5654,
+      "sha256": "2b197ff23cdf51ca43b28058694680798d2ab15eee33025f2e31b0a46c7cf4cb"
+    },
+    {
+      "path": "linux/flutter/CMakeLists.txt",
+      "bytes": 2815,
+      "mtimeMs": 1772892540620.8794,
+      "sha256": "787189e2623313cfee590a0b553338eb9fc68b3af922ddd77c5d39c75f989aeb"
+    },
+    {
+      "path": "linux/flutter/generated_plugin_registrant.cc",
+      "bytes": 684,
+      "mtimeMs": 1777284710994.1382,
+      "sha256": "d974289d3f81df8a2b4d69141cadff6b0e16885da9d7eafdf9ee8451525d6ed3"
+    },
+    {
+      "path": "linux/flutter/generated_plugin_registrant.h",
+      "bytes": 303,
+      "mtimeMs": 1772892540626.114,
+      "sha256": "00f93bb5b1faefdede8f6065df327522900fb0b8efee86bacf424fd947ed14bb"
+    },
+    {
+      "path": "linux/runner/CMakeLists.txt",
+      "bytes": 974,
+      "mtimeMs": 1772892540657.7144,
+      "sha256": "8cdcfd911e770fd7d511c97c7bce6559486a815352a47c953f7ef632e236d2cc"
+    },
+    {
+      "path": "linux/runner/main.cc",
+      "bytes": 180,
+      "mtimeMs": 1772892540664.063,
+      "sha256": "ea23f7cdf74091d63bba29ef60486370b766157b848f0cfe62bd8b1c1695a0c1"
+    },
+    {
+      "path": "linux/runner/my_application.cc",
+      "bytes": 5360,
+      "mtimeMs": 1772892540664.063,
+      "sha256": "4f08fb2eb06e4426d6292612eccffd1a04c6ed14b8b69f93cc47d0011b5e9cbd"
+    },
+    {
+      "path": "linux/runner/my_application.h",
+      "bytes": 388,
+      "mtimeMs": 1772892540672.926,
+      "sha256": "a044da4b485c93d0e1a79c62356b22c8856dd2bab537ffb6a9446fc905131316"
+    },
+    {
+      "path": "pubspec.lock",
+      "bytes": 25932,
+      "mtimeMs": 1777901258857.6274,
+      "sha256": "2df48cd287efc2a06787b4d1910559874e6869ed77635a166d85a8e5c4020bec"
+    },
+    {
+      "path": "pubspec.yaml",
+      "bytes": 1180,
+      "mtimeMs": 1777901257890.6707,
+      "sha256": "533274cd775f7f1b3be5b45d066f6d9b054d230277fa1bbe0d76cf6224cebc1e"
+    },
+    {
+      "path": "README.md",
+      "bytes": 601,
+      "mtimeMs": 1772892539443.246,
+      "sha256": "695fdf41a599c87f3603247d2236ce0aafa3d068c35911c107c75f7910244bec"
+    },
+    {
+      "path": "test/widget_test.dart",
+      "bytes": 1082,
+      "mtimeMs": 1775142466265.0066,
+      "sha256": "26f0f7edd99f8c2f5a80384b608ff2636e27bd1af4d79c6393c13d1d9c3b7196"
+    },
+    {
+      "path": "windows/CMakeLists.txt",
+      "bytes": 4164,
+      "mtimeMs": 1772892540976.6182,
+      "sha256": "0804059baaeb77e34590461f263469002e163f6ff6ff424273ee5c9604a388da"
+    },
+    {
+      "path": "windows/flutter/CMakeLists.txt",
+      "bytes": 3742,
+      "mtimeMs": 1772892540997.7676,
+      "sha256": "1fe418971b6f41bb35ceb3d64113a835f3f6f171ecaa707bf232492b57a588d6"
+    },
+    {
+      "path": "windows/flutter/generated_plugin_registrant.cc",
+      "bytes": 480,
+      "mtimeMs": 1777284711008.1335,
+      "sha256": "34c870e6ec63df4fa46ac6124ca1874c0858a7ace25a741d522cc5e5fa4629db"
+    },
+    {
+      "path": "windows/flutter/generated_plugin_registrant.h",
+      "bytes": 302,
+      "mtimeMs": 1772892541006.2087,
+      "sha256": "dbc11635d7b1ba1887adf40df5b83d634e9c3ab0bee34510c71528bb4d73602a"
+    },
+    {
+      "path": "windows/runner/CMakeLists.txt",
+      "bytes": 1796,
+      "mtimeMs": 1772892541023.406,
+      "sha256": "34119ec122e36940235ef4bc245fcfb43b6960ed443e28af1a8d833a81209b9e"
+    },
+    {
+      "path": "windows/runner/flutter_window.cpp",
+      "bytes": 2122,
+      "mtimeMs": 1772892541039.2856,
+      "sha256": "dd185884c0b5301d400b58f12ebb36b1c8b326531597e531b40e44a6eeb0e943"
+    },
+    {
+      "path": "windows/runner/flutter_window.h",
+      "bytes": 928,
+      "mtimeMs": 1772892541043.306,
+      "sha256": "38e0fcd3a0b83895852ec295cb70d90179c0dcd40d58f065eb5232a4ecd84898"
+    },
+    {
+      "path": "windows/runner/main.cpp",
+      "bytes": 1267,
+      "mtimeMs": 1772892541053.4724,
+      "sha256": "b700484c472e7537fe093ee8ce3234d8477be39b0858152f35c8a838560e3ce0"
+    },
+    {
+      "path": "windows/runner/resource.h",
+      "bytes": 432,
+      "mtimeMs": 1772892541053.4724,
+      "sha256": "1fa98588b04561590ba1cf0521ab86a9db4a878312f21c9d5861d965ddd8d1ae"
+    },
+    {
+      "path": "windows/runner/utils.cpp",
+      "bytes": 1797,
+      "mtimeMs": 1772892541081.91,
+      "sha256": "dc2ee94d43116f959a4abd42557f71d07acc631abbffe03b11489dbeed35bedb"
+    },
+    {
+      "path": "windows/runner/utils.h",
+      "bytes": 672,
+      "mtimeMs": 1772892541084.993,
+      "sha256": "95a7f7dddb832997cefa937a96f89472332277e75734a5de553610760b744b03"
+    },
+    {
+      "path": "windows/runner/win32_window.cpp",
+      "bytes": 8534,
+      "mtimeMs": 1772892541084.993,
+      "sha256": "9065f31ccf746cf8b390121f958f9e959033af864aed779597066625ed56bc36"
+    },
+    {
+      "path": "windows/runner/win32_window.h",
+      "bytes": 3522,
+      "mtimeMs": 1772892541084.993,
+      "sha256": "7dd03746b19dcf3542829b2f6e8ed40a2714ce5f2cb3b0e23f0118a2fcf62d62"
+    }
+  ],
+  "skippedCount": 121,
+  "detectedProfiles": [
+    {
+      "id": "java",
+      "label": "Java / Kotlin (Maven/Gradle)"
+    },
+    {
+      "id": "flutter",
+      "label": "Dart / Flutter"
+    },
+    {
+      "id": "cpp",
+      "label": "C / C++"
+    },
+    {
+      "id": "flutter-mobile",
+      "label": "Flutter / Mobile App"
+    }
+  ]
+}

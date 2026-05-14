@@ -1,0 +1,224 @@
+# Scan Report
+
+> No file content is included in this report. It only lists local paths and scan decisions.
+
+## Overview
+
+- Scanned at: 2026-05-14T17:00:03.104Z
+- Root: c:\Chayan Karo Project\Admin Panel\adminpanel-main
+- Detected technologies: Java / Kotlin (Maven/Gradle), Dart / Flutter, C / C++, Flutter / Mobile App
+- Tracked files: 152
+- Skipped files: 121
+
+## Skipped By Reason
+
+- excluded: 6
+- not-included: 113
+- too-large: 2
+- read-error: 0
+
+## Tracked Files (first 100)
+
+- android/app/build.gradle.kts (1400 bytes)
+- android/app/src/debug/AndroidManifest.xml (378 bytes)
+- android/app/src/main/AndroidManifest.xml (2202 bytes)
+- android/app/src/profile/AndroidManifest.xml (378 bytes)
+- android/build.gradle.kts (537 bytes)
+- android/gradle.properties (166 bytes)
+- android/settings.gradle.kts (770 bytes)
+- assets/1.mp3 (76904 bytes)
+- assets/alert.mp3 (124551 bytes)
+- ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md (336 bytes)
+- ios/Runner/GeneratedPluginRegistrant.h (378 bytes)
+- ios/Runner/Info.plist (1655 bytes)
+- ios/Runner/Runner-Bridging-Header.h (38 bytes)
+- lib/config/admin_navigation.dart (6258 bytes)
+- lib/controllers/add_provider_controller.dart (42616 bytes)
+- lib/controllers/auth_controller.dart (819 bytes)
+- lib/controllers/banking_controller.dart (3451 bytes)
+- lib/controllers/booking_overview_controller.dart (8538 bytes)
+- lib/controllers/booking_report_controller.dart (842 bytes)
+- lib/controllers/dashboard_controller.dart (18982 bytes)
+- lib/controllers/document_controller.dart (9712 bytes)
+- lib/controllers/holiday_controller.dart (6325 bytes)
+- lib/controllers/individual_provider_dashboard_controller.dart (18664 bytes)
+- lib/controllers/location_controller.dart (20023 bytes)
+- lib/controllers/onboarding_request_controller.dart (3331 bytes)
+- lib/controllers/provider_controller.dart (7145 bytes)
+- lib/controllers/provider_dashboard_controller.dart (14880 bytes)
+- lib/controllers/provider_rating_controller.dart (1662 bytes)
+- lib/controllers/refund_controller.dart (1764 bytes)
+- lib/controllers/transaction_report_controller.dart (3413 bytes)
+- lib/controllers/withdraw_controller.dart (3710 bytes)
+- lib/main.dart (1470 bytes)
+- lib/models/bank_model.dart (1839 bytes)
+- lib/models/booking_models.dart (12619 bytes)
+- lib/models/booking_report_model.dart (1905 bytes)
+- lib/models/buffer_time_model.dart (727 bytes)
+- lib/models/coupon_model.dart (2420 bytes)
+- lib/models/customer_models.dart (4199 bytes)
+- lib/models/customer_refundbank.dart (1337 bytes)
+- lib/models/data_models.dart (4074 bytes)
+- lib/models/discount_model.dart (843 bytes)
+- lib/models/document_type_model.dart (553 bytes)
+- lib/models/employee_model.dart (874 bytes)
+- lib/models/location_model.dart (1419 bytes)
+- lib/models/module_model.dart (550 bytes)
+- lib/models/nav_item.dart (325 bytes)
+- lib/models/permission_module.dart (708 bytes)
+- lib/models/provider_model.dart (4490 bytes)
+- lib/models/service_provider_location.dart (799 bytes)
+- lib/models/service_provider_service.dart (1015 bytes)
+- lib/models/slider_banner_model.dart (1721 bytes)
+- lib/repositories/auth_repository.dart (2262 bytes)
+- lib/repositories/booking_repository.dart (1428 bytes)
+- lib/repositories/buffer_repository.dart (2367 bytes)
+- lib/repositories/customer_repository.dart (1025 bytes)
+- lib/repositories/provider_repository.dart (2027 bytes)
+- lib/screens/add_coupon_screen.dart (14904 bytes)
+- lib/screens/add_employee_screen.dart (8018 bytes)
+- lib/screens/add_service_screen.dart (16371 bytes)
+- lib/screens/addprovider/common_widgets.dart (6080 bytes)
+- lib/screens/addprovider/tab_address.dart (2721 bytes)
+- lib/screens/addprovider/tab_documents.dart (11473 bytes)
+- lib/screens/addprovider/tab_financials.dart (16320 bytes)
+- lib/screens/addprovider/tab_location.dart (12078 bytes)
+- lib/screens/addprovider/tab_personal.dart (21320 bytes)
+- lib/screens/addprovider/tab_services.dart (8785 bytes)
+- lib/screens/all_transaction_report_screen.dart (84341 bytes)
+- lib/screens/booking_details_screen.dart (55326 bytes)
+- lib/screens/booking_overview_screen.dart (55281 bytes)
+- lib/screens/booking_report_screen.dart (27131 bytes)
+- lib/screens/buffer_config_screen.dart (16162 bytes)
+- lib/screens/canceled_booking_screen.dart (60872 bytes)
+- lib/screens/CategoryScreen.dart (30768 bytes)
+- lib/screens/completed_booking_screen.dart (58648 bytes)
+- lib/screens/coupon_list_screen.dart (16837 bytes)
+- lib/screens/customer_list.dart (38866 bytes)
+- lib/screens/customer_overview_screen.dart (34006 bytes)
+- lib/screens/customer_update_screen.dart (22335 bytes)
+- lib/screens/customized_booking_screen.dart (21443 bytes)
+- lib/screens/dashboard_screen.dart (57438 bytes)
+- lib/screens/discount_add_screen.dart (20536 bytes)
+- lib/screens/discount_list_screen.dart (17586 bytes)
+- lib/screens/employee_list_screen.dart (9599 bytes)
+- lib/screens/employee_role_list_screen.dart (9924 bytes)
+- lib/screens/employee_role_setup_screen.dart (16786 bytes)
+- lib/screens/holiday_management_screen.dart (19893 bytes)
+- lib/screens/individual_provider_dashboard_screen.dart (40686 bytes)
+- lib/screens/keyword_analytics_screen.dart (14802 bytes)
+- lib/screens/login_screen.dart (15030 bytes)
+- lib/screens/MasterSetupScreen.dart (16573 bytes)
+- lib/screens/module_permssion-screen.dart (10492 bytes)
+- lib/screens/offline_payment_screen.dart (61236 bytes)
+- lib/screens/ongoing_booking_screen.dart (61176 bytes)
+- lib/screens/pending_booking_screen.dart (60751 bytes)
+- lib/screens/personal_details_screen.dart (12760 bytes)
+- lib/screens/promotional_banners_screen.dart (26924 bytes)
+- lib/screens/provider_add_screen.dart (6384 bytes)
+- lib/screens/provider_dashboard_screen.dart (20884 bytes)
+- lib/screens/provider_list_screen.dart (29430 bytes)
+- lib/screens/provider_onboarding_request_screen.dart (14019 bytes)
+
+## Skipped Files (first 100)
+
+- .ai-memory/ [excluded]
+- .dart_tool/ [excluded]
+- .git/ [excluded]
+- android/.gradle/ [excluded]
+- build/ [excluded]
+- .flutter-plugins-dependencies [excluded]
+- .gitignore [not-included]
+- .metadata [not-included]
+- .vscode/settings.json [not-included]
+- analysis_options.yaml [not-included]
+- analyze_output.txt [not-included]
+- android/.gitignore [not-included]
+- android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java [not-included]
+- android/app/src/main/kotlin/com/example/ck_admin_panel/MainActivity.kt [not-included]
+- android/app/src/main/res/drawable/launch_background.xml [not-included]
+- android/app/src/main/res/drawable-v21/launch_background.xml [not-included]
+- android/app/src/main/res/mipmap-hdpi/ic_launcher.png [not-included]
+- android/app/src/main/res/mipmap-mdpi/ic_launcher.png [not-included]
+- android/app/src/main/res/mipmap-xhdpi/ic_launcher.png [not-included]
+- android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png [not-included]
+- android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png [not-included]
+- android/app/src/main/res/values/styles.xml [not-included]
+- android/app/src/main/res/values-night/styles.xml [not-included]
+- android/gradle/wrapper/gradle-wrapper.jar [not-included]
+- android/gradle/wrapper/gradle-wrapper.properties [not-included]
+- android/gradlew [not-included]
+- android/gradlew.bat [not-included]
+- android/local.properties [not-included]
+- assets/bg.jpg [too-large] — 1548605 bytes
+- assets/logo.svg [too-large] — 346952 bytes
+- build_cmd_output.log [not-included]
+- build_output.log [not-included]
+- ios/.gitignore [not-included]
+- ios/Flutter/AppFrameworkInfo.plist [not-included]
+- ios/Flutter/Debug.xcconfig [not-included]
+- ios/Flutter/ephemeral/flutter_lldbinit [not-included]
+- ios/Flutter/ephemeral/flutter_lldb_helper.py [not-included]
+- ios/Flutter/flutter_export_environment.sh [not-included]
+- ios/Flutter/Generated.xcconfig [not-included]
+- ios/Flutter/Release.xcconfig [not-included]
+- ios/Runner/AppDelegate.swift [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png [not-included]
+- ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png [not-included]
+- ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json [not-included]
+- ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png [not-included]
+- ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png [not-included]
+- ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png [not-included]
+- ios/Runner/Base.lproj/LaunchScreen.storyboard [not-included]
+- ios/Runner/Base.lproj/Main.storyboard [not-included]
+- ios/Runner/GeneratedPluginRegistrant.m [not-included]
+- ios/Runner.xcodeproj/project.pbxproj [not-included]
+- ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata [not-included]
+- ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist [not-included]
+- ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings [not-included]
+- ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme [not-included]
+- ios/Runner.xcworkspace/contents.xcworkspacedata [not-included]
+- ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist [not-included]
+- ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings [not-included]
+- ios/RunnerTests/RunnerTests.swift [not-included]
+- linux/.gitignore [not-included]
+- linux/flutter/generated_plugins.cmake [not-included]
+- macos/.gitignore [not-included]
+- macos/Flutter/ephemeral/Flutter-Generated.xcconfig [not-included]
+- macos/Flutter/ephemeral/flutter_export_environment.sh [not-included]
+- macos/Flutter/Flutter-Debug.xcconfig [not-included]
+- macos/Flutter/Flutter-Release.xcconfig [not-included]
+- macos/Flutter/GeneratedPluginRegistrant.swift [not-included]
+- macos/Runner/AppDelegate.swift [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png [not-included]
+- macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json [not-included]
+- macos/Runner/Base.lproj/MainMenu.xib [not-included]
+- macos/Runner/Configs/AppInfo.xcconfig [not-included]
+- macos/Runner/Configs/Debug.xcconfig [not-included]
+- macos/Runner/Configs/Release.xcconfig [not-included]
+- macos/Runner/Configs/Warnings.xcconfig [not-included]
+- macos/Runner/DebugProfile.entitlements [not-included]
+- macos/Runner/Info.plist [not-included]
+- macos/Runner/MainFlutterWindow.swift [not-included]
+- macos/Runner/Release.entitlements [not-included]
+- macos/Runner.xcodeproj/project.pbxproj [not-included]

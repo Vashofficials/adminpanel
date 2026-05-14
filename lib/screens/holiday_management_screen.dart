@@ -205,7 +205,17 @@ class HolidayManagementScreen extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Obx(() => ElevatedButton.icon(
-                onPressed: controller.selectedProviderId.value == null ? null : () {},
+                onPressed: controller.selectedProviderId.value == null ? null : () async {
+                  DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    controller.addHoliday(picked);
+                  }
+                },
                 icon: const Icon(Icons.add_circle_outline),
                 label: const Text("Mark Holiday"),
                 style: ElevatedButton.styleFrom(
@@ -304,7 +314,7 @@ class HolidayManagementScreen extends StatelessWidget {
               bool isHoliday = controller.isDateHoliday(date);
               String status = isHoliday ? "Full Day Off" : "Available";
 
-              return _buildDayCell(dayNum, status);
+              return _buildDayCell(ctx, date, dayNum, status);
             },
           )
         ],
@@ -312,25 +322,73 @@ class HolidayManagementScreen extends StatelessWidget {
     });
   }
 
-  Widget _buildDayCell(int day, String status) {
+  Widget _buildDayCell(BuildContext context, DateTime date, int day, String status) {
     bool isOff = status == "Full Day Off";
-    return Container(
-      decoration: BoxDecoration(
-        color: isOff ? redBg : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isOff ? redText.withOpacity(0.2) : borderGrey),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("$day",
-              style: TextStyle(
-                  color: isOff ? redText : textDark, fontWeight: FontWeight.bold, fontSize: 16)),
-          if (isOff) ...[
-            const SizedBox(height: 4),
-            Icon(Icons.block, size: 12, color: redText),
-          ]
-        ],
+    return InkWell(
+      onTap: () {
+        if (controller.selectedProviderId.value == null) return;
+        if (isOff) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("Remove Holiday"),
+              content: Text("Do you want to remove the holiday on ${DateFormat('MMM dd, yyyy').format(date)}?"),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    final id = controller.getHolidayIdForDate(date);
+                    if (id != null) {
+                      controller.deleteHoliday(id);
+                    }
+                  },
+                  child: const Text("Remove", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("Mark Holiday"),
+              content: Text("Do you want to mark ${DateFormat('MMM dd, yyyy').format(date)} as a holiday?"),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    controller.addHoliday(date);
+                  },
+                  child: const Text("Mark", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isOff ? redBg : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isOff ? redText.withOpacity(0.2) : borderGrey),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("$day",
+                style: TextStyle(
+                    color: isOff ? redText : textDark, fontWeight: FontWeight.bold, fontSize: 16)),
+            if (isOff) ...[
+              const SizedBox(height: 4),
+              Icon(Icons.block, size: 12, color: redText),
+            ]
+          ],
+        ),
       ),
     );
   }

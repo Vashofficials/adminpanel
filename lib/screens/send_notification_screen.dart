@@ -47,7 +47,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen>
   late TabController _tabController;
 
   static const _orange = Color(0xFFEB5725);
-  static const _baseUrl = 'https://api.chayankaro.com';
+  static const _baseUrl = 'http://43.205.101.170:8081';
 
   @override
   void initState() {

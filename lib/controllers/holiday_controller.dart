@@ -71,6 +71,77 @@ class HolidayController extends GetxController {
     return holidayList.any((h) => h['holidayDate'] == formattedDate && h['isActive'] == true);
   }
 
+  String? getHolidayIdForDate(DateTime date) {
+    String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    final found = holidayList.firstWhereOrNull((h) => h['holidayDate'] == formattedDate && h['isActive'] == true);
+    return found?['id'];
+  }
+
+  Future<void> addHoliday(DateTime date) async {
+    if (selectedProviderId.value == null) return;
+    String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+    
+    if (isDateHoliday(date)) {
+      Get.snackbar("Info", "Selected date is already marked as a holiday.",
+          backgroundColor: Colors.blue.shade50, colorText: Colors.blue.shade900);
+      return;
+    }
+
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator(color: Color(0xFFF97316))),
+        barrierDismissible: false,
+      );
+
+      final success = await _api.addProviderHoliday({
+        'providerId': selectedProviderId.value!,
+        'holidayDate': formattedDate,
+      });
+      Get.back(); // close loading dialog
+
+      if (success) {
+        Get.snackbar("Success", "Holiday marked successfully.",
+            backgroundColor: Colors.green.shade50, colorText: Colors.green.shade900);
+        fetchProviderHolidays(selectedProviderId.value!);
+      } else {
+        Get.snackbar("Error", "Failed to mark holiday.",
+            backgroundColor: Colors.red.shade50, colorText: Colors.red.shade900);
+      }
+    } catch (e) {
+      if (Get.isDialogOpen == true) Get.back();
+      debugPrint("❌ Add Holiday Error: $e");
+      Get.snackbar("Error", "An error occurred while marking holiday.",
+          backgroundColor: Colors.red.shade50, colorText: Colors.red.shade900);
+    }
+  }
+
+  Future<void> deleteHoliday(String holidayId) async {
+    if (selectedProviderId.value == null) return;
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator(color: Color(0xFFF97316))),
+        barrierDismissible: false,
+      );
+
+      final success = await _api.deleteProviderHoliday(holidayId, selectedProviderId.value!);
+      Get.back(); // close loading dialog
+
+      if (success) {
+        Get.snackbar("Success", "Holiday removed successfully.",
+            backgroundColor: Colors.green.shade50, colorText: Colors.green.shade900);
+        fetchProviderHolidays(selectedProviderId.value!);
+      } else {
+        Get.snackbar("Error", "Failed to remove holiday.",
+            backgroundColor: Colors.red.shade50, colorText: Colors.red.shade900);
+      }
+    } catch (e) {
+      if (Get.isDialogOpen == true) Get.back();
+      debugPrint("❌ Delete Holiday Error: $e");
+      Get.snackbar("Error", "An error occurred while removing holiday.",
+          backgroundColor: Colors.red.shade50, colorText: Colors.red.shade900);
+    }
+  }
+
   void calculateBuffer(DateTime startDate) {
   // 1. New Baseline: Tomorrow (Today + 1 Day)
   // If today is March 15, we start checking from March 16.
@@ -101,4 +172,4 @@ class HolidayController extends GetxController {
     checkFromDate.value = date;
     calculateBuffer(date);
   }
-}
+}

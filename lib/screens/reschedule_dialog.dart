@@ -276,20 +276,17 @@ class _RescheduleBookingDialogState extends State<RescheduleBookingDialog> {
     } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
-    final adminName = prefs.getString('admin_name') ?? 'Admin';
+    final adminEmail = prefs.getString('admin_email') ?? prefs.getString('admin_name') ?? 'Admin';
 
     final payload = {
       "bookingId": widget.booking.id,
       "customerId": widget.booking.customerId,
       "spId": selectedProviderId,
       "addressId": selectedAddressId,
-      "rescheduleDate": dateCtrl.text,
-      "rescheduleTime": formattedTime,
-      "rescheduleReason": reasonCtrl.text,
-      "adminName": adminName,
-      // backward compat
       "bookingDate": dateCtrl.text,
       "bookingTime": formattedTime,
+      "rescheduleReason": reasonCtrl.text,
+      "onBehalfOf": adminEmail,
     };
 
     final bool success = await _apiService.rescheduleBooking(payload);

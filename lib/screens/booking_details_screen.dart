@@ -9,6 +9,7 @@ import '../services/invoice_service.dart';
 import '../services/api_service.dart';
 import '../widgets/custom_center_dialog.dart';
 import 'reschedule_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final BookingModel booking; // <--- Changed: Accept Full Object
@@ -120,7 +121,53 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- HEADER SECTION ---
+            const SizedBox(height: 10),
+            
+            // --- CANCELLATION BANNER ---
+            if (booking.status.toLowerCase().contains('cancel'))
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cancel_outlined, color: Colors.red, size: 28),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "This booking has been cancelled",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (booking.cancelReason.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                "Reason: ${booking.cancelReason}",
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // --- HEADER SECTION ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -821,42 +868,47 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       ));
                     }
                   },
-                  child: Row(
+                  child: Column(
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.orange[100],
-                        child: Text(booking.provider!.firstName.isNotEmpty
-                            ? booking.provider!.firstName[0]
-                            : "P"),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.orange[100],
+                            child: Text(booking.provider!.firstName.isNotEmpty
+                                ? booking.provider!.firstName[0]
+                                : "P"),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    "${booking.provider!.firstName} ${booking.provider!.lastName}",
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Color(0xFF2563EB))),
+                                const SizedBox(height: 4),
+                                Text(booking.provider!.mobile,
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(
+                                  text: "${booking.provider!.firstName} ${booking.provider!.lastName} - ${booking.provider!.mobile}"));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text("Provider details copied to clipboard")));
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                "${booking.provider!.firstName} ${booking.provider!.lastName}",
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: Color(0xFF2563EB))),
-                            const SizedBox(height: 4),
-                            Text(booking.provider!.mobile,
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18, color: Colors.grey),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(
-                              text: "${booking.provider!.firstName} ${booking.provider!.lastName} - ${booking.provider!.mobile}"));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text("Provider details copied to clipboard")));
-                        },
-                      ),
+
                     ],
                   ),
                 ),
@@ -1059,9 +1111,15 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     );
   }
 
-  void _showCancelDialog(BookingModel booking) {
+  Future<void> _showCancelDialog(BookingModel booking) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String adminId = prefs.getString('admin_name') ?? 'Admin';
+
     _cancelReasonController.clear();
     _selectedCancelReason = null;
+    String _selectedOnBehalfOf = adminId;
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -1070,24 +1128,50 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           backgroundColor: Colors.white,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 460),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   /// 🔹 ICON
-                  const Icon(Icons.cancel, size: 30, color: Colors.red),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.cancel_outlined, size: 32, color: Colors.red),
+                  ),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
                   /// 🔹 TITLE
                   const Text(
                     "Cancel Booking",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Booking ID: ${booking.id}",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
 
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
+
+                  /// 🔹 ON BEHALF OF FIELD (Read-Only)
+                  TextFormField(
+                    initialValue: _selectedOnBehalfOf,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: "On Behalf Of",
+                      prefixIcon: Icon(Icons.admin_panel_settings_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
 
                   /// 🔹 REASON DROPDOWN
                   DropdownButtonFormField<String>(
@@ -1140,6 +1224,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: Colors.grey),
+                          ),
                           child: const Text("Back"),
                         ),
                       ),
@@ -1148,6 +1236,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () async {
                             /// 🔴 VALIDATION
@@ -1175,6 +1264,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                                 ? _cancelReasonController.text.trim()
                                 : _selectedCancelReason!;
 
+                            // Capture values before async gap
+                            final onBehalfOf = _selectedOnBehalfOf;
+
                             /// 🔥 CONFIRMATION DIALOG
                             CustomCenterDialog.show(
                               context,
@@ -1187,12 +1279,14 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                               onConfirm: () async {
                                 final payload = {
                                   "bookingId": booking.id,
+                                  "onBehalfOf": onBehalfOf,
                                   "reason": reason,
                                 };
 
                                 bool success =
                                     await _apiService.cancelBooking(payload);
 
+                                if (!context.mounted) return;
                                 Navigator.pop(context); // close main dialog
                                 widget.onBack();
 
@@ -1373,4 +1467,5 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       ),
     );
   }
+
 }

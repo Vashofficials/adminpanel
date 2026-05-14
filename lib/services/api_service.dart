@@ -29,7 +29,7 @@ import '../models/permission_module.dart';
 
 class ApiService {
   // NO trailing slash
-  static const String baseUrl = 'https://api.chayankaro.com'; 
+  static const String baseUrl = 'http://43.205.101.170:8081'; 
 
   late final Dio _dio;
 
@@ -1522,6 +1522,8 @@ Future<Response> getHolidays(String providerId) async {
     rethrow;
   }
 }
+
+
 Future<Response> updateCustomerStatus({
   required String customerId, 
   required bool isActive,
@@ -1883,6 +1885,51 @@ Future<bool> cancelBooking(Map<String, dynamic> payload) async {
     return false;
   } catch (e) {
     debugPrint("Error cancelling booking: $e");
+    return false;
+  }
+}
+
+Future<List> getProviderHolidays(String providerId) async {
+  try {
+    final response = await _dio.get(
+      '/admin/getHolidays',
+      queryParameters: {'providerId': providerId},
+    );
+    if (response.statusCode == 200) {
+      return response.data['result'] ?? [];
+    }
+    return [];
+  } catch (e) {
+    debugPrint("Error fetching holidays: $e");
+    return [];
+  }
+}
+
+Future<bool> addProviderHoliday(Map<String, dynamic> payload) async {
+  try {
+    final response = await _dio.post(
+      '/admin/addProviderHoliday',
+      data: payload,
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    debugPrint("Error adding holiday: $e");
+    return false;
+  }
+}
+
+Future<bool> deleteProviderHoliday(String holidayId, String providerId) async {
+  try {
+    final response = await _dio.post(
+      '/admin/deleteProviderHoliday',
+      queryParameters: {
+        'holidayId': holidayId,
+        'providerId': providerId,
+      },
+    );
+    return response.statusCode == 200;
+  } catch (e) {
+    debugPrint("Error deleting holiday: $e");
     return false;
   }
 }
